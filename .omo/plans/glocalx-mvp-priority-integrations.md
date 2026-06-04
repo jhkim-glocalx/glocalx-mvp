@@ -202,7 +202,7 @@ Wave 9: Task 14
 
   **Commit**: YES | Message: `feat(data): add glocalx domain schema` | Files: schema/migration files, seed files, domain schema files, tests
 
-- [ ] 3. Implement Stub and Production Adapter Boundaries
+- [x] 3. Implement Stub and Production Adapter Boundaries
 
   **What to do**: Create adapter interfaces and dependency injection for Naver search, Google OAuth, GBP Business Information, GBP Local Posts, GBP Reviews, content generation, translation, and clock/job scheduling. Implement deterministic stub adapters using fixtures. Implement production adapter shells that build authenticated requests but run only when env vars are present.
   **Must NOT do**: Do not make live external calls in unit tests; use HTTP mocking for production adapter tests.
