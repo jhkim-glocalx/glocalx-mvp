@@ -52,14 +52,24 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <button className="rounded-md bg-[var(--primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--primary-strong)]">
+        <form
+          action="/api/auth/demo-login"
+          className="flex flex-col gap-3 sm:flex-row"
+          method="post"
+        >
+          <button
+            className="rounded-md bg-[var(--primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--primary-strong)]"
+            type="submit"
+          >
             {appShellCopy.primaryAction}
           </button>
-          <button className="rounded-md border border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--accent)] transition hover:border-[var(--accent)]">
+          <button
+            className="rounded-md border border-[var(--border)] px-4 py-3 text-sm font-semibold text-[var(--accent)] transition hover:border-[var(--accent)]"
+            type="button"
+          >
             {appShellCopy.secondaryAction}
           </button>
-        </div>
+        </form>
       </section>
     </main>
   )

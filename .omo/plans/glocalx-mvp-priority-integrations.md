@@ -239,7 +239,7 @@ Wave 9: Task 14
 
   **Commit**: YES | Message: `feat(integrations): add adapter boundaries` | Files: integration adapter files, fixtures, tests
 
-- [ ] 4. Build Auth, Demo Session, and Store Context Shell
+- [x] 4. Build Auth, Demo Session, and Store Context Shell
 
   **What to do**: Implement a minimal owner session suitable for demo/stub mode plus a Google OAuth callback placeholder for production. Seed login should route first-time demo users into onboarding and returning users into the chat dashboard. Add server-side session helpers and route protection.
   **Must NOT do**: Do not implement Kakao, SMS/PASS identity verification, or multi-store switching.
