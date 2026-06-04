@@ -1,0 +1,30 @@
+Task 6 quality gates
+
+Target task:
+Implement Google Business Profile Setup Orchestration
+
+Red tests:
+- npm run test -- --run gbp: failed because src/gbp/state-machine.ts and src/gbp/setup.ts did not exist.
+- npm run e2e -- --grep "Stub GBP": failed with HTTP 404 because /api/gbp/setup did not exist.
+
+Final verification:
+- npm run test -- --run gbp: exit 0; 2 test files and 5 tests passed
+- npm run e2e -- --grep "Stub GBP": exit 0; 1 Playwright API test passed
+- npm run typecheck: exit 0
+- npm run lint: exit 0
+- npm run test: exit 0; 9 test files and 20 tests passed
+- npm run format:check: exit 0
+- npm run e2e: exit 0 after stale dev-server PID cleared; 7 Playwright tests passed
+- npm run build: exit 0; Next.js build completed and listed /api/gbp/setup plus Google callback route
+- npm audit --omit=dev: exit 0; found 0 vulnerabilities
+
+Manual QA evidence:
+- .omo/evidence/task-6-gbp-setup-stub.txt: HTTP 200; status VERIFICATION_PENDING; auditLogId setup-gbp-audit; followUpJobId setup-gbp-follow-up
+- .omo/evidence/task-6-unverified-block.txt: state-machine test evidence; all non-VERIFIED states return LOCATION_NOT_VERIFIED for live posts/review replies
+- .omo/evidence/task-6-malformed-setup.txt: HTTP 400; VALIDATION_ERROR for empty storeId
+- .omo/evidence/task-6-oauth-invalid-state.txt: HTTP 400; INVALID_OAUTH_STATE
+- .omo/evidence/task-6-oauth-valid-state.txt: HTTP 200; GOOGLE_OAUTH_CONNECTED with production-oauth-google placeholder token storage
+
+External references:
+- Google Business Profile accounts.locations.create official docs confirmed POST https://mybusinessbusinessinformation.googleapis.com/v1/{parent=accounts/*}/locations and scope https://www.googleapis.com/auth/business.manage.
+- Google Business Profile googleLocations official docs confirmed requestAdminRightsUri for already claimed locations.

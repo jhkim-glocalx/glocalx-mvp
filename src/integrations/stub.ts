@@ -96,7 +96,7 @@ export function createStubBusinessInformation(): GbpBusinessInformationAdapter {
           method: "POST",
           url: "stub://gbp/locations",
           headers: {},
-          body: { status: "VERIFIED" },
+          body: { status: "VERIFICATION_PENDING" },
         },
       }
     },

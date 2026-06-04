@@ -311,7 +311,7 @@ Wave 9: Task 14
 
   **Commit**: YES | Message: `feat(onboarding): extract business profiles from naver` | Files: onboarding service/routes/UI/tests
 
-- [ ] 6. Implement Google Business Profile Setup Orchestration
+- [x] 6. Implement Google Business Profile Setup Orchestration
 
   **What to do**: Build Google connection and GBP location setup flow. In stub mode, simulate OAuth success, account discovery, no existing location, create request, and verification pending/verified states. In production mode, implement OAuth callback storage, account/location discovery contract, location creation request construction, ownership/admin-rights URL handling, duplicate handling, and verification status tracking. Surface 7-10 day follow-up reminders as jobs.
   **Must NOT do**: Do not mark a profile as verified without a verified status from Google or explicit stub fixture.

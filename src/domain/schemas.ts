@@ -23,9 +23,17 @@ export const adapterBusinessProfileCandidateSchema = z
   })
   .strict()
 
+export const gbpSetupRequestSchema = z
+  .object({
+    storeId: nonEmptyStringSchema,
+    mode: z.enum(["stub", "production"]),
+  })
+  .strict()
+
 export type OnboardingExtractionRequest = z.infer<
   typeof onboardingExtractionRequestSchema
 >
+export type GbpSetupRequest = z.infer<typeof gbpSetupRequestSchema>
 export type MissingBusinessField = z.infer<typeof missingBusinessFieldSchema>
 export type AdapterBusinessProfileCandidate = z.infer<
   typeof adapterBusinessProfileCandidateSchema
