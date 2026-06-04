@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+playwright-report/
+test-results/
+.git/
+AGENTS.md
+next-env.d.ts
+.omo/evidence/
+.omo/plans/
+.omo/start-work/ledger.jsonl

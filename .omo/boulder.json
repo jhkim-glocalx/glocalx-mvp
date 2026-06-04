@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "active_work_id": "glocalx-mvp-priority-integrations",
+  "works": {
+    "glocalx-mvp-priority-integrations": {
+      "work_id": "glocalx-mvp-priority-integrations",
+      "active_plan": ".omo/plans/glocalx-mvp-priority-integrations.md",
+      "plan_name": "glocalx-mvp-priority-integrations",
+      "session_ids": ["codex:019e9316-db60-7dd0-931f-0cc6f36fad92"],
+      "status": "active",
+      "worktree_path": null
+    }
+  }
+}
