@@ -1,0 +1,7 @@
+Task 7 cleanup receipt - 2026-06-04T16:34:40Z
+
+- tmux kill-session -t ulw-task7-manual: exit 0
+- tmux has-session -t ulw-task7-manual: exit 1; no server running on tmux socket
+- rm -rf .glocalx test-results: exit 0
+- ls -d .glocalx test-results: exit 1; both paths missing
+- next-env.d.ts: restored to committed .next/types route references after dev-server typegen changed it to .next/dev/types

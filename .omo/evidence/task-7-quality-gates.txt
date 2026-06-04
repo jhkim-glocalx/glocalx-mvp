@@ -1,0 +1,29 @@
+Task 7 quality gates - 2026-06-04T16:34:40Z
+
+Automated verification:
+- npm run typecheck: exit 0
+- npm run lint: exit 0
+- npm run format:check: exit 0
+- npm run test: exit 0; 10 test files and 25 tests passed
+- npm run build: exit 0; Next.js build listed /api/posts/drafts and /api/posts/[draftId]/publish
+- npm run e2e: exit 0; 9 Playwright tests passed with isolated e2e database setup
+- npm audit --omit=dev: exit 0; found 0 vulnerabilities
+
+Targeted verification:
+- npm run test -- --run post-flow production-request-specs: exit 0; 2 test files and 7 tests passed
+- npm run e2e -- --grep "Stub post|Publish is blocked": exit 0 during Task 7 implementation
+
+Manual QA evidence:
+- .omo/evidence/task-7-post-draft.txt: HTTP 200 DRAFT_READY with Korean/English preview and canPublish true
+- .omo/evidence/task-7-post-publish.txt: HTTP 200 PUBLISHED with stub-gbp-post, publicUrl, and one SUCCEEDED attempt
+- .omo/evidence/task-7-post-publish-idempotent.txt: repeated publish returned attemptNumber 1 and unchanged history
+- .omo/evidence/task-7-unverified-setup.txt: HTTP 200 VERIFICATION_PENDING setup state
+- .omo/evidence/task-7-unverified-draft.txt: HTTP 200 DRAFT_READY with canPublish false
+- .omo/evidence/task-7-post-unverified.txt: HTTP 409 LOCATION_NOT_VERIFIED with Korean recovery message
+- .omo/evidence/task-7-malformed-draft.txt: HTTP 400 VALIDATION_ERROR for empty ownerIntent
+- .omo/evidence/task-7-prompt-like-intent.txt: HTTP 200 deterministic draft copy; no prompt execution path
+
+Cleanup:
+- tmux session ulw-task7-manual stopped; tmux has-session returned non-zero
+- .glocalx and test-results removed; ls reported both missing
+- next-env.d.ts dev typegen churn restored to committed .next/types references

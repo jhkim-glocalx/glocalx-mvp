@@ -1,0 +1,9 @@
+HTTP/1.1 409 Conflict
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: application/json
+Date: Thu, 04 Jun 2026 16:32:27 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+{"status":"BLOCKED","code":"LOCATION_NOT_VERIFIED","message":"Google 비즈니스 프로필 인증이 완료되어야 게시글과 리뷰 답글을 라이브로 진행할 수 있습니다."}

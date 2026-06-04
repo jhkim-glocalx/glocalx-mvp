@@ -30,10 +30,27 @@ export const gbpSetupRequestSchema = z
   })
   .strict()
 
+export const postDraftRequestSchema = z
+  .object({
+    storeId: nonEmptyStringSchema,
+    ownerIntent: nonEmptyStringSchema,
+    targetChannel: z.literal("GBP"),
+  })
+  .strict()
+
+export const postPublishRequestSchema = z
+  .object({
+    storeId: nonEmptyStringSchema,
+    idempotencyKey: nonEmptyStringSchema.optional(),
+  })
+  .strict()
+
 export type OnboardingExtractionRequest = z.infer<
   typeof onboardingExtractionRequestSchema
 >
 export type GbpSetupRequest = z.infer<typeof gbpSetupRequestSchema>
+export type PostDraftRequest = z.infer<typeof postDraftRequestSchema>
+export type PostPublishRequest = z.infer<typeof postPublishRequestSchema>
 export type MissingBusinessField = z.infer<typeof missingBusinessFieldSchema>
 export type AdapterBusinessProfileCandidate = z.infer<
   typeof adapterBusinessProfileCandidateSchema

@@ -112,7 +112,11 @@ export function createStubLocalPosts(): GbpLocalPostsAdapter {
           method: "POST",
           url: "stub://gbp/localPosts",
           headers: {},
-          body: { summary: input.summary, gbpPostId: "stub-gbp-post" },
+          body: {
+            summary: input.summary,
+            gbpPostId: "stub-gbp-post",
+            publicUrl: "https://business.google.com/local-post/stub-gbp-post",
+          },
         },
       }
     },

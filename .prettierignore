@@ -7,6 +7,7 @@ playwright-report/
 test-results/
 .git/
 AGENTS.md
+02_assets/
 next-env.d.ts
 .omo/evidence/
 .omo/plans/

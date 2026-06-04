@@ -349,7 +349,7 @@ Wave 9: Task 14
 
   **Commit**: YES | Message: `feat(gbp): orchestrate location setup` | Files: GBP setup services/routes/UI/tests
 
-- [ ] 7. Implement GBP Promotional Post Preview, Approval, Publish, and History
+- [x] 7. Implement GBP Promotional Post Preview, Approval, Publish, and History
 
   **What to do**: Build text-first promotional post flow. Generate deterministic stub content from store profile and owner intent. Format GBP local post with Korean/English copy, location context, optional CTA, and optional media URL pass-through. Render preview card, approval button, edit loop, publish status, retry state, and stored post history. Production adapter must construct the GBP Local Posts create request.
   **Must NOT do**: Do not implement Instagram, scheduling, AI image generation, or video/reels.
