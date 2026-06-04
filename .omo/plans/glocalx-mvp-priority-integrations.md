@@ -167,7 +167,7 @@ Wave 9: Task 14
 
   **Commit**: YES | Message: `build(app): scaffold glocalx web app` | Files: `package.json`, lockfile, config files, `app/**` or `src/**`, `.env.example`, `README.md`
 
-- [ ] 2. Define Domain Schema, Persistence, and Seed Fixtures
+- [x] 2. Define Domain Schema, Persistence, and Seed Fixtures
 
   **What to do**: Add persistence for users, stores, extracted business profiles, OAuth connections, GBP accounts/locations, post drafts, post publish attempts, reviews, review replies, jobs, and audit logs. Use SQLite for local/dev and a Postgres-compatible migration path. Add Zod schemas for all route payloads and adapter responses. Seed one demo owner and one demo store fixture.
   **Must NOT do**: Do not store raw tokens in plaintext outside a token encryption abstraction.

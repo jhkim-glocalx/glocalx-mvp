@@ -1,0 +1,28 @@
+$ npm run db:reset
+
+> glocalx-mvp@0.1.0 db:reset
+> node scripts/db-reset.ts
+
+Reset database at .glocalx/dev.db
+
+$ npm run db:seed
+
+> glocalx-mvp@0.1.0 db:seed
+> node scripts/db-seed.ts
+
+Seeded deterministic demo owner and store
+
+$ npm run test -- --run domain-schema
+
+> glocalx-mvp@0.1.0 test
+> vitest run --run domain-schema
+
+
+ RUN  v4.1.8 /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  00:15:52
+   Duration  148ms (transform 17ms, setup 27ms, import 28ms, tests 11ms, environment 0ms)
+

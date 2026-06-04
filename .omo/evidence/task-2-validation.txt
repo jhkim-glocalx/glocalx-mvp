@@ -1,0 +1,14 @@
+$ npm run test -- --run route-schema-validation
+
+> glocalx-mvp@0.1.0 test
+> vitest run --run route-schema-validation
+
+
+ RUN  v4.1.8 /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  00:16:03
+   Duration  130ms (transform 12ms, setup 28ms, import 21ms, tests 2ms, environment 0ms)
+

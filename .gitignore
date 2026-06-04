@@ -6,6 +6,7 @@ coverage/
 playwright-report/
 test-results/
 tsconfig.tsbuildinfo
+.glocalx/
 .env
 .env*.local
 .DS_Store
