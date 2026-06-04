@@ -274,7 +274,7 @@ Wave 9: Task 14
 
   **Commit**: YES | Message: `feat(auth): add demo owner session flow` | Files: auth/session files, route files, tests
 
-- [ ] 5. Implement Naver Business Information Extraction
+- [x] 5. Implement Naver Business Information Extraction
 
   **What to do**: Build onboarding API and service for store-name or Naver Place URL input. Normalize Naver URLs, extract searchable query text, call official Naver Local Search in production mode, and use stub fixtures in demo mode. Map results into internal `BusinessProfileExtraction`. Show ambiguous results for owner selection. Collect missing required fields through the chat flow.
   **Must NOT do**: Do not scrape Naver pages for menu/hours/photos. Treat missing hours/menu/photos as manual collection prompts.

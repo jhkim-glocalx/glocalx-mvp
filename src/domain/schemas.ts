@@ -26,6 +26,7 @@ export const adapterBusinessProfileCandidateSchema = z
 export type OnboardingExtractionRequest = z.infer<
   typeof onboardingExtractionRequestSchema
 >
+export type MissingBusinessField = z.infer<typeof missingBusinessFieldSchema>
 export type AdapterBusinessProfileCandidate = z.infer<
   typeof adapterBusinessProfileCandidateSchema
 >

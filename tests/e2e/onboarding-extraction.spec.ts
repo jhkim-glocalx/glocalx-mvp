@@ -1,0 +1,40 @@
+import { expect, test } from "@playwright/test"
+
+test("Stub Naver link extraction returns a normalized business candidate", async ({
+  request,
+}) => {
+  const response = await request.post("/api/onboarding/extractions", {
+    data: { input: "https://naver.me/mybrunchcafe" },
+  })
+
+  expect(response.status()).toBe(200)
+  const body = await response.json()
+  expect(body).toMatchObject({
+    status: "CANDIDATES_FOUND",
+    candidates: [
+      {
+        name: "브런치모먼트 홍대점",
+        missingFields: ["hours"],
+      },
+    ],
+  })
+})
+
+test("No Naver result fallback offers manual entry in Korean", async ({
+  request,
+}) => {
+  const response = await request.post("/api/onboarding/extractions", {
+    data: { input: "없는가게zzzz" },
+  })
+
+  expect(response.status()).toBe(200)
+  const body = await response.json()
+  expect(body).toMatchObject({
+    status: "MANUAL_INPUT_REQUIRED",
+    message:
+      "네이버에서 매장을 찾지 못했습니다. 직접 입력으로 계속할 수 있습니다.",
+    manualForm: {
+      requiredFields: ["name", "address", "category"],
+    },
+  })
+})

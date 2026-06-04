@@ -24,6 +24,15 @@ const stubCandidate = {
   naverPlaceUrl: "https://naver.me/mybrunchcafe",
 } satisfies AdapterBusinessProfileCandidate
 
+const stubSearchQueries = ["브런치모먼트", "mybrunchcafe"] as const
+
+function isStubSearchQuery(query: string): boolean {
+  const normalizedQuery = query.trim().toLowerCase()
+  return stubSearchQueries.some(
+    (stubQuery) => stubQuery.toLowerCase() === normalizedQuery
+  )
+}
+
 function persistStubExtraction(database: SqliteDatabase | undefined): void {
   if (database === undefined) {
     return
@@ -49,7 +58,16 @@ export function createStubNaverSearch(
   database?: SqliteDatabase
 ): NaverSearchAdapter {
   return {
-    searchLocal(): AdapterResult<NaverSearchResult> {
+    searchLocal(input): AdapterResult<NaverSearchResult> {
+      if (!isStubSearchQuery(input.query)) {
+        return {
+          kind: "ok",
+          value: {
+            candidates: [],
+          },
+        }
+      }
+
       persistStubExtraction(database)
       return {
         kind: "ok",
