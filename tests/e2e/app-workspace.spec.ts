@@ -9,7 +9,7 @@ test.beforeEach(() => {
 test("app post draft preview from api", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "가게 정보 찾기" }).click()
   await page.getByRole("button", { name: "GBP 세팅 확인" }).click()
@@ -32,7 +32,7 @@ test("app post draft preview from api", async ({ page }) => {
 test("app publish blocked when location unverified", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "가게 정보 찾기" }).click()
   await page.getByRole("button", { name: "GBP 세팅 확인" }).click()

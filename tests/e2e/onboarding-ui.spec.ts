@@ -9,7 +9,7 @@ test.beforeEach(() => {
 test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
 
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "가게 정보 찾기" }).click()
@@ -32,7 +32,7 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
 test("onboarding no result manual fallback", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
 
   await page.getByLabel("네이버 정보").fill("없는가게zzzz")
   await page.getByRole("button", { name: "가게 정보 찾기" }).click()

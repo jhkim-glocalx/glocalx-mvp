@@ -8,7 +8,7 @@ test.beforeEach(() => {
 })
 
 async function completeSetup(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "가게 정보 찾기" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()

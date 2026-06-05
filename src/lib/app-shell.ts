@@ -8,9 +8,8 @@ export type AppShellCopy = {
 
 export const appShellCopy = {
   productName: "GlocalX",
-  initialPrompt: "혼자서도 전 세계에 팝니다.",
-  supportingText:
-    "네이버 매장 정보 추출, Google Business Profile 준비, GBP 홍보글 초안과 게시를 한 흐름으로 연결합니다.",
-  primaryAction: "데모 시작",
+  initialPrompt: "오늘의 매장",
+  supportingText: "가게 연결, GBP 확인, 첫 게시글",
+  primaryAction: "시작하기",
   secondaryAction: "준비중",
 } satisfies AppShellCopy

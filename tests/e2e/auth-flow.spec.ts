@@ -10,7 +10,7 @@ test("First-time demo login routes to onboarding", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
 
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
   await expect(
@@ -21,7 +21,7 @@ test("First-time demo login routes to onboarding", async ({ page }) => {
 test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "가게 정보 찾기" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
@@ -33,7 +33,7 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "포스팅 작업실" })).toBeVisible()
 
   await page.goto("/")
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
 
   await expect(page).toHaveURL(/\/app/)
 })
@@ -42,8 +42,8 @@ test("auth placeholders do not create a demo session", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
 
-  await expect(page.getByRole("button", { name: "카카오 준비중" })).toBeDisabled()
-  await expect(page.getByRole("button", { name: "이메일 준비중" })).toBeDisabled()
+  await expect(page.getByTestId("entry-device")).toBeVisible()
+  await expect(page.getByRole("button", { name: "시작하기" })).toBeEnabled()
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(
@@ -59,5 +59,5 @@ test("Protected app route redirects unauthenticated visitors to login", async ({
   await page.goto("/app")
 
   await expect(page).toHaveURL("/")
-  await expect(page.getByRole("heading", { name: /혼자서도/ })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "GlocalX" })).toBeVisible()
 })

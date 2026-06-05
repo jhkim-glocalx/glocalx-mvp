@@ -13,7 +13,7 @@ async function completeOnboarding(page: Page): Promise<void> {
 test("step navigation keyboard changes the active step", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
   await completeOnboarding(page)
 
   await page.keyboard.press("Tab")
@@ -33,7 +33,7 @@ test("mobile shell frame keeps controls visible", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 })
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "데모 시작" }).click()
+  await page.getByRole("button", { name: "시작하기" }).click()
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
