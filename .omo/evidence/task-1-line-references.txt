@@ -1,0 +1,18 @@
+src/integrations/contracts.ts:84:export interface GbpReviewsAdapter {
+src/integrations/contracts.ts:116:  readonly gbpReviews: GbpReviewsAdapter
+src/app/onboarding/page.tsx:3:import { getDemoSession } from "@/auth/server-session"
+src/app/onboarding/page.tsx:6:  const session = await getDemoSession()
+src/app/onboarding/page.tsx:9:    redirect("/")
+src/app/onboarding/page.tsx:13:    redirect("/app")
+src/app/onboarding/page.tsx:32:          method="post"
+src/app/app/page.tsx:3:import { getDemoSession } from "@/auth/server-session"
+src/app/app/page.tsx:6:  const session = await getDemoSession()
+src/app/app/page.tsx:9:    redirect("/")
+src/app/app/page.tsx:13:    redirect("/onboarding")
+src/server/db/migrations/0001_glocalx_schema.sql:99:CREATE TABLE IF NOT EXISTS reviews (
+src/server/db/migrations/0001_glocalx_schema.sql:114:CREATE TABLE IF NOT EXISTS review_replies (
+src/server/db/migrations/0001_glocalx_schema.sql:116:  review_id TEXT NOT NULL REFERENCES reviews(id),
+src/server/db/migrations/0001_glocalx_schema.sql:125:CREATE TABLE IF NOT EXISTS job_runs (
+src/server/db/migrations/0001_glocalx_schema.sql:137:CREATE TABLE IF NOT EXISTS audit_logs (
+src/app/page.tsx:56:          action="/api/auth/demo-login"
+src/app/page.tsx:58:          method="post"

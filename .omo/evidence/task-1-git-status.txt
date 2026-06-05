@@ -1,0 +1,9 @@
+ M .omo/boulder.json
+?? .omo/evidence/task-1-git-status.txt
+?? .omo/evidence/task-1-main-worktree-git-status.txt
+?? .omo/evidence/task-1-review-route-presence.txt
+?? .omo/evidence/task-1-target-files.txt
+?? .omo/plans/glocalx-design-integration.md
+?? .omo/plans/glocalx-dev-design-unification.md
+?? .omo/plans/glocalx-unified-mvp-design-integration.md
+?? 02_assets/

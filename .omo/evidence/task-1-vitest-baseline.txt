@@ -1,0 +1,13 @@
+
+> glocalx-mvp@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.8 /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1/workspace/glocalx-dev-design-unification
+
+
+ Test Files  10 passed (10)
+      Tests  25 passed (25)
+   Start at  02:07:44
+   Duration  1.91s (transform 367ms, setup 2.37s, import 1.01s, tests 2.30s, environment 1ms)
+

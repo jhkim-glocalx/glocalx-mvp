@@ -1,0 +1,19 @@
+    60	
+    61	The only option with a default value is `path`.
+    62	
+    63	To learn more about these options, see the [MDN docs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies).
+    64	
+    65	## Good to know
+    66	
+    67	- `cookies` is an **asynchronous** function that returns a promise. You must use `async/await` or React's [`use`](https://react.dev/reference/react/use) function to access cookies.
+    68	  - In version 14 and earlier, `cookies` was a synchronous function. To help with backwards compatibility, you can still access it synchronously in Next.js 15, but this behavior will be deprecated in the future.
+    69	- `cookies` is a [Request-time API](/docs/app/glossary#request-time-apis) whose returned values cannot be known ahead of time. Using it in a layout or page will opt a route into [dynamic rendering](/docs/app/glossary#dynamic-rendering).
+    70	- The `.delete` method can only be called:
+    71	  - In a [Server Function](/docs/app/getting-started/mutating-data) or [Route Handler](/docs/app/api-reference/file-conventions/route).
+    72	  - If it belongs to the same domain from which `.set` is called. For wildcard domains, the specific subdomain must be an exact match. Additionally, the code must be executed on the same protocol (HTTP or HTTPS) as the cookie you want to delete.
+    73	- HTTP does not allow setting cookies after streaming starts, so you must use `.set` in a [Server Function](/docs/app/getting-started/mutating-data) or [Route Handler](/docs/app/api-reference/file-conventions/route).
+    74	
+    75	## Understanding Cookie Behavior in Server Components
+    76	
+    77	When working with cookies in Server Components, it's important to understand that cookies are fundamentally a client-side storage mechanism:
+    78	

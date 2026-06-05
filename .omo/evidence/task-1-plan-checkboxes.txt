@@ -1,0 +1,22 @@
+.omo/plans/glocalx-mvp-priority-integrations.md:135:- [x] 1. Scaffold the Greenfield Web App and Quality Gates
+.omo/plans/glocalx-mvp-priority-integrations.md:170:- [x] 2. Define Domain Schema, Persistence, and Seed Fixtures
+.omo/plans/glocalx-mvp-priority-integrations.md:205:- [x] 3. Implement Stub and Production Adapter Boundaries
+.omo/plans/glocalx-mvp-priority-integrations.md:242:- [x] 4. Build Auth, Demo Session, and Store Context Shell
+.omo/plans/glocalx-mvp-priority-integrations.md:277:- [x] 5. Implement Naver Business Information Extraction
+.omo/plans/glocalx-mvp-priority-integrations.md:314:- [x] 6. Implement Google Business Profile Setup Orchestration
+.omo/plans/glocalx-mvp-priority-integrations.md:352:- [x] 7. Implement GBP Promotional Post Preview, Approval, Publish, and History
+.omo/plans/glocalx-mvp-priority-integrations.md:390:- [ ] 8. Implement GBP Review Sync, Reply Suggestions, and Reply Publish
+.omo/plans/glocalx-mvp-priority-integrations.md:429:- [ ] 9. Build Mobile-First Chat UI for Priority Flows
+.omo/plans/glocalx-mvp-priority-integrations.md:465:- [ ] 10. Add Admin and Debug Operations Surface
+.omo/plans/glocalx-mvp-priority-integrations.md:499:- [ ] 11. Add Jobs, Retries, Idempotency, and Audit Logging
+.omo/plans/glocalx-mvp-priority-integrations.md:535:- [ ] 12. Add Credential Readiness, Production Runbooks, and Conditional Live Checks
+.omo/plans/glocalx-mvp-priority-integrations.md:570:- [ ] 13. Build End-to-End Browser QA for the Priority MVP Surface
+.omo/plans/glocalx-mvp-priority-integrations.md:605:- [ ] 14. Final Documentation, Scope Guardrails, and Release Notes
+.omo/plans/glocalx-design-integration.md:144:- [ ] 1. Preflight Reconciliation and Test Baseline
+.omo/plans/glocalx-design-integration.md:181:- [ ] 2. Port Design Tokens and Shared Visual Shell
+.omo/plans/glocalx-design-integration.md:219:- [ ] 3. Redesign `/` Login Landing Around Real Demo Auth
+.omo/plans/glocalx-design-integration.md:258:- [ ] 4. Build Next-Compatible App Shell and Client Flow Primitives
+.omo/plans/glocalx-design-integration.md:296:- [ ] 5. Connect Onboarding UI to Extraction, GBP Setup, and Completion
+.omo/plans/glocalx-design-integration.md:339:- [ ] 6. Connect Post Draft and Publish UI on `/app`
+.omo/plans/glocalx-design-integration.md:381:- [ ] 7. Add Review, Target, Report, and Dashboard Surfaces as Explicit Stub/Read-Only Views
+.omo/plans/glocalx-design-integration.md:423:- [ ] 8. Final Visual Polish, Regression QA, and Evidence Pack

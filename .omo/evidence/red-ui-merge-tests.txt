@@ -1,0 +1,132 @@
+
+> glocalx-mvp@0.1.0 e2e
+> playwright test --project=chromium --grep auth placeholders|successful onboarding extraction|app post draft preview --reporter=list
+
+[2m[WebServer] [22m(node:71737) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:71738) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[2m[WebServer] [22m We detected multiple lockfiles and selected the directory of /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1/package-lock.json as the root directory.
+[2m[WebServer] [22m To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[2m[WebServer] [22m   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+[2m[WebServer] [22m Detected additional lockfiles: 
+[2m[WebServer] [22m   * /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1/workspace/glocalx-dev-design-unification/package-lock.json
+[2m[WebServer] [22m
+[2m[WebServer] [22m(node:71740) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:71741) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+(node:71742) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:71742) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/e2e/app-workspace.spec.ts:9:1 › app post draft preview from api (30.1s)
+(node:72679) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:72679) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › tests/e2e/auth-flow.spec.ts:41:1 › auth placeholders do not create a demo session (5.4s)
+(node:72802) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:72802) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [chromium] › tests/e2e/onboarding-ui.spec.ts:9:1 › successful onboarding extraction and gbp setup (30.0s)
+
+
+  1) [chromium] › tests/e2e/app-workspace.spec.ts:9:1 › app post draft preview from api ────────────
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByRole('button', { name: '가게 정보 찾기' })[22m
+
+
+      12 |   await page.getByRole("button", { name: "데모 시작" }).click()
+      13 |   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
+    > 14 |   await page.getByRole("button", { name: "가게 정보 찾기" }).click()
+         |                                                        ^
+      15 |   await page.getByRole("button", { name: "GBP 세팅 확인" }).click()
+      16 |   await page.getByRole("button", { name: "대시보드로 이동" }).click()
+      17 |
+        at /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1/workspace/glocalx-dev-design-unification/tests/e2e/app-workspace.spec.ts:14:56
+
+    Error Context: test-results/app-workspace-app-post-draft-preview-from-api-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/app-workspace-app-post-draft-preview-from-api-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/app-workspace-app-post-draft-preview-from-api-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/e2e/auth-flow.spec.ts:41:1 › auth placeholders do not create a demo session 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeDisabled[2m([22m[2m)[22m failed
+
+    Locator: getByRole('button', { name: '카카오 준비중' })
+    Expected: disabled
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeDisabled" with timeout 5000ms[22m
+    [2m  - waiting for getByRole('button', { name: '카카오 준비중' })[22m
+
+
+      43 |   await page.goto("/")
+      44 |
+    > 45 |   await expect(page.getByRole("button", { name: "카카오 준비중" })).toBeDisabled()
+         |                                                               ^
+      46 |   await expect(page.getByRole("button", { name: "이메일 준비중" })).toBeDisabled()
+      47 |
+      48 |   const cookies = await page.context().cookies()
+        at /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1/workspace/glocalx-dev-design-unification/tests/e2e/auth-flow.spec.ts:45:63
+
+    Error Context: test-results/auth-flow-auth-placeholders-do-not-create-a-demo-session-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/auth-flow-auth-placeholders-do-not-create-a-demo-session-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/auth-flow-auth-placeholders-do-not-create-a-demo-session-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests/e2e/onboarding-ui.spec.ts:9:1 › successful onboarding extraction and gbp setup 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByRole('button', { name: '가게 정보 찾기' })[22m
+
+
+      13 |
+      14 |   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
+    > 15 |   await page.getByRole("button", { name: "가게 정보 찾기" }).click()
+         |                                                        ^
+      16 |
+      17 |   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
+      18 |   await expect(page.getByText("영업시간 입력 필요")).toBeVisible()
+        at /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1/workspace/glocalx-dev-design-unification/tests/e2e/onboarding-ui.spec.ts:15:56
+
+    Error Context: test-results/onboarding-ui-successful-onboarding-extraction-and-gbp-setup-chromium/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/onboarding-ui-successful-onboarding-extraction-and-gbp-setup-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/onboarding-ui-successful-onboarding-extraction-and-gbp-setup-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › tests/e2e/app-workspace.spec.ts:9:1 › app post draft preview from api ─────────────
+    [chromium] › tests/e2e/auth-flow.spec.ts:41:1 › auth placeholders do not create a demo session ─
+    [chromium] › tests/e2e/onboarding-ui.spec.ts:9:1 › successful onboarding extraction and gbp setup 

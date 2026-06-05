@@ -1,0 +1,37 @@
+
+> glocalx-mvp@0.1.0 e2e
+> playwright test --project=chromium --grep design base|step navigation keyboard|mobile shell frame|onboarding no result|app publish blocked|Returning demo login|First-time demo login|Protected app route --reporter=list
+
+[2m[WebServer] [22m(node:78473) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:78474) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+[2m[WebServer] [22m We detected multiple lockfiles and selected the directory of /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1/package-lock.json as the root directory.
+[2m[WebServer] [22m To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[2m[WebServer] [22m   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+[2m[WebServer] [22m Detected additional lockfiles: 
+[2m[WebServer] [22m   * /Users/jaehunkim/Library/CloudStorage/GoogleDrive-kjaehun22@gmail.com/My Drive/Business/02_GlocalX/02_product/02_mvp_v1/workspace/glocalx-dev-design-unification/package-lock.json
+[2m[WebServer] [22m
+[2m[WebServer] [22m(node:78486) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 9 tests using 1 worker
+
+(node:78498) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:78498) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/app-shell.spec.ts:13:1 › step navigation keyboard changes the active step (915ms)
+  ✓  2 [chromium] › tests/e2e/app-shell.spec.ts:32:1 › mobile shell frame keeps controls visible (801ms)
+[2m[WebServer] [22m(node:78556) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [chromium] › tests/e2e/app-workspace.spec.ts:32:1 › app publish blocked when location unverified (1.7s)
+  ✓  4 [chromium] › tests/e2e/auth-flow.spec.ts:9:1 › First-time demo login routes to onboarding (459ms)
+  ✓  5 [chromium] › tests/e2e/auth-flow.spec.ts:21:1 › Returning demo login routes to the chat dashboard (1.0s)
+  ✓  6 [chromium] › tests/e2e/auth-flow.spec.ts:54:1 › Protected app route redirects unauthenticated visitors to login (328ms)
+  ✓  7 [chromium] › tests/e2e/design-base.spec.ts:4:1 › design base desktop renders dark canvas (340ms)
+  ✓  8 [chromium] › tests/e2e/design-base.spec.ts:19:1 › design base mobile overflow stays within viewport (291ms)
+  ✓  9 [chromium] › tests/e2e/onboarding-ui.spec.ts:32:1 › onboarding no result manual fallback (632ms)
+
+  9 passed (9.1s)

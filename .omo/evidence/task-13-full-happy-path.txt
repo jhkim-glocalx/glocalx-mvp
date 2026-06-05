@@ -1,0 +1,1 @@
+PASS: demo login -> onboarding extraction -> GBP setup -> app post draft -> publish blocked recovery
