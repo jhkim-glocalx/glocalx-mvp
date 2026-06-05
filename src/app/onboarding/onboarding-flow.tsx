@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react"
 
-import { ActionChip } from "@/app/_components/action-chip"
 import { ChatMessage } from "@/app/_components/chat-message"
 import { isRecord, readString, readStringArray } from "@/app/_components/json-value"
 import { PhoneFrame } from "@/app/_components/phone-frame"
@@ -146,22 +145,24 @@ export function OnboardingFlow() {
             message="네이버 플레이스 링크나 가게 이름을 알려주세요."
             speaker="assistant"
           />
-          <form className="grid gap-3" onSubmit={handleExtraction}>
+          <form className="gx-onboarding-form" onSubmit={handleExtraction}>
             <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
               네이버 정보
               <input
-                className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
+                className="gx-onboarding-input"
                 onChange={(event) => setInput(event.currentTarget.value)}
                 placeholder="https://naver.me/mybrunchcafe"
                 type="text"
                 value={input}
               />
             </label>
-            <ActionChip
-              buttonType="submit"
+            <button
+              className="gx-onboarding-primary"
               disabled={extraction.kind === "loading"}
-              label={extraction.kind === "loading" ? "조회 중" : "가게 정보 찾기"}
-            />
+              type="submit"
+            >
+              {extraction.kind === "loading" ? "제출 중" : "네이버 정보 제출"}
+            </button>
           </form>
 
           {extraction.kind === "candidate" ? (
@@ -176,11 +177,14 @@ export function OnboardingFlow() {
                   value="영업시간 입력 필요"
                 />
               ) : null}
-              <ActionChip
+              <button
+                className="gx-onboarding-primary"
                 disabled={setup.kind === "loading"}
-                label={setup.kind === "loading" ? "확인 중" : "GBP 세팅 확인"}
                 onClick={handleSetup}
-              />
+                type="button"
+              >
+                {setup.kind === "loading" ? "확인 중" : "다음: GBP 세팅 확인"}
+              </button>
             </div>
           ) : null}
 
@@ -204,7 +208,7 @@ export function OnboardingFlow() {
               />
               <StatusCard label="감사 기록" value={setup.auditLogId} />
               <StatusCard label="후속 작업" value={setup.followUpJobId} />
-              <button className="gx-chip bg-[var(--accent)] text-white" type="submit">
+              <button className="gx-onboarding-primary" type="submit">
                 대시보드로 이동
               </button>
             </form>

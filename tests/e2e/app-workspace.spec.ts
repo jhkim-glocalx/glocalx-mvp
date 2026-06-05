@@ -11,8 +11,8 @@ test("app post draft preview from api", async ({ page }) => {
   await page.goto("/")
   await page.getByRole("button", { name: "시작하기" }).click()
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
-  await page.getByRole("button", { name: "가게 정보 찾기" }).click()
-  await page.getByRole("button", { name: "GBP 세팅 확인" }).click()
+  await page.getByRole("button", { name: "네이버 정보 제출" }).click()
+  await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
   await page.getByLabel("홍보 의도").fill("주말 브런치 신메뉴 홍보")
@@ -34,8 +34,8 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await page.goto("/")
   await page.getByRole("button", { name: "시작하기" }).click()
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
-  await page.getByRole("button", { name: "가게 정보 찾기" }).click()
-  await page.getByRole("button", { name: "GBP 세팅 확인" }).click()
+  await page.getByRole("button", { name: "네이버 정보 제출" }).click()
+  await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
   await page.getByLabel("홍보 의도").fill("주말 브런치 신메뉴 홍보")
