@@ -11,7 +11,9 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await page.goto("/")
   await page.getByRole("button", { name: "시작하기" }).click()
 
-  await expect(page.getByRole("button", { name: "네이버 정보 제출" })).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "네이버 정보 제출" })
+  ).toBeVisible()
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
 
@@ -24,7 +26,9 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
 
   await expect(page.getByText("VERIFICATION_PENDING")).toBeVisible()
   await expect(page.getByText("setup-gbp-audit")).toBeVisible()
-  await expect(page.getByRole("button", { name: "대시보드로 이동" })).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "대시보드로 이동" })
+  ).toBeVisible()
   await page.screenshot({
     fullPage: true,
     path: ".omo/evidence/task-5-onboarding-success.png",

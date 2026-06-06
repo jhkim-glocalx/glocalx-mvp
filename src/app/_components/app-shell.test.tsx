@@ -2,22 +2,36 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
 import { ActionChip } from "./action-chip"
+import { BottomNav } from "./bottom-nav"
 import { ChatMessage } from "./chat-message"
+import { MobileShell } from "./mobile-shell"
 import { StatusCard } from "./status-card"
-import { StepNavigation } from "./step-navigation"
 
-const steps = [
-  { id: "onboarding", label: "온보딩", eyebrow: "가게정보" },
-  { id: "post", label: "포스팅", eyebrow: "시안 · 발행" },
+const navItems = [
+  { id: "onboarding", label: "온보딩" },
+  { id: "post", label: "포스팅" },
 ] as const
 
 describe("app shell primitives", () => {
-  it("marks the active step in navigation", () => {
+  it("marks the active bottom tab inside the mobile shell", () => {
     const html = renderToStaticMarkup(
-      <StepNavigation activeStepId="post" steps={steps} />
+      <MobileShell
+        bottomNav={
+          <BottomNav
+            activeId="post"
+            items={navItems}
+            onSelect={() => undefined}
+          />
+        }
+        testId="app-stage"
+        topBar={<span>포스팅 작업실</span>}
+      >
+        <p>작업실 본문</p>
+      </MobileShell>
     )
 
-    expect(html).toContain('aria-current="step"')
+    expect(html).toContain('data-testid="app-stage"')
+    expect(html).toContain('aria-current="page"')
     expect(html).toContain("포스팅")
   })
 
@@ -44,11 +58,7 @@ describe("app shell primitives", () => {
 
   it("renders status-card variants with stable labels", () => {
     const html = renderToStaticMarkup(
-      <StatusCard
-        label="GBP 준비"
-        status="warning"
-        value="인증 대기"
-      />
+      <StatusCard label="GBP 준비" status="warning" value="인증 대기" />
     )
 
     expect(html).toContain('data-status="warning"')

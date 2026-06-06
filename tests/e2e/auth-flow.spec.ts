@@ -13,9 +13,7 @@ test("First-time demo login routes to onboarding", async ({ page }) => {
   await page.getByRole("button", { name: "시작하기" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(
-    page.getByText("네이버 플레이스 링크나 가게 이름")
-  ).toBeVisible()
+  await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
 })
 
 test("Returning demo login routes to the chat dashboard", async ({ page }) => {
@@ -30,7 +28,9 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
   await expect(page).toHaveURL(/\/app/)
-  await expect(page.getByRole("heading", { name: "포스팅 작업실" })).toBeVisible()
+  await expect(
+    page.getByRole("heading", { name: "포스팅 작업실" })
+  ).toBeVisible()
 
   await page.goto("/")
   await page.getByRole("button", { name: "시작하기" }).click()

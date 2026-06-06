@@ -3,8 +3,12 @@
 import { useState, type FormEvent } from "react"
 
 import { ChatMessage } from "@/app/_components/chat-message"
-import { isRecord, readString, readStringArray } from "@/app/_components/json-value"
-import { PhoneFrame } from "@/app/_components/phone-frame"
+import {
+  isRecord,
+  readString,
+  readStringArray,
+} from "@/app/_components/json-value"
+import { MobileShell } from "@/app/_components/mobile-shell"
 import { StatusCard } from "@/app/_components/status-card"
 
 type ExtractionState =
@@ -75,7 +79,9 @@ function toSetupState(payload: unknown): SetupState {
 }
 
 export function OnboardingFlow() {
-  const [extraction, setExtraction] = useState<ExtractionState>({ kind: "idle" })
+  const [extraction, setExtraction] = useState<ExtractionState>({
+    kind: "idle",
+  })
   const [input, setInput] = useState("https://naver.me/mybrunchcafe")
   const [setup, setSetup] = useState<SetupState>({ kind: "idle" })
 
@@ -96,7 +102,9 @@ export function OnboardingFlow() {
       setExtraction({
         kind: "error",
         message:
-          error instanceof Error ? error.message : "가게 정보 조회에 실패했습니다.",
+          error instanceof Error
+            ? error.message
+            : "가게 정보 조회에 실패했습니다.",
       })
     }
   }
@@ -116,108 +124,127 @@ export function OnboardingFlow() {
       setSetup({
         kind: "error",
         message:
-          error instanceof Error ? error.message : "GBP 세팅 확인에 실패했습니다.",
+          error instanceof Error
+            ? error.message
+            : "GBP 세팅 확인에 실패했습니다.",
       })
     }
   }
 
   return (
-    <main className="min-h-screen px-4 py-8">
-      <section className="mx-auto grid w-full max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-center">
-        <div className="grid gap-6">
+    <main className="min-h-screen">
+      <MobileShell
+        topBar={
+          <div className="grid gap-0.5">
+            <p className="text-xs font-black uppercase text-[var(--accent)]">
+              GlocalX
+            </p>
+            <p className="text-base font-black text-[var(--ink)]">온보딩</p>
+          </div>
+        }
+      >
+        <section className="grid gap-4">
           <div className="flex items-center gap-4">
             <div className="gx-brand-mark">X</div>
             <div>
               <p className="text-sm font-black text-[var(--accent)]">GlocalX</p>
-              <h1 className="text-3xl font-black text-white sm:text-5xl">
+              <h1 className="text-3xl font-black text-[var(--ink)] sm:text-5xl">
                 가게 정보를 설정해드릴게요
               </h1>
             </div>
           </div>
-          <p className="max-w-2xl text-base font-semibold leading-7 text-white/62">
+          <p className="max-w-2xl text-base font-semibold leading-7 text-[var(--ink-soft)]">
             네이버 정보 추출과 Google Business Profile 세팅 결과를 확인한 뒤
             대시보드로 이동합니다.
           </p>
-        </div>
+        </section>
 
-        <PhoneFrame>
-          <ChatMessage
-            message="네이버 플레이스 링크나 가게 이름을 알려주세요."
-            speaker="assistant"
-          />
-          <form className="gx-onboarding-form" onSubmit={handleExtraction}>
-            <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
-              네이버 정보
-              <input
-                className="gx-onboarding-input"
-                onChange={(event) => setInput(event.currentTarget.value)}
-                placeholder="https://naver.me/mybrunchcafe"
-                type="text"
-                value={input}
+        <ChatMessage
+          message="네이버 플레이스 링크나 가게 이름을 알려주세요."
+          speaker="assistant"
+        />
+        <form className="gx-onboarding-form" onSubmit={handleExtraction}>
+          <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
+            네이버 정보
+            <input
+              className="gx-onboarding-input"
+              onChange={(event) => setInput(event.currentTarget.value)}
+              placeholder="https://naver.me/mybrunchcafe"
+              type="text"
+              value={input}
+            />
+          </label>
+          <button
+            className="gx-onboarding-primary"
+            disabled={extraction.kind === "loading"}
+            type="submit"
+          >
+            {extraction.kind === "loading" ? "제출 중" : "네이버 정보 제출"}
+          </button>
+        </form>
+
+        {extraction.kind === "candidate" ? (
+          <div className="grid gap-3">
+            <StatusCard
+              label="상호명"
+              status="success"
+              value={extraction.name}
+            />
+            <StatusCard label="주소" value={extraction.address} />
+            <StatusCard label="업종" value={extraction.category} />
+            {extraction.missingFields.includes("hours") ? (
+              <StatusCard
+                label="영업시간"
+                status="warning"
+                value="영업시간 입력 필요"
               />
-            </label>
+            ) : null}
             <button
               className="gx-onboarding-primary"
-              disabled={extraction.kind === "loading"}
-              type="submit"
+              disabled={setup.kind === "loading"}
+              onClick={handleSetup}
+              type="button"
             >
-              {extraction.kind === "loading" ? "제출 중" : "네이버 정보 제출"}
+              {setup.kind === "loading" ? "확인 중" : "다음: GBP 세팅 확인"}
+            </button>
+          </div>
+        ) : null}
+
+        {extraction.kind === "manual" ? (
+          <p className="gx-inline-feedback text-sm font-bold">
+            {extraction.message}
+          </p>
+        ) : null}
+        {extraction.kind === "error" ? (
+          <p className="gx-inline-feedback text-sm font-bold">
+            {extraction.message}
+          </p>
+        ) : null}
+
+        {setup.kind === "ready" ? (
+          <form
+            action="/api/onboarding/complete"
+            className="grid gap-3"
+            method="post"
+          >
+            <StatusCard
+              label={setup.apiStatus}
+              status="warning"
+              value="인증 대기"
+            />
+            <StatusCard label="감사 기록" value={setup.auditLogId} />
+            <StatusCard label="후속 작업" value={setup.followUpJobId} />
+            <button className="gx-onboarding-primary" type="submit">
+              대시보드로 이동
             </button>
           </form>
-
-          {extraction.kind === "candidate" ? (
-            <div className="grid gap-3">
-              <StatusCard label="상호명" status="success" value={extraction.name} />
-              <StatusCard label="주소" value={extraction.address} />
-              <StatusCard label="업종" value={extraction.category} />
-              {extraction.missingFields.includes("hours") ? (
-                <StatusCard
-                  label="영업시간"
-                  status="warning"
-                  value="영업시간 입력 필요"
-                />
-              ) : null}
-              <button
-                className="gx-onboarding-primary"
-                disabled={setup.kind === "loading"}
-                onClick={handleSetup}
-                type="button"
-              >
-                {setup.kind === "loading" ? "확인 중" : "다음: GBP 세팅 확인"}
-              </button>
-            </div>
-          ) : null}
-
-          {extraction.kind === "manual" ? (
-            <p className="gx-inline-feedback text-sm font-bold">
-              {extraction.message}
-            </p>
-          ) : null}
-          {extraction.kind === "error" ? (
-            <p className="gx-inline-feedback text-sm font-bold">
-              {extraction.message}
-            </p>
-          ) : null}
-
-          {setup.kind === "ready" ? (
-            <form action="/api/onboarding/complete" className="grid gap-3" method="post">
-              <StatusCard
-                label={setup.apiStatus}
-                status="warning"
-                value="인증 대기"
-              />
-              <StatusCard label="감사 기록" value={setup.auditLogId} />
-              <StatusCard label="후속 작업" value={setup.followUpJobId} />
-              <button className="gx-onboarding-primary" type="submit">
-                대시보드로 이동
-              </button>
-            </form>
-          ) : null}
-          {setup.kind === "error" ? (
-            <p className="gx-inline-feedback text-sm font-bold">{setup.message}</p>
-          ) : null}
-        </PhoneFrame>
-      </section>
+        ) : null}
+        {setup.kind === "error" ? (
+          <p className="gx-inline-feedback text-sm font-bold">
+            {setup.message}
+          </p>
+        ) : null}
+      </MobileShell>
     </main>
   )
 }

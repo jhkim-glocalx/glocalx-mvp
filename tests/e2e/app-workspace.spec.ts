@@ -15,6 +15,11 @@ test("app post draft preview from api", async ({ page }) => {
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
+  await expect(page.getByTestId("app-stage")).toBeVisible()
+  await expect(page.getByRole("button", { name: "포스팅" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  )
   await page.getByLabel("홍보 의도").fill("주말 브런치 신메뉴 홍보")
   await page.getByRole("button", { name: "GBP 초안 만들기" }).click()
 
@@ -38,6 +43,11 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
+  await expect(page.getByTestId("app-stage")).toBeVisible()
+  await expect(page.getByRole("button", { name: "포스팅" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  )
   await page.getByLabel("홍보 의도").fill("주말 브런치 신메뉴 홍보")
   await page.getByRole("button", { name: "GBP 초안 만들기" }).click()
   await page.getByRole("button", { name: "GBP 게시하기" }).click()
