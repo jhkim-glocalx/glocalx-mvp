@@ -11,3 +11,12 @@ tsconfig.tsbuildinfo
 .env*.local
 .DS_Store
 npm-debug.log*
+
+# AI tooling
+.claude/
+.omo/
+
+# Business files (not app code)
+01_documents/
+02_assets/
+workspace/
