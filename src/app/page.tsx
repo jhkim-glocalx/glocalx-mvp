@@ -1,12 +1,6 @@
 import { MobileShell } from "@/app/_components/mobile-shell"
 import { appShellCopy } from "@/lib/app-shell"
 
-const todayQueue = [
-  { label: "가게 연결", value: "대기" },
-  { label: "GBP 확인", value: "준비됨" },
-  { label: "첫 게시글", value: "초안" },
-] as const
-
 export default function Home() {
   return (
     <main className="gx-entry-page">
@@ -17,34 +11,69 @@ export default function Home() {
             <div className="gx-brand-mark">X</div>
             <div>
               <h1>{appShellCopy.productName}</h1>
-              <p>브런치모먼트 홍대점</p>
+              <p>내 가게, 세계로</p>
             </div>
           </div>
         }
       >
-        <div className="gx-entry-balance">
-          <span>{appShellCopy.initialPrompt}</span>
-          <strong>연결 준비</strong>
-        </div>
+        <section className="gx-login-panel" aria-label="로그인">
+          <form
+            action="/api/auth/google/start"
+            className="gx-login-form"
+            method="post"
+          >
+            <button className="gx-login-google" type="submit">
+              <svg
+                aria-hidden="true"
+                className="gx-login-google-icon"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M21.6 12.23c0-.78-.07-1.53-.2-2.23H12v4.22h5.37a4.59 4.59 0 0 1-1.99 3.01v2.5h3.23c1.89-1.74 2.99-4.31 2.99-7.5Z"
+                  fill="#4285f4"
+                />
+                <path
+                  d="M12 22c2.7 0 4.96-.89 6.61-2.41l-3.23-2.5c-.9.6-2.04.95-3.38.95-2.6 0-4.81-1.76-5.6-4.12H3.07v2.58A9.99 9.99 0 0 0 12 22Z"
+                  fill="#34a853"
+                />
+                <path
+                  d="M6.4 13.92a6.01 6.01 0 0 1 0-3.84V7.5H3.07a10.01 10.01 0 0 0 0 9l3.33-2.58Z"
+                  fill="#fbbc05"
+                />
+                <path
+                  d="M12 5.96c1.47 0 2.79.51 3.83 1.5l2.86-2.87C16.96 2.98 14.7 2 12 2a9.99 9.99 0 0 0-8.93 5.5l3.33 2.58C7.19 7.72 9.4 5.96 12 5.96Z"
+                  fill="#ea4335"
+                />
+              </svg>
+              Google로 계속하기
+            </button>
+          </form>
 
-        <form
-          action="/api/auth/demo-login"
-          className="gx-entry-form"
-          method="post"
-        >
-          <button className="gx-entry-primary" type="submit">
-            {appShellCopy.primaryAction}
-          </button>
-        </form>
+          <div className="gx-login-divider">
+            <span>또는</span>
+          </div>
 
-        <div className="gx-entry-list" aria-label="진행 상태">
-          {todayQueue.map((item) => (
-            <div className="gx-entry-row" key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.value}</strong>
-            </div>
-          ))}
-        </div>
+          <form
+            action="/api/auth/demo-login"
+            className="gx-login-form"
+            method="post"
+          >
+            <input
+              className="gx-login-input"
+              name="email"
+              placeholder="이메일 주소"
+              type="email"
+            />
+            <button className="gx-login-primary" type="submit">
+              이메일로 계속하기
+            </button>
+          </form>
+
+          <p className="gx-login-fineprint">
+            계속하면 서비스 이용약관 및 개인정보처리방침에 동의하는 것으로
+            간주됩니다.
+          </p>
+        </section>
       </MobileShell>
     </main>
   )
