@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -48,8 +49,22 @@ const migrationPath = join(
   "0001_glocalx_schema.sql"
 )
 
-export const defaultDatabasePath =
-  process.env["GLOCALX_DB_PATH"] ?? ".glocalx/dev.db"
+export function resolveDefaultDatabasePath(
+  env: Readonly<Record<string, string | undefined>> = process.env
+): string {
+  const configuredDatabasePath = env["GLOCALX_DB_PATH"]?.trim()
+  if (configuredDatabasePath) {
+    return configuredDatabasePath
+  }
+
+  if (env["VERCEL"] === "1") {
+    return join(tmpdir(), "glocalx", "dev.db")
+  }
+
+  return ".glocalx/dev.db"
+}
+
+export const defaultDatabasePath = resolveDefaultDatabasePath()
 
 export function resetDatabaseFile(
   databasePath: string = defaultDatabasePath

@@ -18,10 +18,10 @@ import {
 import { openDatabase } from "@/server/db/sqlite"
 import { getGoogleRedirectUri, missingGoogleOAuthEnvVars } from "../start/route"
 
-function redirectToLandingClearingState(): NextResponse {
+function redirectToLandingClearingState(reason: string): NextResponse {
   const response = new NextResponse(null, {
     headers: {
-      Location: "/",
+      Location: `/?auth_error=${encodeURIComponent(reason)}`,
     },
     status: 303,
   })
@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
     request.cookies.get(googleOAuthStateCookieName)?.value ?? ""
 
   if (!isValidGoogleOAuthCallback({ code, expectedState, state })) {
-    return redirectToLandingClearingState()
+    return redirectToLandingClearingState("google_state")
   }
 
   if (missingGoogleOAuthEnvVars(process.env).length > 0) {
-    return redirectToLandingClearingState()
+    return redirectToLandingClearingState("google_config")
   }
 
   try {
@@ -84,7 +84,8 @@ export async function GET(request: NextRequest) {
       expiredGoogleOAuthStateCookieOptions
     )
     return response
-  } catch {
-    return redirectToLandingClearingState()
+  } catch (error) {
+    console.error("Google OAuth callback failed", error)
+    return redirectToLandingClearingState("google_callback")
   }
 }

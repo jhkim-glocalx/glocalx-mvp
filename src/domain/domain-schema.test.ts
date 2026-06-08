@@ -9,6 +9,7 @@ import {
   applyMigrations,
   openDatabase,
   requiredTableNames,
+  resolveDefaultDatabasePath,
   seedDemoData,
   tableCountQueries,
 } from "@/server/db/sqlite"
@@ -61,6 +62,30 @@ describe("domain-schema persistence", () => {
     }
 
     database.close()
+  })
+})
+
+describe("default SQLite database path", () => {
+  it("uses local project storage by default", () => {
+    expect(resolveDefaultDatabasePath({})).toBe(".glocalx/dev.db")
+  })
+
+  it("uses Vercel writable scratch space when no path is configured", () => {
+    expect(resolveDefaultDatabasePath({ VERCEL: "1" })).toContain(
+      "glocalx/dev.db"
+    )
+    expect(resolveDefaultDatabasePath({ VERCEL: "1" })).not.toBe(
+      ".glocalx/dev.db"
+    )
+  })
+
+  it("keeps an explicit database path override", () => {
+    expect(
+      resolveDefaultDatabasePath({
+        GLOCALX_DB_PATH: "/custom/glocalx.db",
+        VERCEL: "1",
+      })
+    ).toBe("/custom/glocalx.db")
   })
 })
 
