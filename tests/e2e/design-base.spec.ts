@@ -1,33 +1,93 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 import { writeFileSync } from "node:fs"
 
-test("design base desktop renders dark canvas", async ({ page }) => {
+const prototypeChromePatterns = [
+  /화면\s*구조도/,
+  /기능\s*정의서\s*매핑/,
+  /step\s*rail/i,
+  /prototype\s*frame/i,
+  /프로토타입\s*프레임/,
+  /단계\s*레일/,
+]
+
+async function expectNoPrototypeChrome(page: Page): Promise<void> {
+  for (const pattern of prototypeChromePatterns) {
+    await expect(page.getByText(pattern)).toHaveCount(0)
+  }
+}
+
+async function readOverflowMetrics(page: Page) {
+  return page.evaluate(() => {
+    const overflowTolerance = 1
+    const viewportWidth = window.innerWidth
+    const overflowingElements = Array.from(
+      document.querySelectorAll<HTMLElement>("body *")
+    )
+      .map((element) => {
+        const rect = element.getBoundingClientRect()
+        const className =
+          typeof element.className === "string" ? element.className : ""
+        const label =
+          element.getAttribute("data-testid") ??
+          element.getAttribute("aria-label") ??
+          element.textContent?.replace(/\s+/g, " ").trim().slice(0, 80) ??
+          element.tagName.toLowerCase()
+
+        return {
+          className,
+          label,
+          left: Math.floor(rect.left),
+          right: Math.ceil(rect.right),
+          tag: element.tagName.toLowerCase(),
+          width: Math.ceil(rect.width),
+        }
+      })
+      .filter(
+        ({ left, right, width }) =>
+          width > 0 &&
+          (left < -overflowTolerance ||
+            right > viewportWidth + overflowTolerance)
+      )
+
+    return {
+      bodyScrollWidth: document.body.scrollWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      innerWidth: viewportWidth,
+      overflowingElements,
+    }
+  })
+}
+
+test("design base desktop keeps the mobile shell without prototype chrome", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto("/")
 
-  const background = await page.evaluate(() =>
-    getComputedStyle(document.body).backgroundColor
-  )
+  await expect(page.getByTestId("entry-device")).toBeVisible()
+  await expectNoPrototypeChrome(page)
   await page.screenshot({
     fullPage: true,
     path: ".omo/evidence/task-2-design-base-desktop.png",
   })
 
-  expect(background).not.toBe("rgb(247, 248, 243)")
+  const shellBox = await page.getByTestId("entry-device").boundingBox()
+  expect(shellBox).not.toBeNull()
+  expect(shellBox?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(480)
 })
 
 test("design base mobile overflow stays within viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 })
   await page.goto("/")
 
-  const metrics = await page.evaluate(() => ({
-    innerWidth: window.innerWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }))
+  await expectNoPrototypeChrome(page)
+  const metrics = await readOverflowMetrics(page)
   writeFileSync(
     ".omo/evidence/task-2-mobile-overflow.json",
     JSON.stringify(metrics, null, 2)
   )
 
-  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
+  expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
+  expect(metrics.bodyScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
+  expect(metrics.overflowingElements).toEqual([])
 })

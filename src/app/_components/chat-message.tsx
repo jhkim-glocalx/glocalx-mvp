@@ -1,14 +1,24 @@
+import type { ReactNode } from "react"
+
 type ChatSpeaker = "assistant" | "owner"
 
 type ChatMessageProps = {
-  readonly message: string
+  readonly children?: ReactNode
+  readonly message?: string
   readonly speaker: ChatSpeaker
 }
 
-export function ChatMessage({ message, speaker }: ChatMessageProps) {
+export function ChatMessage({ children, message, speaker }: ChatMessageProps) {
   return (
-    <p className="gx-bubble" data-speaker={speaker}>
-      {message}
-    </p>
+    <div className="gx-chat-row gx-rise" data-speaker={speaker}>
+      {speaker === "assistant" ? (
+        <span className="gx-chat-avatar" aria-hidden="true">
+          X
+        </span>
+      ) : null}
+      <p className="gx-bubble" data-speaker={speaker}>
+        {children ?? message}
+      </p>
+    </div>
   )
 }

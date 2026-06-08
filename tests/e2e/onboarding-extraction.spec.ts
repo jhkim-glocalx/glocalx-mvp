@@ -1,4 +1,19 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type APIRequestContext } from "@playwright/test"
+
+import { resetE2eDatabase } from "./global-setup"
+
+async function createDemoSession(request: APIRequestContext): Promise<void> {
+  const response = await request.post("/api/auth/demo-login", {
+    maxRedirects: 0,
+  })
+
+  expect(response.status()).toBe(303)
+}
+
+test.beforeEach(async ({ request }) => {
+  resetE2eDatabase()
+  await createDemoSession(request)
+})
 
 test("Stub Naver link extraction returns a normalized business candidate", async ({
   request,

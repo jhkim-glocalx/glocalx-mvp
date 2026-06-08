@@ -17,18 +17,18 @@ export function StatusCard({
   value,
 }: StatusCardProps) {
   return (
-    <article className="gx-status-card" data-status={status}>
-      <span className="text-xs font-bold text-[var(--ink-soft)]">{label}</span>
-      <strong className="text-base">{value}</strong>
+    <article className="gx-status-card gx-rise" data-status={status}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </article>
   )
 }
 
 export function MetricCard({ label, value }: MetricCardProps) {
   return (
-    <article className="gx-metric-card">
-      <span className="text-xs font-bold text-[var(--ink-soft)]">{label}</span>
-      <strong className="text-lg">{value}</strong>
+    <article className="gx-metric-card gx-rise">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </article>
   )
 }

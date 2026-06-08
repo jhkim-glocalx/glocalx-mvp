@@ -1,14 +1,35 @@
 import { expect, test, type Page } from "@playwright/test"
 import { writeFileSync } from "node:fs"
 
+import { openDatabase } from "../../src/server/db/sqlite"
+import { resetE2eDatabase } from "./global-setup"
+
+function resetFirstTimeE2eDatabase(): void {
+  resetE2eDatabase()
+  const database = openDatabase()
+  try {
+    database
+      .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
+      .run("NOT_STARTED", "demo-store")
+  } finally {
+    database.close()
+  }
+}
+
 async function completeOnboarding(page: Page): Promise<void> {
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
-  await expect(page.getByText("인증 대기")).toBeVisible()
+  await expect(page.getByText("인증 대기", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
+  await expect(page).toHaveURL(/\/app/)
+  await expect(page.getByLabel("홍보 의도")).toBeVisible()
 }
+
+test.beforeEach(() => {
+  resetFirstTimeE2eDatabase()
+})
 
 test("bottom navigation keyboard changes the active tab", async ({ page }) => {
   await page.context().clearCookies()
@@ -16,15 +37,19 @@ test("bottom navigation keyboard changes the active tab", async ({ page }) => {
   await page.getByRole("button", { name: "시작하기" }).click()
   await completeOnboarding(page)
 
-  const onboardingTab = page.getByRole("button", { name: "온보딩" })
+  const homeTab = page.getByRole("button", { name: "홈" })
   const postTab = page.getByRole("button", { name: "포스팅" })
 
   await expect(postTab).toHaveAttribute("aria-current", "page")
-  await page.getByRole("button", { name: "GBP 초안 만들기" }).focus()
+  await page.getByLabel("홍보 의도").focus()
   await page.keyboard.press("Tab")
-  await expect(onboardingTab).toBeFocused()
+  await expect(
+    page.getByRole("button", { name: "GBP 초안 만들기" })
+  ).toBeFocused()
+  await page.keyboard.press("Tab")
+  await expect(homeTab).toBeFocused()
   await page.keyboard.press("Enter")
-  await expect(onboardingTab).toHaveAttribute("aria-current", "page")
+  await expect(homeTab).toHaveAttribute("aria-current", "page")
 
   await page.keyboard.press("Tab")
   await expect(postTab).toBeFocused()

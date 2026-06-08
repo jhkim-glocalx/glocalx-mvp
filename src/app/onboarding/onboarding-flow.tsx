@@ -35,6 +35,11 @@ type SetupState =
     }
   | { readonly kind: "error"; readonly message: string }
 
+type ExtractionCandidate = Extract<
+  ExtractionState,
+  { readonly kind: "candidate" }
+>
+
 function toExtractionState(payload: unknown): ExtractionState {
   if (!isRecord(payload)) {
     return { kind: "error", message: "응답을 읽지 못했습니다." }
@@ -78,6 +83,73 @@ function toSetupState(payload: unknown): SetupState {
   }
 }
 
+function StatusPill({ children }: { readonly children: string }) {
+  return (
+    <span className="rounded-full border border-[var(--line)] bg-white px-3 py-2 text-xs font-black text-[var(--ink-soft)] shadow-sm">
+      {children}
+    </span>
+  )
+}
+
+function TypingIndicator({ label }: { readonly label: string }) {
+  return (
+    <div
+      aria-live="polite"
+      className="gx-bubble flex w-fit items-center gap-1.5"
+      data-speaker="assistant"
+      role="status"
+    >
+      <span className="sr-only">{label}</span>
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 animate-pulse rounded-full bg-[var(--muted)]"
+      />
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 animate-pulse rounded-full bg-[var(--muted)] [animation-delay:120ms]"
+      />
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 animate-pulse rounded-full bg-[var(--muted)] [animation-delay:240ms]"
+      />
+    </div>
+  )
+}
+
+function StoreInfoCard({
+  extraction,
+}: {
+  readonly extraction: ExtractionCandidate
+}) {
+  return (
+    <article className="gx-status-card" data-status="success">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-bold text-[var(--ink-soft)]">
+          네이버 후보
+        </span>
+        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-[var(--mint)]">
+          자동 추출
+        </span>
+      </div>
+      <strong className="text-xl leading-tight">{extraction.name}</strong>
+      <dl className="grid gap-2 text-sm font-bold text-[var(--ink-soft)]">
+        <div className="grid gap-1">
+          <dt className="text-[11px] font-black uppercase text-[var(--muted)]">
+            주소
+          </dt>
+          <dd>{extraction.address}</dd>
+        </div>
+        <div className="grid gap-1">
+          <dt className="text-[11px] font-black uppercase text-[var(--muted)]">
+            업종
+          </dt>
+          <dd>{extraction.category}</dd>
+        </div>
+      </dl>
+    </article>
+  )
+}
+
 type OnboardingFlowProps = {
   readonly storeId: string
 }
@@ -88,11 +160,13 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
   })
   const [input, setInput] = useState("https://naver.me/mybrunchcafe")
   const [setup, setSetup] = useState<SetupState>({ kind: "idle" })
+  const [submittedInput, setSubmittedInput] = useState("")
 
   async function handleExtraction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setExtraction({ kind: "loading" })
     setSetup({ kind: "idle" })
+    setSubmittedInput(input)
 
     try {
       const response = await fetch("/api/onboarding/extractions", {
@@ -136,37 +210,45 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="gx-route-page">
       <MobileShell
         topBar={
-          <div className="grid gap-0.5">
-            <p className="text-xs font-black uppercase text-[var(--accent)]">
-              GlocalX
-            </p>
-            <p className="text-base font-black text-[var(--ink)]">온보딩</p>
-          </div>
+          <>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="gx-brand-mark" aria-hidden="true">
+                X
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-base font-black text-[var(--ink)]">
+                  글로컬엑스
+                </p>
+                <p className="truncate text-xs font-black text-[var(--mint)]">
+                  AI 마케팅 매니저 · 온라인
+                </p>
+              </div>
+            </div>
+            <span
+              aria-label="더보기"
+              className="grid h-10 w-10 flex-none place-items-center rounded-full text-lg font-black text-[var(--ink-soft)]"
+              role="img"
+            >
+              ···
+            </span>
+          </>
         }
       >
-        <section className="grid gap-4">
-          <div className="flex items-center gap-4">
-            <div className="gx-brand-mark">X</div>
-            <div>
-              <p className="text-sm font-black text-[var(--accent)]">GlocalX</p>
-              <h1 className="text-3xl font-black text-[var(--ink)] sm:text-5xl">
-                가게 정보를 설정해드릴게요
-              </h1>
-            </div>
+        <section aria-label="온보딩 대화" className="grid gap-3">
+          <ChatMessage
+            message="네이버 플레이스 링크나 가게 이름을 알려주세요."
+            speaker="assistant"
+          />
+          <div aria-label="온보딩 진행 정보" className="flex flex-wrap gap-2">
+            <StatusPill>네이버 정보 확인</StatusPill>
+            <StatusPill>매장 프로필 추출</StatusPill>
+            <StatusPill>GBP 세팅 점검</StatusPill>
           </div>
-          <p className="max-w-2xl text-base font-semibold leading-7 text-[var(--ink-soft)]">
-            네이버 정보 추출과 Google Business Profile 세팅 결과를 확인한 뒤
-            대시보드로 이동합니다.
-          </p>
         </section>
 
-        <ChatMessage
-          message="네이버 플레이스 링크나 가게 이름을 알려주세요."
-          speaker="assistant"
-        />
         <form className="gx-onboarding-form" onSubmit={handleExtraction}>
           <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
             네이버 정보
@@ -183,19 +265,34 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
             disabled={extraction.kind === "loading"}
             type="submit"
           >
-            {extraction.kind === "loading" ? "제출 중" : "네이버 정보 제출"}
+            네이버 정보 제출
           </button>
         </form>
 
+        {submittedInput && extraction.kind !== "idle" ? (
+          <ChatMessage message={submittedInput} speaker="owner" />
+        ) : null}
+
+        {extraction.kind === "loading" ? (
+          <TypingIndicator label="네이버 정보를 확인하는 중" />
+        ) : null}
+
         {extraction.kind === "candidate" ? (
           <div className="grid gap-3">
-            <StatusCard
-              label="상호명"
-              status="success"
-              value={extraction.name}
+            <ChatMessage
+              message="네이버에서 매장 후보를 찾았어요. 빠진 정보만 확인하고 GBP 세팅으로 넘어갈게요."
+              speaker="assistant"
             />
-            <StatusCard label="주소" value={extraction.address} />
-            <StatusCard label="업종" value={extraction.category} />
+            <div aria-label="추출 결과 상태" className="flex flex-wrap gap-2">
+              <StatusPill>후보 1개</StatusPill>
+              <StatusPill>상호·주소 확인</StatusPill>
+              <StatusPill>
+                {extraction.missingFields.includes("hours")
+                  ? "영업시간 필요"
+                  : "필수 정보 확인"}
+              </StatusPill>
+            </div>
+            <StoreInfoCard extraction={extraction} />
             {extraction.missingFields.includes("hours") ? (
               <StatusCard
                 label="영업시간"
@@ -209,44 +306,56 @@ export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
               onClick={handleSetup}
               type="button"
             >
-              {setup.kind === "loading" ? "확인 중" : "다음: GBP 세팅 확인"}
+              다음: GBP 세팅 확인
             </button>
           </div>
         ) : null}
 
         {extraction.kind === "manual" ? (
-          <p className="gx-inline-feedback text-sm font-bold">
-            {extraction.message}
-          </p>
+          <ChatMessage message={extraction.message} speaker="assistant" />
         ) : null}
         {extraction.kind === "error" ? (
-          <p className="gx-inline-feedback text-sm font-bold">
-            {extraction.message}
-          </p>
+          <div role="alert">
+            <ChatMessage message={extraction.message} speaker="assistant" />
+          </div>
+        ) : null}
+
+        {setup.kind === "loading" ? (
+          <TypingIndicator label="GBP 세팅을 확인하는 중" />
         ) : null}
 
         {setup.kind === "ready" ? (
-          <form
-            action="/api/onboarding/complete"
-            className="grid gap-3"
-            method="post"
-          >
-            <StatusCard
-              label={setup.apiStatus}
-              status="warning"
-              value="인증 대기"
+          <div className="grid gap-3">
+            <ChatMessage
+              message="GBP 세팅 상태를 확인했어요. 대시보드에서 다음 작업을 이어갈 수 있어요."
+              speaker="assistant"
             />
-            <StatusCard label="감사 기록" value={setup.auditLogId} />
-            <StatusCard label="후속 작업" value={setup.followUpJobId} />
-            <button className="gx-onboarding-primary" type="submit">
-              대시보드로 이동
-            </button>
-          </form>
+            <div aria-label="GBP 세팅 상태" className="flex flex-wrap gap-2">
+              <StatusPill>GBP 연결 확인</StatusPill>
+              <StatusPill>후속 작업 예약</StatusPill>
+            </div>
+            <form
+              action="/api/onboarding/complete"
+              className="grid gap-3"
+              method="post"
+            >
+              <StatusCard
+                label={setup.apiStatus}
+                status="warning"
+                value="인증 대기"
+              />
+              <StatusCard label="감사 기록" value={setup.auditLogId} />
+              <StatusCard label="후속 작업" value={setup.followUpJobId} />
+              <button className="gx-onboarding-primary" type="submit">
+                대시보드로 이동
+              </button>
+            </form>
+          </div>
         ) : null}
         {setup.kind === "error" ? (
-          <p className="gx-inline-feedback text-sm font-bold">
-            {setup.message}
-          </p>
+          <div role="alert">
+            <ChatMessage message={setup.message} speaker="assistant" />
+          </div>
         ) : null}
       </MobileShell>
     </main>
