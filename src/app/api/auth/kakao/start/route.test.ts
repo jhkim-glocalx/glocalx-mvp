@@ -6,7 +6,7 @@ import {
   kakaoOAuthStateCookieName,
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
-import { POST } from "./route"
+import { getKakaoRedirectUri, POST } from "./route"
 
 const envKeys = ["KAKAO_REST_API_KEY", "KAKAO_REDIRECT_URI"] as const
 
@@ -93,6 +93,19 @@ describe("Kakao OAuth start route", () => {
       `${kakaoOAuthStateCookieName}=${authorizationUrl.searchParams.get("state")}`
     )
     expect(setCookie).toContain("HttpOnly")
+  })
+
+  it("uses the deployed origin when KAKAO_REDIRECT_URI still points to localhost", () => {
+    const request = new NextRequest(
+      "https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/start",
+      { method: "POST" }
+    )
+
+    expect(
+      getKakaoRedirectUri(request, {
+        KAKAO_REDIRECT_URI: "http://127.0.0.1:5174/api/auth/kakao/callback",
+      })
+    ).toBe("https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/callback")
   })
 
   it("reports missing credentials", async () => {

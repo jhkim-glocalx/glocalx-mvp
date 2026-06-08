@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { googleOAuthStateCookieName } from "@/gbp/oauth-callback"
 import {
   buildGoogleOAuthAuthorizationUrl,
+  getGoogleRedirectUri,
   missingGoogleOAuthEnvVars,
   POST,
 } from "./route"
@@ -110,6 +111,19 @@ describe("Google OAuth start route", () => {
       `${googleOAuthStateCookieName}=${authorizationUrl.searchParams.get("state")}`
     )
     expect(setCookie).toContain("HttpOnly")
+  })
+
+  it("uses the deployed origin when GOOGLE_REDIRECT_URI still points to localhost", () => {
+    const request = new NextRequest(
+      "https://glocalx-mvp-tawny.vercel.app/api/auth/google/start",
+      { method: "POST" }
+    )
+
+    expect(
+      getGoogleRedirectUri(request, {
+        GOOGLE_REDIRECT_URI: "http://127.0.0.1:5174/api/auth/google/callback",
+      })
+    ).toBe("https://glocalx-mvp-tawny.vercel.app/api/auth/google/callback")
   })
 
   it("reports missing credentials in production mode", async () => {

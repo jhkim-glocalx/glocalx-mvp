@@ -10,6 +10,7 @@ import {
   onboardingCompleteCookieName,
   sessionCookieOptions,
 } from "@/auth/session"
+import { resolveOAuthRedirectUri } from "@/auth/oauth-redirect"
 import {
   googleOAuthStateCookieName,
   googleOAuthStateCookieOptions,
@@ -63,10 +64,11 @@ export function getGoogleRedirectUri(
   env: AdapterEnvironment
 ): string {
   const configuredRedirectUri = env["GOOGLE_REDIRECT_URI"]?.trim()
-  if (configuredRedirectUri) {
-    return configuredRedirectUri
-  }
-  return new URL("/api/auth/google/callback", request.nextUrl.origin).toString()
+  return resolveOAuthRedirectUri({
+    callbackPath: "/api/auth/google/callback",
+    configuredRedirectUri,
+    requestOrigin: request.nextUrl.origin,
+  })
 }
 
 export async function POST(request: NextRequest) {

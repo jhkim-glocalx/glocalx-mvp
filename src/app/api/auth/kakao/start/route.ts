@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
+import { resolveOAuthRedirectUri } from "@/auth/oauth-redirect"
 import {
   buildKakaoOAuthAuthorizationUrl,
   kakaoOAuthStateCookieName,
@@ -14,10 +15,11 @@ export function getKakaoRedirectUri(
   env: AdapterEnvironment
 ): string {
   const configuredRedirectUri = env["KAKAO_REDIRECT_URI"]?.trim()
-  if (configuredRedirectUri) {
-    return configuredRedirectUri
-  }
-  return new URL("/api/auth/kakao/callback", request.nextUrl.origin).toString()
+  return resolveOAuthRedirectUri({
+    callbackPath: "/api/auth/kakao/callback",
+    configuredRedirectUri,
+    requestOrigin: request.nextUrl.origin,
+  })
 }
 
 export async function POST(request: NextRequest) {
