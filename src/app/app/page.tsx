@@ -14,5 +14,5 @@ export default async function AppPage() {
     redirect("/onboarding")
   }
 
-  return <AppWorkspace />
+  return <AppWorkspace storeId={session.storeId} />
 }

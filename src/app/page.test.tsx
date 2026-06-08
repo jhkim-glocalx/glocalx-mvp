@@ -11,6 +11,8 @@ describe("login landing page", () => {
     expect(html).toContain("내 가게, 세계로")
     expect(html).toContain('action="/api/auth/google/start"')
     expect(html).toContain("Google로 계속하기")
+    expect(html).toContain('action="/api/auth/kakao/start"')
+    expect(html).toContain("카카오로 계속하기")
     expect(html).toContain("또는")
     expect(html).toContain('name="email"')
     expect(html).toContain('placeholder="이메일 주소"')

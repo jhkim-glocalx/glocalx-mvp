@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server"
 
-import { ensureDemoOwnerStore } from "@/auth/session"
+import {
+  demoSessionCookieName,
+  demoStoreCookieName,
+  getStoredSessionFromCookieValues,
+  onboardingCompleteCookieName,
+} from "@/auth/session"
 import {
   onboardingExtractionRequestSchema,
   parseRoutePayload,
@@ -94,7 +99,22 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  ensureDemoOwnerStore()
+  const session = getStoredSessionFromCookieValues({
+    onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
+      ?.value,
+    storeId: request.cookies.get(demoStoreCookieName)?.value,
+    userId: request.cookies.get(demoSessionCookieName)?.value,
+  })
+  if (session === undefined) {
+    return Response.json(
+      {
+        status: "AUTH_REQUIRED",
+        message: "로그인이 필요합니다.",
+      },
+      { status: 401 }
+    )
+  }
+
   const database = openDatabase()
 
   try {
@@ -103,7 +123,7 @@ export async function POST(request: NextRequest) {
       adapters,
       database,
       input: parsed.value.input,
-      storeId: "demo-store",
+      storeId: session.storeId,
     })
 
     return Response.json(toPublicResult(result))

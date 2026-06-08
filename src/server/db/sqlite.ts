@@ -7,6 +7,7 @@ import Database from "better-sqlite3"
 export const requiredTableNames = [
   "users",
   "stores",
+  "auth_identities",
   "business_profile_extractions",
   "oauth_connections",
   "gbp_accounts",
@@ -25,6 +26,7 @@ export type SqliteDatabase = Database.Database
 export const tableCountQueries = {
   users: "SELECT COUNT(*) AS count FROM users",
   stores: "SELECT COUNT(*) AS count FROM stores",
+  auth_identities: "SELECT COUNT(*) AS count FROM auth_identities",
   business_profile_extractions:
     "SELECT COUNT(*) AS count FROM business_profile_extractions",
   oauth_connections: "SELECT COUNT(*) AS count FROM oauth_connections",
@@ -96,6 +98,25 @@ export function seedDemoData(database: SqliteDatabase): void {
       "브런치 카페",
       "09:00 ~ 21:00",
       "COMPLETED",
+      createdAt
+    )
+
+  database
+    .prepare(
+      "INSERT OR IGNORE INTO auth_identities (id, user_id, provider, provider_subject_id, email, display_name, encrypted_access_token, encrypted_refresh_token, scopes_json, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    .run(
+      "demo-auth-google",
+      "demo-owner",
+      "GOOGLE",
+      "demo-google-login-subject",
+      "demo-owner@glocalx.example",
+      "Demo Owner",
+      "encrypted:demo-login-access-token",
+      "encrypted:demo-login-refresh-token",
+      JSON.stringify(["openid", "email", "profile"]),
+      "2026-06-05T00:00:00.000Z",
+      createdAt,
       createdAt
     )
 

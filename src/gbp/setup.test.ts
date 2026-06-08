@@ -117,6 +117,13 @@ describe("setupGoogleBusinessProfile", () => {
       state: "tampered-state",
       storeId: "demo-store",
     })
+    const missingPayloadResult = handleGoogleOAuthCallback({
+      code: "",
+      database,
+      expectedState: "demo-store:google-oauth-state",
+      state: "",
+      storeId: "demo-store",
+    })
     const validResult = handleGoogleOAuthCallback({
       code: "valid-code",
       database,
@@ -127,6 +134,10 @@ describe("setupGoogleBusinessProfile", () => {
 
     // Then
     expect(invalidResult).toEqual({
+      status: "INVALID_OAUTH_STATE",
+      message: "Google OAuth state가 일치하지 않습니다.",
+    })
+    expect(missingPayloadResult).toEqual({
       status: "INVALID_OAUTH_STATE",
       message: "Google OAuth state가 일치하지 않습니다.",
     })

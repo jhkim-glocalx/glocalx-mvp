@@ -78,7 +78,11 @@ function toSetupState(payload: unknown): SetupState {
   }
 }
 
-export function OnboardingFlow() {
+type OnboardingFlowProps = {
+  readonly storeId: string
+}
+
+export function OnboardingFlow({ storeId }: OnboardingFlowProps) {
   const [extraction, setExtraction] = useState<ExtractionState>({
     kind: "idle",
   })
@@ -114,7 +118,7 @@ export function OnboardingFlow() {
 
     try {
       const response = await fetch("/api/gbp/setup", {
-        body: JSON.stringify({ mode: "stub", storeId: "demo-store" }),
+        body: JSON.stringify({ mode: "stub", storeId }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       })

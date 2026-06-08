@@ -9,6 +9,7 @@ tsconfig.tsbuildinfo
 .glocalx/
 .env
 .env*.local
+client_secret_*.json
 .DS_Store
 npm-debug.log*
 

@@ -74,7 +74,11 @@ function parsePublishState(payload: unknown): PublishState {
   }
 }
 
-export function AppWorkspace() {
+type AppWorkspaceProps = {
+  readonly storeId: string
+}
+
+export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   const [activeStepId, setActiveStepId] = useState<AppStepId>("post")
   const [draft, setDraft] = useState<DraftState>({ kind: "idle" })
   const [intent, setIntent] = useState("주말 브런치 신메뉴 홍보")
@@ -95,7 +99,7 @@ export function AppWorkspace() {
       const response = await fetch("/api/posts/drafts", {
         body: JSON.stringify({
           ownerIntent: intent,
-          storeId: "demo-store",
+          storeId,
           targetChannel: "GBP",
         }),
         headers: { "Content-Type": "application/json" },
@@ -120,7 +124,7 @@ export function AppWorkspace() {
     setPublish({ kind: "loading" })
     try {
       const response = await fetch(`/api/posts/${draft.draftId}/publish`, {
-        body: JSON.stringify({ storeId: "demo-store" }),
+        body: JSON.stringify({ storeId }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       })

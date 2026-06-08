@@ -20,6 +20,22 @@ CREATE TABLE IF NOT EXISTS stores (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS auth_identities (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  provider TEXT NOT NULL CHECK (provider IN ('GOOGLE', 'KAKAO')),
+  provider_subject_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  encrypted_access_token TEXT NOT NULL,
+  encrypted_refresh_token TEXT,
+  scopes_json TEXT NOT NULL,
+  expires_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (provider, provider_subject_id)
+);
+
 CREATE TABLE IF NOT EXISTS business_profile_extractions (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),

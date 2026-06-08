@@ -2,16 +2,23 @@ import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 import {
+  completeStoredSessionOnboarding,
   demoSessionCookieName,
-  isDemoSessionValid,
+  demoStoreCookieName,
   onboardingCompleteCookieName,
   sessionCookieOptions,
 } from "@/auth/session"
 
 export async function POST(request: NextRequest) {
   const sessionCookie = request.cookies.get(demoSessionCookieName)?.value
+  const storeCookie = request.cookies.get(demoStoreCookieName)?.value
 
-  if (!isDemoSessionValid(sessionCookie)) {
+  if (
+    !completeStoredSessionOnboarding({
+      storeId: storeCookie,
+      userId: sessionCookie,
+    })
+  ) {
     return new NextResponse(null, {
       headers: {
         Location: "/",

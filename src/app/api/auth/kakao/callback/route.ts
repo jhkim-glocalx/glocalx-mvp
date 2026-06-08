@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
+import { upsertOAuthIdentity } from "@/auth/oauth-identity"
+import { fetchKakaoOAuthProfile } from "@/auth/oauth-providers"
 import {
   demoSessionCookieName,
   demoStoreCookieName,
@@ -8,15 +10,14 @@ import {
   onboardingCompleteCookieName,
   sessionCookieOptions,
 } from "@/auth/session"
-import { upsertOAuthIdentity } from "@/auth/oauth-identity"
-import { fetchGoogleOAuthProfile } from "@/auth/oauth-providers"
 import {
-  expiredGoogleOAuthStateCookieOptions,
-  googleOAuthStateCookieName,
-  isValidGoogleOAuthCallback,
-} from "@/gbp/oauth-callback"
+  expiredKakaoOAuthStateCookieOptions,
+  isValidKakaoOAuthCallback,
+  kakaoOAuthStateCookieName,
+  missingKakaoOAuthEnvVars,
+} from "@/auth/kakao-oauth"
 import { openDatabase } from "@/server/db/sqlite"
-import { getGoogleRedirectUri, missingGoogleOAuthEnvVars } from "../start/route"
+import { getKakaoRedirectUri } from "../start/route"
 
 function redirectToLandingClearingState(): NextResponse {
   const response = new NextResponse(null, {
@@ -26,9 +27,9 @@ function redirectToLandingClearingState(): NextResponse {
     status: 303,
   })
   response.cookies.set(
-    googleOAuthStateCookieName,
+    kakaoOAuthStateCookieName,
     "",
-    expiredGoogleOAuthStateCookieOptions
+    expiredKakaoOAuthStateCookieOptions
   )
   return response
 }
@@ -37,22 +38,23 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code") ?? ""
   const state = request.nextUrl.searchParams.get("state") ?? ""
   const expectedState =
-    request.cookies.get(googleOAuthStateCookieName)?.value ?? ""
+    request.cookies.get(kakaoOAuthStateCookieName)?.value ?? ""
 
-  if (!isValidGoogleOAuthCallback({ code, expectedState, state })) {
+  if (!isValidKakaoOAuthCallback({ code, expectedState, state })) {
     return redirectToLandingClearingState()
   }
 
-  if (missingGoogleOAuthEnvVars(process.env).length > 0) {
+  if (missingKakaoOAuthEnvVars(process.env).length > 0) {
     return redirectToLandingClearingState()
   }
 
   try {
-    const profile = await fetchGoogleOAuthProfile({
-      clientId: process.env["GOOGLE_CLIENT_ID"]?.trim() ?? "",
-      clientSecret: process.env["GOOGLE_CLIENT_SECRET"]?.trim() ?? "",
+    const clientSecret = process.env["KAKAO_CLIENT_SECRET"]?.trim()
+    const profile = await fetchKakaoOAuthProfile({
+      clientId: process.env["KAKAO_REST_API_KEY"]?.trim() ?? "",
       code,
-      redirectUri: getGoogleRedirectUri(request, process.env),
+      redirectUri: getKakaoRedirectUri(request, process.env),
+      ...(clientSecret === undefined ? {} : { clientSecret }),
     })
     ensureDemoOwnerStore()
     const database = openDatabase()
@@ -67,6 +69,7 @@ export async function GET(request: NextRequest) {
     } finally {
       database.close()
     }
+
     const onboardingComplete =
       request.cookies.get(onboardingCompleteCookieName)?.value === "true" ||
       storeOnboardingComplete
@@ -79,9 +82,9 @@ export async function GET(request: NextRequest) {
     response.cookies.set(demoSessionCookieName, userId, sessionCookieOptions)
     response.cookies.set(demoStoreCookieName, storeId, sessionCookieOptions)
     response.cookies.set(
-      googleOAuthStateCookieName,
+      kakaoOAuthStateCookieName,
       "",
-      expiredGoogleOAuthStateCookieOptions
+      expiredKakaoOAuthStateCookieOptions
     )
     return response
   } catch {

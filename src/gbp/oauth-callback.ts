@@ -1,6 +1,24 @@
 import { googleBusinessManageScope } from "@/integrations/credentials"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
+export const googleOAuthStateCookieName = "glocalx_google_oauth_state"
+export const googleOAuthStateCookieOptions = {
+  httpOnly: true,
+  maxAge: 60 * 10,
+  path: "/",
+  sameSite: "lax",
+} as const
+export const expiredGoogleOAuthStateCookieOptions = {
+  ...googleOAuthStateCookieOptions,
+  maxAge: 0,
+} as const
+export const googleOAuthScopes = [
+  "openid",
+  "email",
+  "profile",
+  googleBusinessManageScope,
+] as const
+
 export type GoogleOAuthCallbackOptions = {
   readonly code: string
   readonly database: SqliteDatabase
@@ -23,7 +41,7 @@ export type GoogleOAuthCallbackResult =
 export function handleGoogleOAuthCallback(
   options: GoogleOAuthCallbackOptions
 ): GoogleOAuthCallbackResult {
-  if (options.state !== options.expectedState) {
+  if (!isValidGoogleOAuthCallback(options)) {
     return {
       status: "INVALID_OAUTH_STATE",
       message: "Google OAuth state가 일치하지 않습니다.",
@@ -41,7 +59,7 @@ export function handleGoogleOAuthCallback(
       "production-google-oauth-placeholder",
       `encrypted:${options.code}`,
       null,
-      JSON.stringify([googleBusinessManageScope]),
+      JSON.stringify(googleOAuthScopes),
       null,
       new Date("2026-06-04T00:00:00.000Z").toISOString()
     )
@@ -51,4 +69,15 @@ export function handleGoogleOAuthCallback(
     oauthConnectionId: "production-oauth-google",
     message: "Google 계정 연결이 저장되었습니다.",
   }
+}
+
+export function isValidGoogleOAuthCallback(
+  options: Pick<GoogleOAuthCallbackOptions, "code" | "expectedState" | "state">
+): boolean {
+  return (
+    options.code.trim() !== "" &&
+    options.state.trim() !== "" &&
+    options.expectedState.trim() !== "" &&
+    options.state === options.expectedState
+  )
 }
