@@ -82,6 +82,10 @@ async function completeSetup(page: Page): Promise<void> {
   await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
+  await page.getByRole("button", { name: "매장 정보 확인" }).click()
+  await expect(
+    page.getByRole("button", { name: "다음: GBP 세팅 확인" })
+  ).toBeVisible()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await expect(page.getByText("VERIFICATION_PENDING")).toBeVisible()
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
@@ -93,6 +97,7 @@ test("full unified stub happy path", async ({ page }) => {
   await expectNoPrototypeChrome(page)
   await completeSetup(page)
   await expectNoPrototypeChrome(page)
+  await page.getByRole("button", { name: "포스팅" }).click()
   await page.getByLabel("홍보 의도").fill("주말 브런치 신메뉴 홍보")
   await page.getByRole("button", { name: "GBP 초안 만들기" }).click()
   await expect(

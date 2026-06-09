@@ -2,11 +2,22 @@ import { z } from "zod"
 
 import { locationStatusSchema } from "@/domain/location-status"
 import type { LocationStatus } from "@/domain/location-status"
-import { googleBusinessManageScope } from "@/integrations/credentials"
-import type { IntegrationAdapters } from "@/integrations/contracts"
+import type {
+  HttpRequestSpec,
+  IntegrationAdapters,
+  SearchGoogleLocationsResult,
+} from "@/integrations/contracts"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
-import { shouldScheduleGbpFollowUp } from "./state-machine"
+import {
+  persistClaimRequiredRecords,
+  persistSetupRecords,
+} from "./setup-records"
+import {
+  buildGoogleLocationBody,
+  getConfirmedGbpStoreProfile,
+  stableGbpSetupRequestId,
+} from "./store-profile"
 
 const locationSpecBodySchema = z
   .object({
@@ -38,6 +49,10 @@ export type GbpSetupResult =
       readonly missingEnvVars: readonly string[]
       readonly message: string
     }
+  | {
+      readonly status: "STORE_PROFILE_REQUIRED"
+      readonly message: string
+    }
 
 export type SetupGoogleBusinessProfileOptions = {
   readonly adapters: IntegrationAdapters
@@ -51,11 +66,6 @@ export type BuildClaimRequiredResultOptions = {
   readonly requestAdminRightsUrl: string
 }
 
-function addDays(date: Date, days: number): string {
-  const nextDate = new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
-  return nextDate.toISOString()
-}
-
 function locationStatusFromSpecBody(body: unknown): LocationStatus {
   const parsed = locationSpecBodySchema.safeParse(body)
   if (!parsed.success) {
@@ -64,140 +74,10 @@ function locationStatusFromSpecBody(body: unknown): LocationStatus {
   return parsed.data.status
 }
 
-function scheduleFollowUpIfNeeded(
-  database: SqliteDatabase,
-  adapters: IntegrationAdapters,
-  storeId: string,
-  status: LocationStatus
-): string | undefined {
-  if (!shouldScheduleGbpFollowUp(status)) {
-    return undefined
-  }
-
-  const jobId = "setup-gbp-follow-up"
-  database
-    .prepare(
-      "INSERT OR REPLACE INTO job_runs (id, store_id, job_type, status, idempotency_key, run_after, attempts, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      jobId,
-      storeId,
-      "GBP_FOLLOW_UP",
-      "SCHEDULED",
-      "setup-gbp-follow-up-key",
-      addDays(adapters.clock.now(), 7),
-      0,
-      adapters.clock.now().toISOString(),
-      adapters.clock.now().toISOString()
-    )
-  return jobId
-}
-
-function persistSetupRecords(
-  options: SetupGoogleBusinessProfileOptions,
-  status: LocationStatus,
-  subjectId: string
-): GbpSetupResult {
-  const createdAt = options.adapters.clock.now().toISOString()
-  const accountId = "setup-gbp-account"
-  const oauthConnectionId = "setup-oauth-google"
-  const gbpLocationId = "setup-gbp-location"
-  const googleLocationId = "locations/stub-created"
-  const auditLogId = "setup-gbp-audit"
-
-  options.database
-    .prepare(
-      "INSERT OR REPLACE INTO oauth_connections (id, store_id, provider, subject_id, encrypted_access_token, encrypted_refresh_token, scopes_json, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      oauthConnectionId,
-      options.storeId,
-      "GOOGLE",
-      subjectId,
-      "encrypted:stub-access-token",
-      "encrypted:stub-refresh-token",
-      JSON.stringify([googleBusinessManageScope]),
-      "2026-06-05T00:00:00.000Z",
-      createdAt
-    )
-
-  options.database
-    .prepare(
-      "INSERT OR REPLACE INTO gbp_accounts (id, store_id, google_account_id, account_name, created_at) VALUES (?, ?, ?, ?, ?)"
-    )
-    .run(
-      accountId,
-      options.storeId,
-      "accounts/stub",
-      "Stub GBP Account",
-      createdAt
-    )
-
-  options.database
-    .prepare(
-      "INSERT OR REPLACE INTO gbp_locations (id, store_id, gbp_account_id, google_location_id, status, request_admin_rights_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      gbpLocationId,
-      options.storeId,
-      accountId,
-      googleLocationId,
-      status,
-      null,
-      createdAt,
-      createdAt
-    )
-
-  const followUpJobId = scheduleFollowUpIfNeeded(
-    options.database,
-    options.adapters,
-    options.storeId,
-    status
-  )
-
-  options.database
-    .prepare(
-      "INSERT OR REPLACE INTO audit_logs (id, store_id, actor_user_id, action, idempotency_key, redacted_payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      auditLogId,
-      options.storeId,
-      "demo-owner",
-      "gbp.setup.stub",
-      "setup-gbp-audit-key",
-      JSON.stringify({ accessToken: "[REDACTED]", status }),
-      createdAt
-    )
-
-  const resultStatus =
-    status === "VERIFIED" || status === "CREATE_REQUESTED"
-      ? status
-      : "VERIFICATION_PENDING"
-  const message =
-    status === "VERIFIED"
-      ? "Google 비즈니스 프로필이 연결되었습니다."
-      : "Google 비즈니스 프로필 생성 요청이 접수되었습니다. 인증 완료까지 기다려주세요."
-
-  if (followUpJobId !== undefined) {
-    return {
-      status: resultStatus,
-      googleLocationId,
-      oauthConnectionId,
-      gbpLocationId,
-      followUpJobId,
-      auditLogId,
-      message,
-    }
-  }
-
-  return {
-    status: resultStatus,
-    googleLocationId,
-    oauthConnectionId,
-    gbpLocationId,
-    auditLogId,
-    message,
-  }
+function isSearchGoogleLocationsResult(
+  value: SearchGoogleLocationsResult | HttpRequestSpec
+): value is SearchGoogleLocationsResult {
+  return "matches" in value
 }
 
 export function buildClaimRequiredResult(
@@ -213,9 +93,22 @@ export function buildClaimRequiredResult(
   }
 }
 
-export function setupGoogleBusinessProfile(
+export async function setupGoogleBusinessProfile(
   options: SetupGoogleBusinessProfileOptions
-): GbpSetupResult {
+): Promise<GbpSetupResult> {
+  const storeProfileResult = getConfirmedGbpStoreProfile(
+    options.database,
+    options.storeId
+  )
+  if (storeProfileResult.kind === "missing") {
+    return {
+      status: "STORE_PROFILE_REQUIRED",
+      message: "GBP 세팅 전에 매장 정보를 먼저 확인해주세요.",
+    }
+  }
+
+  const locationBody = buildGoogleLocationBody(storeProfileResult.profile)
+  const requestId = stableGbpSetupRequestId(storeProfileResult.profile)
   const oauthResult = options.adapters.googleOAuth.connect()
   if (oauthResult.kind === "blocked_by_credentials") {
     return {
@@ -225,14 +118,62 @@ export function setupGoogleBusinessProfile(
     }
   }
 
-  const locationResult = options.adapters.gbpBusinessInformation.createLocation(
-    {
+  const searchResult =
+    await options.adapters.gbpBusinessInformation.searchLocations({
+      accessToken: "stub-access-token",
+      location: locationBody,
+    })
+  if (searchResult.kind === "blocked_by_credentials") {
+    return {
+      status: "BLOCKED_BY_CREDENTIALS",
+      missingEnvVars: searchResult.missingEnvVars,
+      message: "Google Business Profile 인증 정보가 설정되지 않았습니다.",
+    }
+  }
+
+  if (isSearchGoogleLocationsResult(searchResult.value)) {
+    const claimedMatch = searchResult.value.matches.find(
+      (match) => match.requestAdminRightsUrl !== undefined
+    )
+    if (claimedMatch?.requestAdminRightsUrl !== undefined) {
+      await options.adapters.gbpBusinessInformation.requestAdminRights({
+        accessToken: "stub-access-token",
+        googleLocationId: claimedMatch.googleLocationId,
+        requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
+      })
+      persistClaimRequiredRecords(options, {
+        googleLocationId: claimedMatch.googleLocationId,
+        requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
+      })
+      return buildClaimRequiredResult({
+        googleLocationId: claimedMatch.googleLocationId,
+        requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
+      })
+    }
+  }
+
+  const validationResult =
+    await options.adapters.gbpBusinessInformation.validateLocation({
       accessToken: "stub-access-token",
       accountName: "accounts/stub",
-      requestId: "setup-gbp-location",
-      location: { title: "브런치모먼트 홍대점" },
+      requestId,
+      location: locationBody,
+    })
+  if (validationResult.kind === "blocked_by_credentials") {
+    return {
+      status: "BLOCKED_BY_CREDENTIALS",
+      missingEnvVars: validationResult.missingEnvVars,
+      message: "Google Business Profile 인증 정보가 설정되지 않았습니다.",
     }
-  )
+  }
+
+  const locationResult =
+    await options.adapters.gbpBusinessInformation.createLocation({
+      accessToken: "stub-access-token",
+      accountName: "accounts/stub",
+      requestId,
+      location: locationBody,
+    })
   if (locationResult.kind === "blocked_by_credentials") {
     return {
       status: "BLOCKED_BY_CREDENTIALS",

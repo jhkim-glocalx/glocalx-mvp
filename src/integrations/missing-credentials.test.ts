@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest"
 import { createIntegrationAdapters } from "./index"
 
 describe("missing-credentials", () => {
-  it("reports missing Naver credentials without printing secret values", () => {
+  it("reports missing Naver credentials without printing secret values", async () => {
     const adapters = createIntegrationAdapters({
       env: { APP_INTEGRATION_MODE: "production" },
     })
 
-    const result = adapters.naverSearch.searchLocal({
+    const result = await adapters.naverSearch.searchLocal({
       query: "브런치모먼트",
       display: 5,
     })

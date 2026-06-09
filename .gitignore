@@ -15,6 +15,7 @@ npm-debug.log*
 
 # AI tooling
 .claude/
+.gstack/
 .omo/
 
 # Business files (not app code)

@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const adapters = createIntegrationAdapters({ database })
-    const result = extractBusinessProfile({
+    const result = await extractBusinessProfile({
       adapters,
       database,
       input: parsed.value.input,

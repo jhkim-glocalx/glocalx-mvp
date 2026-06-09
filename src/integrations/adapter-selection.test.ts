@@ -38,7 +38,7 @@ describe("adapter-selection", () => {
     seedDemoData(database)
 
     const adapters = createIntegrationAdapters({ database, env: {} })
-    const result = adapters.naverSearch.searchLocal({
+    const result = await adapters.naverSearch.searchLocal({
       query: "브런치모먼트",
       display: 5,
     })

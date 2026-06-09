@@ -1,0 +1,53 @@
+import { isRecord, readString } from "@/app/_components/json-value"
+
+export type DraftState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "loading" }
+  | {
+      readonly draftId: string
+      readonly kind: "ready"
+      readonly koreanCopy: string
+    }
+  | { readonly kind: "error"; readonly message: string }
+
+export type PublishState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "loading" }
+  | { readonly kind: "published"; readonly message: string }
+  | { readonly kind: "blocked"; readonly message: string }
+
+export function parseDraftState(payload: unknown): DraftState {
+  if (!isRecord(payload)) {
+    return { kind: "error", message: "초안 응답을 읽지 못했습니다." }
+  }
+
+  const preview = payload["preview"]
+  if (!isRecord(preview)) {
+    return { kind: "error", message: "초안 미리보기가 없습니다." }
+  }
+
+  return {
+    draftId: readString(payload["draftId"]) ?? "draft-id-missing",
+    kind: "ready",
+    koreanCopy:
+      readString(preview["koreanCopy"]) ?? "초안 문구를 다시 생성해주세요.",
+  }
+}
+
+export function parsePublishState(payload: unknown): PublishState {
+  if (!isRecord(payload)) {
+    return { kind: "blocked", message: "게시 응답을 읽지 못했습니다." }
+  }
+
+  const status = readString(payload["status"])
+  if (status === "PUBLISHED") {
+    return { kind: "published", message: "게시 완료" }
+  }
+
+  return {
+    kind: "blocked",
+    message:
+      readString(payload["message"]) ??
+      "Google 비즈니스 프로필 상태를 확인해주세요.",
+  }
+}

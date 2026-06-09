@@ -1,4 +1,3 @@
-import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 import {
@@ -7,15 +6,19 @@ import {
   demoStoreId,
   demoUserId,
   ensureDemoOwnerStore,
-  onboardingCompleteCookieName,
+  getStoredSessionFromCookieValues,
   sessionCookieOptions,
 } from "@/auth/session"
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   ensureDemoOwnerStore()
 
-  const onboardingComplete =
-    request.cookies.get(onboardingCompleteCookieName)?.value === "true"
+  const session = getStoredSessionFromCookieValues({
+    onboardingComplete: undefined,
+    storeId: demoStoreId,
+    userId: demoUserId,
+  })
+  const onboardingComplete = session?.onboardingComplete ?? false
   const response = new NextResponse(null, {
     headers: {
       Location: onboardingComplete ? "/app" : "/onboarding",

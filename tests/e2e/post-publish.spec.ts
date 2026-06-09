@@ -8,6 +8,9 @@ test.beforeEach(() => {
   resetE2eDatabase()
 })
 
+const demoCookieHeader =
+  "glocalx_demo_session=demo-owner; glocalx_demo_store=demo-store"
+
 test("Stub post draft and publish returns deterministic GBP history", async ({
   request,
 }) => {
@@ -56,7 +59,8 @@ test("Publish is blocked for an unverified GBP location", async ({
   request,
 }) => {
   await request.post("/api/gbp/setup", {
-    data: { storeId: "demo-store", mode: "stub" },
+    data: { mode: "stub" },
+    headers: { Cookie: demoCookieHeader },
   })
   const draftResponse = await request.post("/api/posts/drafts", {
     data: {

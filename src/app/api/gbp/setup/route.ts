@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server"
 
-import { ensureDemoOwnerStore } from "@/auth/session"
+import {
+  demoSessionCookieName,
+  demoStoreCookieName,
+  getStoredSessionFromCookieValues,
+  onboardingCompleteCookieName,
+} from "@/auth/session"
 import { gbpSetupRequestSchema, parseRoutePayload } from "@/domain/schemas"
 import { setupGoogleBusinessProfile } from "@/gbp/setup"
 import { createIntegrationAdapters } from "@/integrations"
@@ -54,16 +59,31 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  ensureDemoOwnerStore()
+  const session = getStoredSessionFromCookieValues({
+    onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
+      ?.value,
+    storeId: request.cookies.get(demoStoreCookieName)?.value,
+    userId: request.cookies.get(demoSessionCookieName)?.value,
+  })
+  if (session === undefined) {
+    return Response.json(
+      {
+        status: "AUTH_REQUIRED",
+        message: "로그인이 필요합니다.",
+      },
+      { status: 401 }
+    )
+  }
+
   const database = openDatabase()
 
   try {
     const adapters = createIntegrationAdapters({ database })
-    const result = setupGoogleBusinessProfile({
+    const result = await setupGoogleBusinessProfile({
       adapters,
       database,
       mode: parsed.value.mode,
-      storeId: parsed.value.storeId,
+      storeId: session.storeId,
     })
     return Response.json(result)
   } finally {

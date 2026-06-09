@@ -9,7 +9,11 @@ import type {
   IntegrationAdapters,
   NaverSearchResult,
 } from "@/integrations/contracts"
+import { NaverSearchUnavailableError } from "@/integrations/contracts"
 import type { SqliteDatabase } from "@/server/db/sqlite"
+
+import type { RetrievalError } from "./input-normalization"
+import { normalizeOnboardingInput } from "./input-normalization"
 
 const manualForm = {
   requiredFields: ["name", "address", "category"],
@@ -41,6 +45,11 @@ export type BusinessProfileExtractionResult =
       readonly request: HttpRequestSpec
     }
   | {
+      readonly status: "SEARCH_QUERY_REQUIRED"
+      readonly normalizedQuery: ""
+      readonly retrievalError: RetrievalError
+    }
+  | {
       readonly status: "BLOCKED_BY_CREDENTIALS"
       readonly normalizedQuery: string
       readonly missingEnvVars: readonly string[]
@@ -59,42 +68,6 @@ export class NaverSearchTimeoutError extends Error {
 
   constructor(readonly query: string) {
     super(`Naver local search timed out for ${query}`)
-  }
-}
-
-type NormalizedInput = {
-  readonly rawInput: string
-  readonly query: string
-}
-
-function parseUrl(input: string): URL | undefined {
-  try {
-    return new URL(input)
-  } catch (error) {
-    if (error instanceof TypeError) {
-      return undefined
-    }
-    throw error
-  }
-}
-
-export function normalizeOnboardingInput(input: string): NormalizedInput {
-  const rawInput = input.trim()
-  const parsedUrl = parseUrl(rawInput)
-
-  if (parsedUrl === undefined) {
-    return {
-      rawInput,
-      query: rawInput,
-    }
-  }
-
-  const pathCandidate = parsedUrl.pathname.replace(/^\/+|\/+$/g, "")
-  const queryCandidate = parsedUrl.searchParams.get("query")
-
-  return {
-    rawInput,
-    query: queryCandidate?.trim() || pathCandidate || parsedUrl.hostname,
   }
 }
 
@@ -175,15 +148,23 @@ function persistManualInputRequired(
     )
 }
 
-export function extractBusinessProfile(
+export async function extractBusinessProfile(
   options: ExtractBusinessProfileOptions
-): BusinessProfileExtractionResult {
+): Promise<BusinessProfileExtractionResult> {
   const normalized = normalizeOnboardingInput(options.input)
+  if (normalized.kind === "search_query_required") {
+    return {
+      status: "SEARCH_QUERY_REQUIRED",
+      normalizedQuery: "",
+      retrievalError: normalized.retrievalError,
+    }
+  }
 
   try {
-    const adapterResult = options.adapters.naverSearch.searchLocal({
+    const adapterResult = await options.adapters.naverSearch.searchLocal({
       query: normalized.query,
       display: 5,
+      rawInput: normalized.rawInput,
     })
 
     if (adapterResult.kind === "blocked_by_credentials") {
@@ -229,7 +210,10 @@ export function extractBusinessProfile(
           : "네이버에서 매장 정보를 찾았습니다.",
     }
   } catch (error) {
-    if (error instanceof NaverSearchTimeoutError) {
+    if (
+      error instanceof NaverSearchTimeoutError ||
+      error instanceof NaverSearchUnavailableError
+    ) {
       const result = manualResult(
         normalized.query,
         "네이버 검색 응답이 지연되고 있습니다. 직접 입력으로 계속할 수 있습니다."

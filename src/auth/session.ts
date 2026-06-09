@@ -104,8 +104,7 @@ export function getStoredSessionFromCookieValues(
     return createSession(
       userId,
       storeId,
-      values.onboardingComplete === "true" ||
-        isStoreOnboardingComplete(database, storeId)
+      isStoreOnboardingComplete(database, storeId)
     )
   } finally {
     database.close()

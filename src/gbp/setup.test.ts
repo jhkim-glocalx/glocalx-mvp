@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { z } from "zod"
 
 import { createIntegrationAdapters } from "@/integrations"
+import type { IntegrationAdapters } from "@/integrations/contracts"
 import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
 
 import { handleGoogleOAuthCallback } from "./oauth-callback"
@@ -21,6 +22,23 @@ const setupRowsSchema = z.object({
 const oauthRowSchema = z.object({
   encrypted_access_token: z.string(),
   subject_id: z.string(),
+})
+
+const locationBodySchema = z.object({
+  phoneNumbers: z.object({
+    primaryPhone: z.string(),
+  }),
+  storeCode: z.string(),
+  storefrontAddress: z.object({
+    addressLines: z.array(z.string()),
+    regionCode: z.literal("KR"),
+  }),
+  title: z.string(),
+})
+
+const claimRequiredRowSchema = z.object({
+  request_admin_rights_url: z.string(),
+  status: z.literal("CLAIM_REQUIRED"),
 })
 
 describe("setupGoogleBusinessProfile", () => {
@@ -42,13 +60,29 @@ describe("setupGoogleBusinessProfile", () => {
     return database
   }
 
+  function createCapturedLocationAdapters(
+    baseAdapters: IntegrationAdapters,
+    captureLocation: (location: Readonly<Record<string, unknown>>) => void
+  ): IntegrationAdapters {
+    return {
+      ...baseAdapters,
+      gbpBusinessInformation: {
+        ...baseAdapters.gbpBusinessInformation,
+        async createLocation(input) {
+          captureLocation(input.location)
+          return await baseAdapters.gbpBusinessInformation.createLocation(input)
+        },
+      },
+    }
+  }
+
   it("creates demo OAuth, GBP location, follow-up job, and audit log records", async () => {
     // Given
     const database = await createDatabase()
     const adapters = createIntegrationAdapters({ database, env: {} })
 
     // When
-    const result = setupGoogleBusinessProfile({
+    const result = await setupGoogleBusinessProfile({
       adapters,
       database,
       mode: "stub",
@@ -79,6 +113,159 @@ describe("setupGoogleBusinessProfile", () => {
       gbpLocations: 1,
       followUpJobs: 1,
       auditLogs: 1,
+    })
+    database.close()
+  })
+
+  it("blocks setup when the store profile has not been confirmed", async () => {
+    // Given
+    const database = await createDatabase()
+    database
+      .prepare("DELETE FROM business_profile_extractions WHERE store_id = ?")
+      .run("demo-store")
+    const adapters = createIntegrationAdapters({ database, env: {} })
+
+    // When
+    const result = await setupGoogleBusinessProfile({
+      adapters,
+      database,
+      mode: "stub",
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result).toEqual({
+      status: "STORE_PROFILE_REQUIRED",
+      message: "GBP 세팅 전에 매장 정보를 먼저 확인해주세요.",
+    })
+    database.close()
+  })
+
+  it("uses the confirmed store profile when creating a GBP location", async () => {
+    // Given
+    const database = await createDatabase()
+    database
+      .prepare(
+        "UPDATE stores SET name = ?, address = ?, phone = ?, category = ?, hours = ? WHERE id = ?"
+      )
+      .run(
+        "라멘하우스 합정점",
+        "서울 마포구 양화로 19",
+        "02-987-6543",
+        "라멘",
+        "11:00 ~ 22:00",
+        "demo-store"
+      )
+    let capturedLocation: Readonly<Record<string, unknown>> | undefined
+    const baseAdapters = createIntegrationAdapters({ database, env: {} })
+    const adapters = createCapturedLocationAdapters(
+      baseAdapters,
+      (location) => {
+        capturedLocation = location
+      }
+    )
+
+    // When
+    const result = await setupGoogleBusinessProfile({
+      adapters,
+      database,
+      mode: "stub",
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result.status).toBe("VERIFICATION_PENDING")
+    const locationBody = locationBodySchema.parse(capturedLocation)
+    expect(locationBody).toEqual({
+      phoneNumbers: {
+        primaryPhone: "02-987-6543",
+      },
+      storeCode: "demo-store",
+      storefrontAddress: {
+        addressLines: ["서울 마포구 양화로 19"],
+        regionCode: "KR",
+      },
+      title: "라멘하우스 합정점",
+    })
+
+    const secondResult = await setupGoogleBusinessProfile({
+      adapters,
+      database,
+      mode: "stub",
+      storeId: "demo-store",
+    })
+    expect(secondResult.status).toBe("VERIFICATION_PENDING")
+
+    const rows = setupRowsSchema.parse(
+      database
+        .prepare(
+          "SELECT (SELECT COUNT(*) FROM oauth_connections WHERE id = 'setup-oauth-google') AS oauthConnections, (SELECT COUNT(*) FROM gbp_locations WHERE id = 'setup-gbp-location') AS gbpLocations, (SELECT COUNT(*) FROM job_runs WHERE id = 'setup-gbp-follow-up') AS followUpJobs, (SELECT COUNT(*) FROM audit_logs WHERE id = 'setup-gbp-audit') AS auditLogs"
+        )
+        .get()
+    )
+    expect(rows).toEqual({
+      auditLogs: 1,
+      followUpJobs: 1,
+      gbpLocations: 1,
+      oauthConnections: 1,
+    })
+    database.close()
+  })
+
+  it("persists claimed Google locations as owner-action follow-up", async () => {
+    // Given
+    const database = await createDatabase()
+    const baseAdapters = createIntegrationAdapters({ database, env: {} })
+    const requestAdminRightsUrl =
+      "https://business.google.com/request-admin-rights/stub"
+    const adapters: IntegrationAdapters = {
+      ...baseAdapters,
+      gbpBusinessInformation: {
+        ...baseAdapters.gbpBusinessInformation,
+        async searchLocations() {
+          return {
+            kind: "ok",
+            value: {
+              matches: [
+                {
+                  googleLocationId: "googleLocations/claimed-stub",
+                  requestAdminRightsUrl,
+                },
+              ],
+            },
+          }
+        },
+      },
+    }
+
+    // When
+    const result = await setupGoogleBusinessProfile({
+      adapters,
+      database,
+      mode: "stub",
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result).toEqual({
+      status: "CLAIM_REQUIRED",
+      googleLocationId: "googleLocations/claimed-stub",
+      requestAdminRightsUrl,
+      followUpRequired: true,
+      message:
+        "이미 소유자가 있는 Google 비즈니스 프로필입니다. 관리자 권한 요청을 진행해주세요.",
+    })
+
+    const row = claimRequiredRowSchema.parse(
+      database
+        .prepare(
+          "SELECT status, request_admin_rights_url FROM gbp_locations WHERE id = ?"
+        )
+        .get("setup-gbp-location")
+    )
+    expect(row).toEqual({
+      request_admin_rights_url: requestAdminRightsUrl,
+      status: "CLAIM_REQUIRED",
     })
     database.close()
   })

@@ -14,5 +14,5 @@ export default async function OnboardingPage() {
     redirect("/app")
   }
 
-  return <OnboardingFlow storeId={session.storeId} />
+  return <OnboardingFlow />
 }

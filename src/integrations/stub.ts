@@ -15,7 +15,9 @@ import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
 const stubCandidate = {
+  candidateId: "naver-local-stub-brunch-moment",
   source: "NAVER_LOCAL",
+  sourceInput: "브런치모먼트",
   name: "브런치모먼트 홍대점",
   address: "서울 마포구 와우산로 123",
   category: "브런치 카페",
@@ -58,7 +60,7 @@ export function createStubNaverSearch(
   database?: SqliteDatabase
 ): NaverSearchAdapter {
   return {
-    searchLocal(input): AdapterResult<NaverSearchResult> {
+    async searchLocal(input): Promise<AdapterResult<NaverSearchResult>> {
       if (!isStubSearchQuery(input.query)) {
         return {
           kind: "ok",
@@ -89,7 +91,39 @@ export function createStubGoogleOAuth(): GoogleOAuthAdapter {
 
 export function createStubBusinessInformation(): GbpBusinessInformationAdapter {
   return {
-    createLocation() {
+    async searchLocations() {
+      return {
+        kind: "ok",
+        value: {
+          matches: [],
+        },
+      }
+    },
+    async requestAdminRights(input) {
+      return {
+        kind: "ok",
+        value: {
+          method: "GET",
+          url: input.requestAdminRightsUrl,
+          headers: {},
+          body: {
+            googleLocationId: input.googleLocationId,
+          },
+        },
+      }
+    },
+    async validateLocation(input) {
+      return {
+        kind: "ok",
+        value: {
+          method: "POST",
+          url: "stub://gbp/locations:validate",
+          headers: {},
+          body: input.location,
+        },
+      }
+    },
+    async createLocation() {
       return {
         kind: "ok",
         value: {

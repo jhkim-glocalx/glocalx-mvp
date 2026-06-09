@@ -10,22 +10,44 @@ export const onboardingExtractionRequestSchema = z
 
 export const missingBusinessFieldSchema = z.enum(["phone", "hours"])
 
+export const businessProfileCoordinatesSchema = z
+  .object({
+    mapx: z.number().finite(),
+    mapy: z.number().finite(),
+  })
+  .strict()
+
 export const adapterBusinessProfileCandidateSchema = z
   .object({
+    candidateId: nonEmptyStringSchema,
     source: z.enum(["NAVER_LOCAL", "MANUAL"]),
+    sourceInput: nonEmptyStringSchema,
     name: nonEmptyStringSchema,
     address: nonEmptyStringSchema,
     category: nonEmptyStringSchema,
     phone: nonEmptyStringSchema.optional(),
     hours: nonEmptyStringSchema.optional(),
     naverPlaceUrl: z.url().optional(),
+    coordinates: businessProfileCoordinatesSchema.optional(),
     missingFields: z.array(missingBusinessFieldSchema),
+  })
+  .strict()
+
+export const confirmedStoreProfileSchema = z
+  .object({
+    source: z.enum(["NAVER_LOCAL", "MANUAL"]),
+    sourceInput: nonEmptyStringSchema,
+    name: nonEmptyStringSchema,
+    address: nonEmptyStringSchema,
+    category: nonEmptyStringSchema,
+    phone: nonEmptyStringSchema,
+    hours: nonEmptyStringSchema.optional(),
+    naverPlaceUrl: z.url().optional(),
   })
   .strict()
 
 export const gbpSetupRequestSchema = z
   .object({
-    storeId: nonEmptyStringSchema,
     mode: z.enum(["stub", "production"]),
   })
   .strict()
@@ -52,9 +74,13 @@ export type GbpSetupRequest = z.infer<typeof gbpSetupRequestSchema>
 export type PostDraftRequest = z.infer<typeof postDraftRequestSchema>
 export type PostPublishRequest = z.infer<typeof postPublishRequestSchema>
 export type MissingBusinessField = z.infer<typeof missingBusinessFieldSchema>
+export type BusinessProfileCoordinates = z.infer<
+  typeof businessProfileCoordinatesSchema
+>
 export type AdapterBusinessProfileCandidate = z.infer<
   typeof adapterBusinessProfileCandidateSchema
 >
+export type ConfirmedStoreProfile = z.infer<typeof confirmedStoreProfileSchema>
 
 export type ParsedValidationIssue = {
   readonly path: readonly (string | number)[]

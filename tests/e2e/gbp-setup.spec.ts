@@ -1,10 +1,20 @@
 import { expect, test } from "@playwright/test"
 
+import { resetE2eDatabase } from "./global-setup"
+
+const demoCookieHeader =
+  "glocalx_demo_session=demo-owner; glocalx_demo_store=demo-store"
+
+test.beforeEach(() => {
+  resetE2eDatabase()
+})
+
 test("Stub GBP setup reaches verification pending and records an audit log", async ({
   request,
 }) => {
   const response = await request.post("/api/gbp/setup", {
-    data: { storeId: "demo-store", mode: "stub" },
+    data: { mode: "stub" },
+    headers: { Cookie: demoCookieHeader },
   })
 
   expect(response.status()).toBe(200)
