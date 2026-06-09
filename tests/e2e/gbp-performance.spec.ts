@@ -86,25 +86,22 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
   // When: the owner opens the app.
   await page.goto("/app")
 
-  // Then: the default home dashboard shows the core GBP stats.
-  await expect(
-    page.getByRole("heading", { name: "GBP 성과 요약" })
-  ).toBeVisible()
-  await expect(page.getByText("1,200")).toBeVisible()
-  await expect(page.getByText("90", { exact: true })).toBeVisible()
-  await expect(page.getByRole("button", { name: "홈" })).toHaveAttribute(
+  // Then: the default photo-enhancement step is visible.
+  await expect(page.getByText("STEP 2 · 사진 자동 고도화")).toBeVisible()
+  await expect(page.getByRole("button", { name: "사진 고도화" })).toHaveAttribute(
     "aria-current",
     "page"
   )
 
-  // When: the owner opens the detailed performance tab.
-  await page.getByRole("button", { name: "성과" }).click()
+  // When: the owner opens the reference report and dashboard screens.
+  await page.getByRole("button", { name: "성과 리포트" }).click()
 
-  // Then: the full performance panel is visible.
-  await expect(
-    page.getByRole("heading", { name: "GBP 성과 자세히" })
-  ).toBeVisible()
-  await expect(page.getByText("웹사이트 클릭", { exact: true })).toBeVisible()
+  // Then: the report card is visible.
+  await expect(page.getByText("주간 성과 리포트 · 5/26~6/1")).toBeVisible()
+  await expect(page.getByText("12,480")).toBeVisible()
+  await page.getByRole("button", { name: "📊 성과 대시보드 자세히 보기" }).click()
+  await expect(page.getByRole("heading", { name: "성과 대시보드" })).toBeVisible()
+  await expect(page.getByText("채널별 노출 비중")).toBeVisible()
   const dashboardMetrics = await readOverflowMetrics(page)
   await page.screenshot({
     fullPage: true,
@@ -118,16 +115,11 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
   )
 
   // When: the owner switches back to posting.
-  await page.getByRole("button", { name: "포스팅" }).click()
-  await page.getByLabel("홍보 의도").fill("주말 브런치 신메뉴 홍보")
-  await page.getByRole("button", { name: "GBP 초안 만들기" }).click()
+  await page.getByRole("button", { name: "뒤로" }).click()
+  await page.getByRole("button", { name: "다채널 포스팅" }).click()
 
-  // Then: the existing draft flow still works.
-  await expect(
-    page.getByText(
-      "브런치모먼트 홍대점에서 주말 브런치 신메뉴 홍보 소식을 전해드립니다."
-    )
-  ).toBeVisible()
+  // Then: the posting preview remains available.
+  await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
   const metrics = await readOverflowMetrics(page)
   expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
   expect(metrics.bodyScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)

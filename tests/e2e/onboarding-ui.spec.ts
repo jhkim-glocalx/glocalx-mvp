@@ -22,12 +22,14 @@ test.beforeEach(() => {
 test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await page.getByRole("button", { name: "이메일로 시작" }).click()
 
   await expect(
     page.getByRole("button", { name: "네이버 정보 제출" })
   ).toBeVisible()
-  await page.getByLabel("네이버 정보").fill("https://naver.me/mybrunchcafe")
+  await page
+    .getByRole("textbox", { name: "네이버 정보", exact: true })
+    .fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
 
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
@@ -59,9 +61,11 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
 test("onboarding no result manual fallback", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "시작하기" }).click()
+  await page.getByRole("button", { name: "이메일로 시작" }).click()
 
-  await page.getByLabel("네이버 정보").fill("없는가게zzzz")
+  await page
+    .getByRole("textbox", { name: "네이버 정보", exact: true })
+    .fill("없는가게zzzz")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
 
   await expect(

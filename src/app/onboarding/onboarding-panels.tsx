@@ -30,16 +30,17 @@ export function OnboardingTopBar() {
             글로컬엑스
           </p>
           <p className="truncate text-xs font-black text-[var(--mint)]">
-            AI 마케팅 매니저 · 온라인
+            <span aria-hidden="true" className="gx-online-dot" /> AI 마케팅
+            매니저 · 온라인
           </p>
         </div>
       </div>
       <span
         aria-label="더보기"
-        className="grid h-10 w-10 flex-none place-items-center rounded-full text-lg font-black text-[var(--ink-soft)]"
+        className="gx-app-menu"
         role="img"
       >
-        ···
+        ⋮
       </span>
     </>
   )
@@ -48,14 +49,14 @@ export function OnboardingTopBar() {
 export function OnboardingIntro() {
   return (
     <section aria-label="온보딩 대화" className="grid gap-3">
+      <div className="gx-chat-divider">STEP 1 · 온보딩 / 구글비즈니스프로필 세팅</div>
       <ChatMessage
-        message="네이버 플레이스 링크나 가게 이름을 알려주세요."
+        message="안녕하세요 사장님! 👋 저는 가게의 글로벌 마케팅을 도와드릴 글로컬엑스예요. 먼저 가게를 등록할게요. 네이버 플레이스 링크나 가게 이름을 알려주시겠어요?"
         speaker="assistant"
       />
-      <div aria-label="온보딩 진행 정보" className="flex flex-wrap gap-2">
-        <StatusPill>네이버 정보 확인</StatusPill>
-        <StatusPill>매장 프로필 확인</StatusPill>
-        <StatusPill>GBP 세팅 점검</StatusPill>
+      <div aria-label="온보딩 빠른 답변" className="gx-chip-row">
+        <StatusPill>네이버 플레이스 링크 붙여넣기</StatusPill>
+        <StatusPill>상호명으로 검색</StatusPill>
       </div>
     </section>
   )

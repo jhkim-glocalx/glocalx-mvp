@@ -1,7 +1,19 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
-import { resolveOAuthRedirectUri } from "@/auth/oauth-redirect"
+import {
+  demoSessionCookieName,
+  demoStoreCookieName,
+  demoStoreId,
+  demoUserId,
+  ensureDemoOwnerStore,
+  getStoredSessionFromCookieValues,
+  sessionCookieOptions,
+} from "@/auth/session"
+import {
+  getOAuthRequestOrigin,
+  resolveOAuthRedirectUri,
+} from "@/auth/oauth-redirect"
 import {
   buildKakaoOAuthAuthorizationUrl,
   kakaoOAuthStateCookieName,
@@ -18,21 +30,72 @@ export function getKakaoRedirectUri(
   return resolveOAuthRedirectUri({
     callbackPath: "/api/auth/kakao/callback",
     configuredRedirectUri,
-    requestOrigin: request.nextUrl.origin,
+    requestOrigin: getOAuthRequestOrigin(request),
+  })
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return (
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname.toLowerCase() === "localhost"
+  )
+}
+
+function shouldUseDemoFallback(
+  request: NextRequest,
+  env: AdapterEnvironment
+): boolean {
+  return (
+    env["APP_INTEGRATION_MODE"] === "stub" ||
+    env["NODE_ENV"] !== "production" ||
+    isLoopbackHost(request.nextUrl.hostname)
+  )
+}
+
+function createDemoSessionRedirect(): NextResponse {
+  ensureDemoOwnerStore()
+
+  const session = getStoredSessionFromCookieValues({
+    onboardingComplete: undefined,
+    storeId: demoStoreId,
+    userId: demoUserId,
+  })
+  const onboardingComplete = session?.onboardingComplete ?? false
+  const response = new NextResponse(null, {
+    headers: {
+      Location: onboardingComplete ? "/app" : "/onboarding",
+    },
+    status: 303,
+  })
+
+  response.cookies.set(demoSessionCookieName, demoUserId, sessionCookieOptions)
+  response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
+
+  return response
+}
+
+function createKakaoConfigErrorRedirect(): NextResponse {
+  return new NextResponse(null, {
+    headers: {
+      Location: "/?auth_error=kakao_config",
+    },
+    status: 303,
   })
 }
 
 export async function POST(request: NextRequest) {
+  if (process.env["APP_INTEGRATION_MODE"] === "stub") {
+    return createDemoSessionRedirect()
+  }
+
   const missingEnvVars = missingKakaoOAuthEnvVars(process.env)
   if (missingEnvVars.length > 0) {
-    return Response.json(
-      {
-        code: "BLOCKED_BY_CREDENTIALS",
-        missingEnvVars,
-        message: "Kakao OAuth credentials are not configured.",
-      },
-      { status: 500 }
-    )
+    if (shouldUseDemoFallback(request, process.env)) {
+      return createDemoSessionRedirect()
+    }
+
+    return createKakaoConfigErrorRedirect()
   }
 
   const state = crypto.randomUUID()

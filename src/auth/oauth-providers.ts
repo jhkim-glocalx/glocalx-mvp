@@ -11,6 +11,31 @@ export const googleOAuthUserInfoEndpoint =
 export const kakaoOAuthTokenEndpoint = "https://kauth.kakao.com/oauth/token"
 export const kakaoOAuthUserInfoEndpoint = "https://kapi.kakao.com/v2/user/me"
 
+export class OAuthProviderError extends Error {
+  readonly name = "OAuthProviderError"
+
+  constructor(
+    readonly provider: string,
+    readonly action: string,
+    readonly status: number,
+    readonly error: string | undefined,
+    readonly errorDescription: string | undefined,
+    readonly errorCode: string | number | undefined
+  ) {
+    super(
+      [
+        `${provider} OAuth ${action} failed with ${status}.`,
+        error === undefined ? undefined : `error=${error}`,
+        errorDescription === undefined
+          ? undefined
+          : `description=${errorDescription}`,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    )
+  }
+}
+
 type GoogleOAuthProfileOptions = {
   readonly clientId: string
   readonly clientSecret: string
@@ -89,13 +114,25 @@ async function readJsonResponse(
   provider: string,
   action: string
 ): Promise<Record<string, unknown>> {
+  const payload: unknown = await response.json().catch(() => undefined)
+
   if (!response.ok) {
-    throw new Error(
-      `${provider} OAuth ${action} failed with ${response.status}.`
+    const payloadRecord = isRecord(payload) ? payload : {}
+    const error = readOptionalString(payloadRecord, "error")
+    const errorDescription = readOptionalString(payloadRecord, "error_description")
+    const errorCode = payloadRecord["error_code"]
+    throw new OAuthProviderError(
+      provider,
+      action,
+      response.status,
+      error,
+      errorDescription,
+      typeof errorCode === "string" || typeof errorCode === "number"
+        ? errorCode
+        : undefined
     )
   }
 
-  const payload: unknown = await response.json()
   if (!isRecord(payload)) {
     throw new Error(`${provider} OAuth ${action} returned invalid JSON.`)
   }

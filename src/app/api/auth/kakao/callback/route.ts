@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 import { upsertOAuthIdentity } from "@/auth/oauth-identity"
-import { fetchKakaoOAuthProfile } from "@/auth/oauth-providers"
+import {
+  fetchKakaoOAuthProfile,
+  OAuthProviderError,
+} from "@/auth/oauth-providers"
 import {
   demoSessionCookieName,
   demoStoreCookieName,
@@ -32,6 +35,10 @@ function redirectToLandingClearingState(reason: string): NextResponse {
     expiredKakaoOAuthStateCookieOptions
   )
   return response
+}
+
+function hasConfiguredKakaoClientSecret(): boolean {
+  return (process.env["KAKAO_CLIENT_SECRET"]?.trim() ?? "") !== ""
 }
 
 export async function GET(request: NextRequest) {
@@ -89,6 +96,14 @@ export async function GET(request: NextRequest) {
     return response
   } catch (error) {
     console.error("Kakao OAuth callback failed", error)
+    if (
+      error instanceof OAuthProviderError &&
+      error.status === 401 &&
+      !hasConfiguredKakaoClientSecret()
+    ) {
+      return redirectToLandingClearingState("kakao_client_secret")
+    }
+
     return redirectToLandingClearingState("kakao_callback")
   }
 }

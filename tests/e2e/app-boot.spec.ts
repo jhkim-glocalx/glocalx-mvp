@@ -19,7 +19,9 @@ test("App boots locally and shows the GlocalX shell", async ({ page }) => {
   await page.goto("/")
 
   await expect(page.getByTestId("entry-device")).toBeVisible()
-  await expect(page.getByRole("heading", { name: "GlocalX" })).toBeVisible()
-  await expect(page.getByRole("button", { name: "시작하기" })).toBeEnabled()
+  await expect(
+    page.getByRole("heading", { name: /혼자서도\s*전 세계에 팝니다\./ })
+  ).toBeVisible()
+  await expect(page.getByRole("button", { name: "이메일로 시작" })).toBeEnabled()
   await expectNoPrototypeChrome(page)
 })

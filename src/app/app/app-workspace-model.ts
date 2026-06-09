@@ -1,9 +1,13 @@
 import { isRecord, readString } from "@/app/_components/json-value"
 
 export const appNavItems = [
-  { id: "home", label: "홈" },
-  { id: "post", label: "포스팅" },
-  { id: "insights", label: "성과" },
+  { id: "onboarding", label: "온보딩" },
+  { id: "photo", label: "사진 고도화" },
+  { id: "posting", label: "다채널 포스팅" },
+  { id: "reviews", label: "리뷰 관리" },
+  { id: "targets", label: "타겟 국가" },
+  { id: "report", label: "성과 리포트" },
+  { id: "dashboard", label: "성과 대시보드" },
 ] as const
 
 export type AppNavId = (typeof appNavItems)[number]["id"]
@@ -97,7 +101,7 @@ function readStringArray(value: unknown): readonly string[] {
 }
 
 export function isPerformanceNavId(navId: AppNavId): boolean {
-  return navId === "home" || navId === "insights"
+  return navId === "report" || navId === "dashboard"
 }
 
 export function parseDraftState(payload: unknown): DraftState {

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it } from "vitest"
 
+import { demoSessionCookieName, demoStoreCookieName } from "@/auth/session"
 import { googleOAuthStateCookieName } from "@/gbp/oauth-callback"
 import {
   buildGoogleOAuthAuthorizationUrl,
@@ -85,7 +86,6 @@ describe("Google OAuth start route", () => {
 
   it("redirects to Google when OAuth credentials are configured", async () => {
     replaceEnv({
-      APP_INTEGRATION_MODE: "stub",
       GOOGLE_CLIENT_ID: "test-client-id",
       GOOGLE_CLIENT_SECRET: "test-client-secret",
       GOOGLE_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
@@ -111,6 +111,25 @@ describe("Google OAuth start route", () => {
       `${googleOAuthStateCookieName}=${authorizationUrl.searchParams.get("state")}`
     )
     expect(setCookie).toContain("HttpOnly")
+  })
+
+  it("uses demo login in stub mode even when Google credentials are configured", async () => {
+    replaceEnv({
+      APP_INTEGRATION_MODE: "stub",
+      GOOGLE_CLIENT_ID: "test-client-id",
+      GOOGLE_CLIENT_SECRET: "test-client-secret",
+      GOOGLE_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
+    })
+
+    const response = await POST(createGoogleStartRequest())
+    const location = response.headers.get("Location")
+    const setCookie = response.headers.get("Set-Cookie")
+
+    expect(response.status).toBe(303)
+    expect(location).toMatch(/^\/(?:app|onboarding)$/)
+    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
+    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
+    expect(setCookie).not.toContain(googleOAuthStateCookieName)
   })
 
   it("uses the deployed origin when GOOGLE_REDIRECT_URI still points to localhost", () => {

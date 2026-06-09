@@ -1,14 +1,19 @@
 import { NextRequest } from "next/server"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   buildKakaoOAuthAuthorizationUrl,
   kakaoOAuthStateCookieName,
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
+import { demoSessionCookieName, demoStoreCookieName } from "@/auth/session"
 import { getKakaoRedirectUri, POST } from "./route"
 
-const envKeys = ["KAKAO_REST_API_KEY", "KAKAO_REDIRECT_URI"] as const
+const envKeys = [
+  "APP_INTEGRATION_MODE",
+  "KAKAO_REST_API_KEY",
+  "KAKAO_REDIRECT_URI",
+] as const
 
 const originalEnv = new Map(
   envKeys.map((key) => [key, process.env[key]] as const)
@@ -44,6 +49,7 @@ function createKakaoStartRequest(): NextRequest {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs()
   restoreEnv()
 })
 
@@ -70,7 +76,7 @@ describe("Kakao OAuth start route", () => {
   it("redirects to Kakao when OAuth credentials are configured", async () => {
     replaceEnv({
       KAKAO_REST_API_KEY: "test-rest-api-key",
-      KAKAO_REDIRECT_URI: "http://127.0.0.1:5174/api/auth/kakao/callback",
+      KAKAO_REDIRECT_URI: "http://localhost:5174/api/auth/kakao/callback",
     })
 
     const response = await POST(createKakaoStartRequest())
@@ -86,13 +92,31 @@ describe("Kakao OAuth start route", () => {
       "test-rest-api-key"
     )
     expect(authorizationUrl.searchParams.get("redirect_uri")).toBe(
-      "http://127.0.0.1:5174/api/auth/kakao/callback"
+      "http://localhost:5174/api/auth/kakao/callback"
     )
     expect(authorizationUrl.searchParams.get("state")).toBeTruthy()
     expect(setCookie).toContain(
       `${kakaoOAuthStateCookieName}=${authorizationUrl.searchParams.get("state")}`
     )
     expect(setCookie).toContain("HttpOnly")
+  })
+
+  it("uses demo login in stub mode even when Kakao credentials are configured", async () => {
+    replaceEnv({
+      APP_INTEGRATION_MODE: "stub",
+      KAKAO_REST_API_KEY: "test-rest-api-key",
+      KAKAO_REDIRECT_URI: "http://127.0.0.1:5174/api/auth/kakao/callback",
+    })
+
+    const response = await POST(createKakaoStartRequest())
+    const location = response.headers.get("Location")
+    const setCookie = response.headers.get("Set-Cookie")
+
+    expect(response.status).toBe(303)
+    expect(location).toMatch(/^\/(?:app|onboarding)$/)
+    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
+    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
+    expect(setCookie).not.toContain(kakaoOAuthStateCookieName)
   })
 
   it("uses the deployed origin when KAKAO_REDIRECT_URI still points to localhost", () => {
@@ -108,24 +132,41 @@ describe("Kakao OAuth start route", () => {
     ).toBe("https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/callback")
   })
 
-  it("reports missing credentials", async () => {
+  it("falls back to demo login when local Kakao credentials are missing", async () => {
     replaceEnv({
+      APP_INTEGRATION_MODE: "stub",
       KAKAO_REST_API_KEY: undefined,
       KAKAO_REDIRECT_URI: undefined,
     })
 
     const response = await POST(createKakaoStartRequest())
-    const body = (await response.json()) as {
-      readonly code: string
-      readonly missingEnvVars: readonly string[]
-    }
+    const location = response.headers.get("Location")
+    const setCookie = response.headers.get("Set-Cookie")
 
-    expect(response.status).toBe(500)
-    expect(body).toEqual({
-      code: "BLOCKED_BY_CREDENTIALS",
-      missingEnvVars: ["KAKAO_REST_API_KEY"],
-      message: "Kakao OAuth credentials are not configured.",
+    expect(response.status).toBe(303)
+    expect(location).toMatch(/^\/(?:app|onboarding)$/)
+    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
+    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
+    expect(setCookie).toContain("HttpOnly")
+  })
+
+  it("redirects to an auth error when production Kakao credentials are missing", async () => {
+    replaceEnv({
+      APP_INTEGRATION_MODE: "production",
+      KAKAO_REST_API_KEY: undefined,
+      KAKAO_REDIRECT_URI: undefined,
     })
+    vi.stubEnv("NODE_ENV", "production")
+
+    const response = await POST(
+      new NextRequest("https://glocalx.example/api/auth/kakao/start", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe("/?auth_error=kakao_config")
+    expect(response.headers.get("Set-Cookie")).toBeNull()
   })
 
   it("treats template placeholders as missing credentials", () => {

@@ -1,8 +1,32 @@
 import { describe, expect, it } from "vitest"
 
-import { resolveOAuthRedirectUri } from "./oauth-redirect"
+import { getOAuthRequestOrigin, resolveOAuthRedirectUri } from "./oauth-redirect"
 
 describe("OAuth redirect URI resolution", () => {
+  it("uses the host header before Next's parsed origin", () => {
+    expect(
+      getOAuthRequestOrigin({
+        headers: new Headers({
+          host: "127.0.0.1:3000",
+        }),
+        nextUrl: new URL("http://localhost:3000/api/auth/kakao/start"),
+      })
+    ).toBe("http://127.0.0.1:3000")
+  })
+
+  it("uses forwarded host and protocol headers when present", () => {
+    expect(
+      getOAuthRequestOrigin({
+        headers: new Headers({
+          host: "127.0.0.1:3000",
+          "x-forwarded-host": "glocalx.example",
+          "x-forwarded-proto": "https",
+        }),
+        nextUrl: new URL("http://127.0.0.1:3000/api/auth/kakao/start"),
+      })
+    ).toBe("https://glocalx.example")
+  })
+
   it("uses the current request origin when no redirect URI is configured", () => {
     expect(
       resolveOAuthRedirectUri({
@@ -34,14 +58,14 @@ describe("OAuth redirect URI resolution", () => {
     ).toBe("https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/callback")
   })
 
-  it("allows configured local redirects when the request origin is also local", () => {
+  it("uses the current local origin when a configured local redirect points at a different origin", () => {
     expect(
       resolveOAuthRedirectUri({
         callbackPath: "/api/auth/kakao/callback",
         configuredRedirectUri: "http://127.0.0.1:5174/api/auth/kakao/callback",
-        requestOrigin: "http://localhost:5174",
+        requestOrigin: "http://127.0.0.1:3000",
       })
-    ).toBe("http://127.0.0.1:5174/api/auth/kakao/callback")
+    ).toBe("http://127.0.0.1:3000/api/auth/kakao/callback")
   })
 
   it("does not redirect across deployed origins because OAuth state cookies are host-bound", () => {

@@ -8,6 +8,7 @@ import {
   kakaoOAuthTokenEndpoint,
   kakaoOAuthUserInfoEndpoint,
   type OAuthFetch,
+  type OAuthProviderError,
 } from "./oauth-providers"
 
 function jsonResponse(payload: unknown, status = 200): Response {
@@ -133,5 +134,32 @@ describe("OAuth provider clients", () => {
       scopes: ["profile_nickname", "account_email"],
       subjectId: "123456789",
     })
+  })
+
+  it("preserves Kakao token error details", async () => {
+    const fetchImpl: OAuthFetch = async () =>
+      jsonResponse(
+        {
+          error: "invalid_client",
+          error_code: "KOE010",
+          error_description: "Bad client credentials",
+        },
+        401
+      )
+
+    await expect(
+      fetchKakaoOAuthProfile({
+        clientId: "kakao-rest-key",
+        code: "kakao-code",
+        fetchImpl,
+        redirectUri: "http://127.0.0.1:3000/api/auth/kakao/callback",
+      })
+    ).rejects.toMatchObject({
+      error: "invalid_client",
+      errorCode: "KOE010",
+      errorDescription: "Bad client credentials",
+      provider: "Kakao",
+      status: 401,
+    } satisfies Partial<OAuthProviderError>)
   })
 })

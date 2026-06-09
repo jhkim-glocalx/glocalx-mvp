@@ -1,78 +1,40 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useState } from "react"
 
-import { BottomNav } from "@/app/_components/bottom-nav"
 import { MobileShell } from "@/app/_components/mobile-shell"
+import { ReferenceComposer } from "@/app/_components/reference-composer"
 
 import {
   appNavItems,
-  parseDraftState,
   parsePublishState,
   type AppNavId,
-  type DraftState,
   type PublishState,
 } from "./app-workspace-model"
 import { AppWorkspaceTopBar } from "./app-workspace-topbar"
-import { PerformanceDashboard } from "./performance-dashboard"
-import { PostPanel } from "./app-workspace-post-panel"
+import { ReferenceFlowScreens } from "./reference-flow-screens"
 
 type AppWorkspaceProps = {
   readonly storeId: string
 }
 
-const draftNetworkErrorMessage =
-  "초안 생성 요청을 완료하지 못했습니다. 잠시 후 다시 시도해주세요."
 const publishNetworkErrorMessage =
   "게시 상태를 확인하지 못했습니다. 잠시 후 다시 시도해주세요."
 
 export function AppWorkspace({ storeId }: AppWorkspaceProps) {
-  const [activeNavId, setActiveNavId] = useState<AppNavId>("home")
-  const [draft, setDraft] = useState<DraftState>({ kind: "idle" })
-  const [intent, setIntent] = useState("주말 브런치 신메뉴 홍보")
-  const [submittedIntent, setSubmittedIntent] = useState<string>()
+  const [activeNavId, setActiveNavId] = useState<AppNavId>("photo")
   const [publish, setPublish] = useState<PublishState>({ kind: "idle" })
 
   function handleNavChange(navId: string) {
-    if (navId === "home" || navId === "post" || navId === "insights") {
-      setActiveNavId(navId)
-    }
-  }
-
-  async function handleDraft(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setSubmittedIntent(intent)
-    setDraft({ kind: "loading" })
-    setPublish({ kind: "idle" })
-
-    try {
-      const response = await fetch("/api/posts/drafts", {
-        body: JSON.stringify({
-          ownerIntent: intent,
-          storeId,
-          targetChannel: "GBP",
-        }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      })
-      const payload: unknown = await response.json()
-      setDraft(parseDraftState(payload))
-    } catch {
-      setDraft({
-        kind: "error",
-        message: draftNetworkErrorMessage,
-      })
+    if (appNavItems.some((item) => item.id === navId)) {
+      setActiveNavId(navId as AppNavId)
     }
   }
 
   async function handlePublish() {
-    if (draft.kind !== "ready") {
-      return
-    }
-
     setPublish({ kind: "loading" })
     try {
-      const response = await fetch(`/api/posts/${draft.draftId}/publish`, {
+      const response = await fetch("/api/posts/demo-post-draft/publish", {
         body: JSON.stringify({ storeId }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
@@ -90,33 +52,20 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   return (
     <main className="gx-route-page">
       <MobileShell
-        bottomNav={
-          <BottomNav
-            activeId={activeNavId}
-            items={appNavItems}
-            onSelect={handleNavChange}
-          />
+        bottomBar={activeNavId === "dashboard" ? undefined : <ReferenceComposer />}
+        key={activeNavId}
+        screenClassName={
+          activeNavId === "dashboard" ? "gx-dashboard-screen" : "gx-chat-screen"
         }
         testId="app-stage"
-        topBar={<AppWorkspaceTopBar />}
+        topBar={activeNavId === "dashboard" ? undefined : <AppWorkspaceTopBar />}
       >
-        {activeNavId === "home" ? (
-          <PerformanceDashboard variant="summary" />
-        ) : null}
-        {activeNavId === "post" ? (
-          <PostPanel
-            draft={draft}
-            intent={intent}
-            onDraft={handleDraft}
-            onIntentChange={setIntent}
-            onPublish={handlePublish}
-            publish={publish}
-            submittedIntent={submittedIntent}
-          />
-        ) : null}
-        {activeNavId === "insights" ? (
-          <PerformanceDashboard variant="details" />
-        ) : null}
+        <ReferenceFlowScreens
+          activeNavId={activeNavId}
+          onPublish={handlePublish}
+          onSelect={handleNavChange}
+          publish={publish}
+        />
       </MobileShell>
     </main>
   )

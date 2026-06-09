@@ -10,7 +10,10 @@ import {
   onboardingCompleteCookieName,
   sessionCookieOptions,
 } from "@/auth/session"
-import { resolveOAuthRedirectUri } from "@/auth/oauth-redirect"
+import {
+  getOAuthRequestOrigin,
+  resolveOAuthRedirectUri,
+} from "@/auth/oauth-redirect"
 import {
   googleOAuthStateCookieName,
   googleOAuthStateCookieOptions,
@@ -40,8 +43,9 @@ export function missingGoogleOAuthEnvVars(
 
 export function shouldStartGoogleOAuth(env: AdapterEnvironment): boolean {
   return (
-    env["APP_INTEGRATION_MODE"] === "production" ||
-    missingGoogleOAuthEnvVars(env).length === 0
+    env["APP_INTEGRATION_MODE"] !== "stub" &&
+    (env["APP_INTEGRATION_MODE"] === "production" ||
+      missingGoogleOAuthEnvVars(env).length === 0)
   )
 }
 
@@ -67,7 +71,7 @@ export function getGoogleRedirectUri(
   return resolveOAuthRedirectUri({
     callbackPath: "/api/auth/google/callback",
     configuredRedirectUri,
-    requestOrigin: request.nextUrl.origin,
+    requestOrigin: getOAuthRequestOrigin(request),
   })
 }
 

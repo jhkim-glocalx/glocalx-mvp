@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useState, useSyncExternalStore, type FormEvent } from "react"
 
 import { MobileShell } from "@/app/_components/mobile-shell"
 
@@ -27,6 +27,18 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected onboarding state: ${JSON.stringify(value)}`)
 }
 
+function subscribeToHydrationStore(): () => void {
+  return () => undefined
+}
+
+function getHydratedSnapshot(): boolean {
+  return true
+}
+
+function getServerHydratedSnapshot(): boolean {
+  return false
+}
+
 function selectedDraftFromExtraction(
   extraction: ExtractionState
 ): StoreProfileDraft | undefined {
@@ -46,6 +58,11 @@ function selectedDraftFromExtraction(
 }
 
 export function OnboardingFlow() {
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydrationStore,
+    getHydratedSnapshot,
+    getServerHydratedSnapshot
+  )
   const [extraction, setExtraction] = useState<ExtractionState>({
     kind: "idle",
   })
@@ -160,28 +177,40 @@ export function OnboardingFlow() {
 
   return (
     <main className="gx-route-page">
-      <MobileShell topBar={<OnboardingTopBar />}>
-        <OnboardingIntro />
-
-        <form className="gx-onboarding-form" onSubmit={handleExtraction}>
-          <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
-            네이버 정보
+      <MobileShell
+        bottomBar={
+          <form
+            aria-label="네이버 정보 제출"
+            className="gx-inputbar"
+            onSubmit={handleExtraction}
+          >
+            <button aria-label="첨부 추가" className="gx-input-plus" type="button">
+              +
+            </button>
+            <label className="sr-only" htmlFor="naver-store-input">
+              네이버 정보
+            </label>
             <input
-              className="gx-onboarding-input"
+              className="gx-composer-input"
+              id="naver-store-input"
               onChange={(event) => setInput(event.currentTarget.value)}
-              placeholder="https://naver.me/mybrunchcafe"
+              placeholder="메시지 입력…"
               type="text"
               value={input}
             />
-          </label>
-          <button
-            className="gx-onboarding-primary"
-            disabled={extraction.kind === "loading"}
-            type="submit"
-          >
-            네이버 정보 제출
-          </button>
-        </form>
+            <button
+              aria-label="네이버 정보 제출"
+              className="gx-input-send"
+              disabled={!isHydrated || extraction.kind === "loading"}
+              type="submit"
+            >
+              <span aria-hidden="true">➤</span>
+            </button>
+          </form>
+        }
+        topBar={<OnboardingTopBar />}
+      >
+        <OnboardingIntro />
 
         <ExtractionPanel
           extraction={extraction}
