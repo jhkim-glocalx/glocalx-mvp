@@ -16,6 +16,18 @@ const productionEnv = {
   GOOGLE_CLIENT_SECRET: "test-google-secret",
 } as const
 
+function responseWithUrl(body: string, url: string): Response {
+  const response = new Response(body)
+  Object.defineProperty(response, "url", { value: url })
+  return response
+}
+
+function naverPlaceDetailHtml(detail: Record<string, unknown>): string {
+  return `<html><body><script>window.__APOLLO_STATE__ = ${JSON.stringify({
+    PlaceSummary: detail,
+  })};</script></body></html>`
+}
+
 describe("production request specs", () => {
   it("builds the exact Naver local search request", () => {
     const result = buildNaverLocalSearchRequest(productionEnv, {
@@ -29,6 +41,103 @@ describe("production request specs", () => {
       headers: {
         "X-Naver-Client-Id": "test-naver-client",
         "X-Naver-Client-Secret": "test-naver-secret",
+      },
+    })
+  })
+
+  it("resolves direct Naver place links through the Place detail page", async () => {
+    const requestedUrls: string[] = []
+    const adapters = createIntegrationAdapters({
+      env: productionEnv,
+      fetchImpl: async (url) => {
+        requestedUrls.push(url)
+        return new Response(
+          naverPlaceDetailHtml({
+            name: "라멘하우스 합정점",
+            roadAddress: "서울 마포구 양화로 19",
+            categoryName: "음식점>일식>라멘",
+            phone: "02-111-2222",
+            businessHours: ["월 11:00 - 21:00"],
+          })
+        )
+      },
+    })
+
+    const result = await adapters.naverSearch.searchLocal({
+      query: "p/entry/place/123",
+      display: 5,
+      rawInput: "https://map.naver.com/p/entry/place/123",
+    })
+
+    expect(requestedUrls).toEqual([
+      "https://pcmap.place.naver.com/place/123/home",
+    ])
+    expect(result).toMatchObject({
+      kind: "ok",
+      value: {
+        candidates: [
+          {
+            source: "NAVER_LOCAL",
+            sourceInput: "https://map.naver.com/p/entry/place/123",
+            name: "라멘하우스 합정점",
+            address: "서울 마포구 양화로 19",
+            category: "음식점>일식>라멘",
+            phone: "02-111-2222",
+            hours: "월 11:00 - 21:00",
+            naverPlaceUrl: "https://map.naver.com/p/entry/place/123",
+            missingFields: [],
+          },
+        ],
+      },
+    })
+  })
+
+  it("resolves Naver short links before reading Place details", async () => {
+    const requestedUrls: string[] = []
+    const adapters = createIntegrationAdapters({
+      env: productionEnv,
+      fetchImpl: async (url) => {
+        requestedUrls.push(url)
+        if (url === "https://naver.me/ramenhouse") {
+          return responseWithUrl(
+            "",
+            "https://map.naver.com/p/entry/place/456?placePath=%2Fhome"
+          )
+        }
+
+        return new Response(
+          naverPlaceDetailHtml({
+            businessName: "라멘하우스 연남점",
+            address: "서울 마포구 연남로 45",
+            category: "라멘",
+          })
+        )
+      },
+    })
+
+    const result = await adapters.naverSearch.searchLocal({
+      query: "ramenhouse",
+      display: 5,
+      rawInput: "https://naver.me/ramenhouse",
+    })
+
+    expect(requestedUrls).toEqual([
+      "https://naver.me/ramenhouse",
+      "https://pcmap.place.naver.com/place/456/home",
+    ])
+    expect(result).toMatchObject({
+      kind: "ok",
+      value: {
+        candidates: [
+          {
+            sourceInput: "https://naver.me/ramenhouse",
+            name: "라멘하우스 연남점",
+            address: "서울 마포구 연남로 45",
+            category: "라멘",
+            naverPlaceUrl: "https://map.naver.com/p/entry/place/456",
+            missingFields: ["phone", "hours"],
+          },
+        ],
       },
     })
   })

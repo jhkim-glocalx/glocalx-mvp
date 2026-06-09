@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useSyncExternalStore, type FormEvent } from "react"
+import { useRef, useState, type FormEvent } from "react"
 
 import { MobileShell } from "@/app/_components/mobile-shell"
 
@@ -27,18 +27,6 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected onboarding state: ${JSON.stringify(value)}`)
 }
 
-function subscribeToHydrationStore(): () => void {
-  return () => undefined
-}
-
-function getHydratedSnapshot(): boolean {
-  return true
-}
-
-function getServerHydratedSnapshot(): boolean {
-  return false
-}
-
 function selectedDraftFromExtraction(
   extraction: ExtractionState
 ): StoreProfileDraft | undefined {
@@ -58,11 +46,6 @@ function selectedDraftFromExtraction(
 }
 
 export function OnboardingFlow() {
-  const isHydrated = useSyncExternalStore(
-    subscribeToHydrationStore,
-    getHydratedSnapshot,
-    getServerHydratedSnapshot
-  )
   const [extraction, setExtraction] = useState<ExtractionState>({
     kind: "idle",
   })
@@ -70,28 +53,63 @@ export function OnboardingFlow() {
     kind: "idle",
   })
   const [input, setInput] = useState("https://naver.me/mybrunchcafe")
+  const [inputMode, setInputMode] = useState<"naverLink" | "storeName">(
+    "naverLink"
+  )
+  const inputRef = useRef<HTMLInputElement>(null)
   const [profileDraft, setProfileDraft] = useState<
     StoreProfileDraft | undefined
   >(undefined)
   const [setup, setSetup] = useState<SetupState>({ kind: "idle" })
   const [submittedInput, setSubmittedInput] = useState("")
 
+  function focusStoreInput(): void {
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    })
+  }
+
+  function handleNaverLinkAttach(): void {
+    setInputMode("naverLink")
+    setInput((currentInput) =>
+      currentInput.trim() === "" ? "https://naver.me/mybrunchcafe" : currentInput
+    )
+    focusStoreInput()
+  }
+
+  function handleStoreNameSearch(): void {
+    setInputMode("storeName")
+    setInput((currentInput) =>
+      currentInput.trim() === "https://naver.me/mybrunchcafe"
+        ? ""
+        : currentInput
+    )
+    focusStoreInput()
+  }
+
   async function handleExtraction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const nextInput = input.trim()
+    if (nextInput === "") {
+      focusStoreInput()
+      return
+    }
+
     setExtraction({ kind: "loading" })
     setConfirmation({ kind: "idle" })
     setSetup({ kind: "idle" })
     setProfileDraft(undefined)
-    setSubmittedInput(input)
+    setSubmittedInput(nextInput)
 
     try {
       const response = await fetch("/api/onboarding/extractions", {
-        body: JSON.stringify({ input }),
+        body: JSON.stringify({ input: nextInput }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       })
       const payload: unknown = await response.json()
-      const nextExtraction = toExtractionState(payload, input)
+      const nextExtraction = toExtractionState(payload, nextInput)
       setExtraction(nextExtraction)
       setProfileDraft(selectedDraftFromExtraction(nextExtraction))
     } catch (error) {
@@ -184,7 +202,12 @@ export function OnboardingFlow() {
             className="gx-inputbar"
             onSubmit={handleExtraction}
           >
-            <button aria-label="첨부 추가" className="gx-input-plus" type="button">
+            <button
+              aria-label="네이버 링크 첨부"
+              className="gx-input-plus"
+              onClick={handleNaverLinkAttach}
+              type="button"
+            >
               +
             </button>
             <label className="sr-only" htmlFor="naver-store-input">
@@ -194,14 +217,19 @@ export function OnboardingFlow() {
               className="gx-composer-input"
               id="naver-store-input"
               onChange={(event) => setInput(event.currentTarget.value)}
-              placeholder="메시지 입력…"
+              placeholder={
+                inputMode === "naverLink"
+                  ? "네이버 플레이스 링크 붙여넣기"
+                  : "상호명을 입력하세요"
+              }
+              ref={inputRef}
               type="text"
               value={input}
             />
             <button
               aria-label="네이버 정보 제출"
               className="gx-input-send"
-              disabled={!isHydrated || extraction.kind === "loading"}
+              disabled={extraction.kind === "loading" || input.trim() === ""}
               type="submit"
             >
               <span aria-hidden="true">➤</span>
@@ -210,7 +238,10 @@ export function OnboardingFlow() {
         }
         topBar={<OnboardingTopBar />}
       >
-        <OnboardingIntro />
+        <OnboardingIntro
+          onNaverLinkAttach={handleNaverLinkAttach}
+          onStoreNameSearch={handleStoreNameSearch}
+        />
 
         <ExtractionPanel
           extraction={extraction}

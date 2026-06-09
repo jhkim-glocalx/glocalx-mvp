@@ -109,6 +109,32 @@ describe("extractBusinessProfile", () => {
     database.close()
   })
 
+  it("returns deterministic stub candidates for ordinary store names", async () => {
+    // Given
+    const adapters = createIntegrationAdapters({ env: {} })
+
+    // When
+    const result = await extractBusinessProfile({
+      adapters,
+      input: "서울커피",
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result.status).toBe("CANDIDATES_FOUND")
+    if (result.status === "CANDIDATES_FOUND") {
+      expect(result.normalizedQuery).toBe("서울커피")
+      expect(result.candidates[0]).toMatchObject({
+        source: "NAVER_LOCAL",
+        sourceInput: "서울커피",
+        name: "서울커피 홍대점",
+        address: "서울 마포구 와우산로 123",
+        category: "로컬 매장",
+        missingFields: ["phone", "hours"],
+      })
+    }
+  })
+
   it("returns manual recovery copy when Naver has no result", async () => {
     // Given
     const adapters = createIntegrationAdapters({ env: {} })
@@ -161,6 +187,33 @@ describe("extractBusinessProfile", () => {
     }
   })
 
+  it("deduplicates repeated Naver candidates before rendering choices", async () => {
+    // Given
+    const duplicateCandidate = ambiguousCandidates[0] as AdapterBusinessProfileCandidate
+    const adapters = {
+      ...createIntegrationAdapters({ env: {} }),
+      naverSearch: fakeNaverSearch({
+        kind: "ok",
+        value: { candidates: [duplicateCandidate, duplicateCandidate] },
+      }),
+    }
+
+    // When
+    const result = await extractBusinessProfile({
+      adapters,
+      input: "브런치모먼트",
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result.status).toBe("CANDIDATES_FOUND")
+    if (result.status === "CANDIDATES_FOUND") {
+      expect(result.candidates).toHaveLength(1)
+      expect(result.candidates[0]?.candidateId).toBe("naver-local-hongdae")
+      expect(result.requiresSelection).toBe(false)
+    }
+  })
+
   it("returns manual recovery copy when the Naver search times out", async () => {
     // Given
     const adapters = {
@@ -189,7 +242,7 @@ describe("extractBusinessProfile", () => {
     }
   })
 
-  it("asks for a store name when an opaque Naver place URL has no readable query", async () => {
+  it("passes opaque Naver place URLs through the adapter", async () => {
     // Given
     const adapters = createIntegrationAdapters({ env: {} })
 
@@ -201,15 +254,15 @@ describe("extractBusinessProfile", () => {
     })
 
     // Then
-    expect(result).toEqual({
-      status: "SEARCH_QUERY_REQUIRED",
-      normalizedQuery: "",
-      retrievalError: {
-        code: "OPAQUE_NAVER_PLACE_LINK",
-        message:
-          "네이버 링크에서 가게 이름을 읽지 못했습니다. 가게 이름을 입력해주세요.",
-      },
-    })
+    expect(result.status).toBe("CANDIDATES_FOUND")
+    if (result.status === "CANDIDATES_FOUND") {
+      expect(result.normalizedQuery).toBe("p/entry/place/123456789")
+      expect(result.candidates[0]).toMatchObject({
+        sourceInput: "https://map.naver.com/p/entry/place/123456789",
+        naverPlaceUrl: "https://map.naver.com/p/entry/place/123456789",
+        name: "브런치모먼트 홍대점",
+      })
+    }
   })
 
   it("returns manual recovery copy when production Naver responds with an HTTP error", async () => {

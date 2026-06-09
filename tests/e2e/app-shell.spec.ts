@@ -54,6 +54,58 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
   )
 })
 
+test("bottom chat composer accepts typed text", async ({ page }) => {
+  await page.context().clearCookies()
+  await page.goto("/")
+  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await completeOnboarding(page)
+
+  const composer = page.getByRole("textbox", { name: "메시지 입력" })
+  await composer.fill("이번 주말 신메뉴를 홍보하고 싶어요")
+
+  await expect(composer).toHaveValue("이번 주말 신메뉴를 홍보하고 싶어요")
+})
+
+test("app onboarding quick replies drive the bottom composer", async ({ page }) => {
+  await page.context().clearCookies()
+  await page.goto("/")
+  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await completeOnboarding(page)
+
+  await page.getByRole("button", { name: "온보딩" }).click()
+  const composer = page.getByRole("textbox", { name: "메시지 입력" })
+
+  await page.getByRole("button", { name: "네이버 플레이스 링크 붙여넣기" }).click()
+  await expect(composer).toBeFocused()
+  await expect(composer).toHaveValue("https://naver.me/mybrunchcafe")
+
+  await page.getByRole("button", { name: "상호명으로 검색" }).click()
+  await expect(composer).toHaveValue("브런치모먼트")
+
+  await composer.press("Enter")
+  await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
+  await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  )
+
+  await composer.fill("https://naver.me/mybrunchcafe")
+  await page.getByRole("button", { name: "전송" }).click()
+  await expect(page.getByText("네이버에서 매장 정보를 찾았습니다.")).toBeVisible()
+  await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  )
+
+  await composer.fill("서울커피")
+  await composer.press("Enter")
+  await expect(page.getByText("서울커피 홍대점")).toBeVisible()
+  await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  )
+})
+
 test("mobile shell frame keeps controls visible", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 })
   await page.context().clearCookies()

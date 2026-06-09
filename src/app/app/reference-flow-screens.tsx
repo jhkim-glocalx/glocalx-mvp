@@ -3,6 +3,11 @@
 import type { CSSProperties, ReactNode } from "react"
 
 import { ChatMessage } from "@/app/_components/chat-message"
+import { ExtractionPanel } from "@/app/onboarding/onboarding-panels"
+import type {
+  ExtractionState,
+  StoreProfileDraft,
+} from "@/app/onboarding/onboarding-model"
 
 import {
   appNavItems,
@@ -12,6 +17,11 @@ import {
 
 type ReferenceFlowScreensProps = {
   readonly activeNavId: AppNavId
+  readonly onComposerPreset: (message: string) => void
+  readonly onboardingExtraction: ExtractionState
+  readonly onboardingProfileDraft: StoreProfileDraft | undefined
+  readonly onboardingSubmittedInput: string
+  readonly onOnboardingCandidateSelect: (candidate: StoreProfileDraft) => void
   readonly onPublish: () => void
   readonly onSelect: (navId: AppNavId) => void
   readonly publish: PublishState
@@ -104,7 +114,20 @@ function MetricTile({ label, trend, value }: MetricTileProps) {
   )
 }
 
-function OnboardingSnapshot() {
+function OnboardingSnapshot({
+  onComposerPreset,
+  onboardingExtraction,
+  onboardingProfileDraft,
+  onboardingSubmittedInput,
+  onOnboardingCandidateSelect,
+}: Pick<
+  ReferenceFlowScreensProps,
+  | "onComposerPreset"
+  | "onboardingExtraction"
+  | "onboardingProfileDraft"
+  | "onboardingSubmittedInput"
+  | "onOnboardingCandidateSelect"
+>) {
   return (
     <>
       <ChatDivider>STEP 1 · 온보딩 / 구글비즈니스프로필 세팅</ChatDivider>
@@ -113,9 +136,24 @@ function OnboardingSnapshot() {
         speaker="assistant"
       />
       <div className="gx-actions-row">
-        <ChoiceButton>네이버 플레이스 링크 붙여넣기</ChoiceButton>
-        <ChoiceButton tone="ghost">상호명으로 검색</ChoiceButton>
+        <ChoiceButton
+          onClick={() => onComposerPreset("https://naver.me/mybrunchcafe")}
+        >
+          네이버 플레이스 링크 붙여넣기
+        </ChoiceButton>
+        <ChoiceButton
+          onClick={() => onComposerPreset("브런치모먼트")}
+          tone="ghost"
+        >
+          상호명으로 검색
+        </ChoiceButton>
       </div>
+      <ExtractionPanel
+        extraction={onboardingExtraction}
+        onCandidateSelect={onOnboardingCandidateSelect}
+        profileDraft={onboardingProfileDraft}
+        submittedInput={onboardingSubmittedInput}
+      />
     </>
   )
 }
@@ -429,6 +467,11 @@ function DashboardScreen({
 
 export function ReferenceFlowScreens({
   activeNavId,
+  onComposerPreset,
+  onboardingExtraction,
+  onboardingProfileDraft,
+  onboardingSubmittedInput,
+  onOnboardingCandidateSelect,
   onPublish,
   onSelect,
   publish,
@@ -440,7 +483,15 @@ export function ReferenceFlowScreens({
   return (
     <section className="gx-chat-stage" aria-label="글로컬엑스 작업 흐름">
       <FlowNav activeNavId={activeNavId} onSelect={onSelect} />
-      {activeNavId === "onboarding" ? <OnboardingSnapshot /> : null}
+      {activeNavId === "onboarding" ? (
+        <OnboardingSnapshot
+          onComposerPreset={onComposerPreset}
+          onboardingExtraction={onboardingExtraction}
+          onboardingProfileDraft={onboardingProfileDraft}
+          onboardingSubmittedInput={onboardingSubmittedInput}
+          onOnboardingCandidateSelect={onOnboardingCandidateSelect}
+        />
+      ) : null}
       {activeNavId === "photo" ? <PhotoScreen onSelect={onSelect} /> : null}
       {activeNavId === "posting" ? (
         <PostingScreen onPublish={onPublish} publish={publish} />

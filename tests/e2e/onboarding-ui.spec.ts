@@ -58,6 +58,49 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await expect(page).toHaveURL(/\/app/)
 })
 
+test("onboarding quick actions and composer submit search the store", async ({
+  page,
+}) => {
+  await page.context().clearCookies()
+  await page.goto("/")
+  await page.getByRole("button", { name: "이메일로 시작" }).click()
+
+  const storeInput = page.getByRole("textbox", {
+    name: "네이버 정보",
+    exact: true,
+  })
+
+  await page.getByRole("button", { name: "상호명으로 검색" }).click()
+  await expect(storeInput).toBeFocused()
+  await expect(storeInput).toHaveValue("")
+  await storeInput.fill("브런치모먼트")
+  await storeInput.press("Enter")
+
+  await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
+
+  await storeInput.fill("https://naver.me/mybrunchcafe")
+  await page.getByRole("button", { name: "네이버 정보 제출" }).click()
+
+  await expect(page.getByText("네이버에서 매장 정보를 찾았습니다.")).toBeVisible()
+})
+
+test("onboarding link attach button focuses the composer", async ({ page }) => {
+  await page.context().clearCookies()
+  await page.goto("/")
+  await page.getByRole("button", { name: "이메일로 시작" }).click()
+
+  const storeInput = page.getByRole("textbox", {
+    name: "네이버 정보",
+    exact: true,
+  })
+
+  await storeInput.fill("")
+  await page.getByRole("button", { name: "네이버 링크 첨부" }).click()
+
+  await expect(storeInput).toBeFocused()
+  await expect(storeInput).toHaveValue("https://naver.me/mybrunchcafe")
+})
+
 test("onboarding no result manual fallback", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")

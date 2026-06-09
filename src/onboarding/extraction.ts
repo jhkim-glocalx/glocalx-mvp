@@ -102,6 +102,20 @@ function normalizeCandidate(
   }
 }
 
+function uniqueCandidatesById(
+  candidates: readonly AdapterBusinessProfileCandidate[]
+): AdapterBusinessProfileCandidate[] {
+  const seenCandidateIds = new Set<string>()
+  return candidates.filter((candidate) => {
+    if (seenCandidateIds.has(candidate.candidateId)) {
+      return false
+    }
+
+    seenCandidateIds.add(candidate.candidateId)
+    return true
+  })
+}
+
 function manualResult(
   normalizedQuery: string,
   message: string
@@ -184,7 +198,9 @@ export async function extractBusinessProfile(
       }
     }
 
-    const candidates = adapterResult.value.candidates.map(normalizeCandidate)
+    const candidates = uniqueCandidatesById(
+      adapterResult.value.candidates.map(normalizeCandidate)
+    )
     if (candidates.length === 0) {
       const result = manualResult(
         normalized.query,

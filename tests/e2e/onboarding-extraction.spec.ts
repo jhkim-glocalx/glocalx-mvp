@@ -54,7 +54,9 @@ test("No Naver result fallback offers manual entry in Korean", async ({
   })
 })
 
-test("Opaque Naver place links ask for a store name", async ({ request }) => {
+test("Opaque Naver place links return a normalized business candidate", async ({
+  request,
+}) => {
   const response = await request.post("/api/onboarding/extractions", {
     data: { input: "https://map.naver.com/p/entry/place/123456789" },
   })
@@ -62,11 +64,13 @@ test("Opaque Naver place links ask for a store name", async ({ request }) => {
   expect(response.status()).toBe(200)
   const body = await response.json()
   expect(body).toMatchObject({
-    status: "SEARCH_QUERY_REQUIRED",
-    retrievalError: {
-      code: "OPAQUE_NAVER_PLACE_LINK",
-      message:
-        "네이버 링크에서 가게 이름을 읽지 못했습니다. 가게 이름을 입력해주세요.",
-    },
+    status: "CANDIDATES_FOUND",
+    candidates: [
+      {
+        sourceInput: "https://map.naver.com/p/entry/place/123456789",
+        name: "브런치모먼트 홍대점",
+        missingFields: ["hours"],
+      },
+    ],
   })
 })

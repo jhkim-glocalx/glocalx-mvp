@@ -46,7 +46,31 @@ export function OnboardingTopBar() {
   )
 }
 
-export function OnboardingIntro() {
+function QuickReplyButton({
+  children,
+  onClick,
+}: {
+  readonly children: string
+  readonly onClick: () => void
+}) {
+  return (
+    <button
+      className="rounded-full border border-[var(--line)] bg-white px-3 py-2 text-xs font-black text-[var(--ink-soft)] shadow-sm"
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
+  )
+}
+
+export function OnboardingIntro({
+  onNaverLinkAttach,
+  onStoreNameSearch,
+}: {
+  readonly onNaverLinkAttach: () => void
+  readonly onStoreNameSearch: () => void
+}) {
   return (
     <section aria-label="온보딩 대화" className="grid gap-3">
       <div className="gx-chat-divider">STEP 1 · 온보딩 / 구글비즈니스프로필 세팅</div>
@@ -55,8 +79,12 @@ export function OnboardingIntro() {
         speaker="assistant"
       />
       <div aria-label="온보딩 빠른 답변" className="gx-chip-row">
-        <StatusPill>네이버 플레이스 링크 붙여넣기</StatusPill>
-        <StatusPill>상호명으로 검색</StatusPill>
+        <QuickReplyButton onClick={onNaverLinkAttach}>
+          네이버 플레이스 링크 붙여넣기
+        </QuickReplyButton>
+        <QuickReplyButton onClick={onStoreNameSearch}>
+          상호명으로 검색
+        </QuickReplyButton>
       </div>
     </section>
   )
