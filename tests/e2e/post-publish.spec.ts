@@ -20,6 +20,7 @@ test("Stub post draft and publish returns deterministic GBP history", async ({
       ownerIntent: "주말 브런치 신메뉴 홍보",
       targetChannel: "GBP",
     },
+    headers: { Cookie: demoCookieHeader },
   })
 
   expect(draftResponse.status()).toBe(200)
@@ -37,6 +38,7 @@ test("Stub post draft and publish returns deterministic GBP history", async ({
     `/api/posts/${draftBody.draftId}/publish`,
     {
       data: { storeId: "demo-store" },
+      headers: { Cookie: demoCookieHeader },
     }
   )
 
@@ -68,6 +70,7 @@ test("Publish is blocked for an unverified GBP location", async ({
       ownerIntent: "주말 브런치 신메뉴 홍보",
       targetChannel: "GBP",
     },
+    headers: { Cookie: demoCookieHeader },
   })
   const draftBody = await draftResponse.json()
 
@@ -75,6 +78,7 @@ test("Publish is blocked for an unverified GBP location", async ({
     `/api/posts/${draftBody.draftId}/publish`,
     {
       data: { storeId: "demo-store" },
+      headers: { Cookie: demoCookieHeader },
     }
   )
 

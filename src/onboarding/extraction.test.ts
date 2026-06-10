@@ -189,7 +189,8 @@ describe("extractBusinessProfile", () => {
 
   it("deduplicates repeated Naver candidates before rendering choices", async () => {
     // Given
-    const duplicateCandidate = ambiguousCandidates[0] as AdapterBusinessProfileCandidate
+    const duplicateCandidate =
+      ambiguousCandidates[0] as AdapterBusinessProfileCandidate
     const adapters = {
       ...createIntegrationAdapters({ env: {} }),
       naverSearch: fakeNaverSearch({

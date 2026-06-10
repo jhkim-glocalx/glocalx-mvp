@@ -71,7 +71,11 @@ export function ReferenceComposer({
   }
 
   return (
-    <form className="gx-inputbar" aria-label="메시지 작성" onSubmit={handleSubmit}>
+    <form
+      className="gx-inputbar"
+      aria-label="메시지 작성"
+      onSubmit={handleSubmit}
+    >
       <button
         aria-label="첨부 추가"
         className="gx-input-plus"

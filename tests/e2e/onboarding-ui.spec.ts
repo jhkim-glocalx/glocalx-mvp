@@ -81,7 +81,9 @@ test("onboarding quick actions and composer submit search the store", async ({
   await storeInput.fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
 
-  await expect(page.getByText("네이버에서 매장 정보를 찾았습니다.")).toBeVisible()
+  await expect(
+    page.getByText("네이버에서 매장 정보를 찾았습니다.")
+  ).toBeVisible()
 })
 
 test("onboarding link attach button focuses the composer", async ({ page }) => {

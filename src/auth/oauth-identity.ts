@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 
 import type { SqliteDatabase } from "@/server/db/sqlite"
+import { encryptToken } from "./token-encryption"
 
 export type AuthProvider = "GOOGLE" | "KAKAO"
 
@@ -35,10 +36,6 @@ function stableId(prefix: string, ...parts: readonly string[]): string {
     .update(parts.join(":"))
     .digest("base64url")
   return `${prefix}-${digest.slice(0, 20)}`
-}
-
-function encryptTokenPlaceholder(token: string): string {
-  return `encrypted:${token}`
 }
 
 function normalizeEmail(profile: OAuthIdentityProfile): string {
@@ -181,10 +178,10 @@ export function upsertOAuthIdentity(
       profile.subjectId,
       email,
       profile.displayName,
-      encryptTokenPlaceholder(profile.accessToken),
+      encryptToken(profile.accessToken),
       profile.refreshToken === undefined
         ? null
-        : encryptTokenPlaceholder(profile.refreshToken),
+        : encryptToken(profile.refreshToken),
       JSON.stringify(profile.scopes),
       profile.expiresAt ?? null,
       createdAt,

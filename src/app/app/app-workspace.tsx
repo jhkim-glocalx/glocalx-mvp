@@ -69,7 +69,7 @@ function isSupportedImageType(
   return (
     mimeType === "image/jpeg" ||
     mimeType === "image/png" ||
-      mimeType === "image/webp"
+    mimeType === "image/webp"
   )
 }
 

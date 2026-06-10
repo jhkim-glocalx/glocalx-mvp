@@ -29,7 +29,9 @@ test("First-time demo login routes to onboarding", async ({ page }) => {
   await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
 })
 
-test("Kakao login routes to onboarding in local demo mode", async ({ page }) => {
+test("Kakao login routes to onboarding in local demo mode", async ({
+  page,
+}) => {
   await page.context().clearCookies()
   await page.goto("/")
 
@@ -47,7 +49,9 @@ test("Kakao login routes to onboarding in local demo mode", async ({ page }) => 
   )
 })
 
-test("Google login routes to onboarding in local demo mode", async ({ page }) => {
+test("Google login routes to onboarding in local demo mode", async ({
+  page,
+}) => {
   await page.context().clearCookies()
   await page.goto("/")
 
@@ -96,7 +100,9 @@ test("auth placeholders do not create a demo session", async ({ page }) => {
   await page.goto("/")
 
   await expect(page.getByTestId("entry-device")).toBeVisible()
-  await expect(page.getByRole("button", { name: "이메일로 시작" })).toBeEnabled()
+  await expect(
+    page.getByRole("button", { name: "이메일로 시작" })
+  ).toBeEnabled()
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(

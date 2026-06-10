@@ -19,7 +19,9 @@ const authErrorMessages: Readonly<Record<string, string>> = {
     "카카오 로그인 세션이 만료되었습니다. 로그인 버튼을 다시 눌러주세요.",
 }
 
-function firstParamValue(value: string | readonly string[] | undefined): string {
+function firstParamValue(
+  value: string | readonly string[] | undefined
+): string {
   if (value === undefined) {
     return ""
   }
@@ -62,10 +64,10 @@ export function HomeView({
               우리가게도 외국인들을 줄세우고 싶어요.
               <br />
               <br />
-              글로컬 엑스는 외국인에게 사장님 매장을 홍보하는 우리 가게를 잘 아는
-              마케팅 직원이에요. 사진 한장과 최소한의 정보로 알아서 잘 딱 깔끔하고
-              센스 있게 대신 홍보해드려요. 구글맵과 다양한 SNS와 다양한 마케팅까지,
-              하루 천원대로 우리도 마케팅 직원 쓰자구요.
+              글로컬 엑스는 외국인에게 사장님 매장을 홍보하는 우리 가게를 잘
+              아는 마케팅 직원이에요. 사진 한장과 최소한의 정보로 알아서 잘 딱
+              깔끔하고 센스 있게 대신 홍보해드려요. 구글맵과 다양한 SNS와 다양한
+              마케팅까지, 하루 천원대로 우리도 마케팅 직원 쓰자구요.
             </p>
           </header>
 
@@ -114,7 +116,10 @@ export function HomeView({
               className="gx-login-form"
               method="post"
             >
-              <button className="gx-login-provider gx-login-email" type="submit">
+              <button
+                className="gx-login-provider gx-login-email"
+                type="submit"
+              >
                 <span className="gx-login-provider-icon" aria-hidden="true">
                   @
                 </span>

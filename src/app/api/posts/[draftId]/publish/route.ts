@@ -1,6 +1,12 @@
 import type { NextRequest } from "next/server"
 
-import { ensureDemoOwnerStore } from "@/auth/session"
+import {
+  demoSessionCookieName,
+  demoStoreCookieName,
+  ensureDemoOwnerStore,
+  getStoredSessionFromCookieValues,
+  onboardingCompleteCookieName,
+} from "@/auth/session"
 import { parseRoutePayload, postPublishRequestSchema } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
 import { publishPostDraft } from "@/posts/post-flow"
@@ -38,6 +44,22 @@ async function readJsonPayload(
 }
 
 export async function POST(request: NextRequest, context: PublishRouteContext) {
+  const session = getStoredSessionFromCookieValues({
+    onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
+      ?.value,
+    storeId: request.cookies.get(demoStoreCookieName)?.value,
+    userId: request.cookies.get(demoSessionCookieName)?.value,
+  })
+  if (session === undefined) {
+    return Response.json(
+      {
+        status: "AUTH_REQUIRED",
+        message: "로그인이 필요합니다.",
+      },
+      { status: 401 }
+    )
+  }
+
   const payload = await readJsonPayload(request)
   if (payload.kind === "invalid_json") {
     return Response.json(
@@ -60,6 +82,16 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
     )
   }
 
+  if (parsed.value.storeId !== session.storeId) {
+    return Response.json(
+      {
+        status: "FORBIDDEN",
+        message: "요청한 매장에 접근할 수 없습니다.",
+      },
+      { status: 403 }
+    )
+  }
+
   ensureDemoOwnerStore()
   const database = openDatabase()
   const { draftId } = await context.params
@@ -72,14 +104,14 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
             adapters,
             database,
             draftId,
-            storeId: parsed.value.storeId,
+            storeId: session.storeId,
           })
         : publishPostDraft({
             adapters,
             database,
             draftId,
             idempotencyKey: parsed.value.idempotencyKey,
-            storeId: parsed.value.storeId,
+            storeId: session.storeId,
           })
     const status =
       result.status === "BLOCKED" || result.status === "MANUAL_PUBLISH_REQUIRED"

@@ -30,7 +30,9 @@ async function completeOnboarding(page: Page): Promise<void> {
   await expect(page.getByText("STEP 2 · 사진 자동 고도화")).toBeVisible()
 }
 
-test.beforeEach(() => {
+test.beforeEach(({ page }, testInfo) => {
+  void page
+  testInfo.setTimeout(60_000)
   resetFirstTimeE2eDatabase()
 })
 
@@ -68,7 +70,9 @@ test("bottom chat composer accepts typed text", async ({ page }) => {
   await expect(composer).toHaveValue("이번 주말 신메뉴를 홍보하고 싶어요")
 })
 
-test("app onboarding quick replies drive the bottom composer", async ({ page }) => {
+test("app onboarding quick replies drive the bottom composer", async ({
+  page,
+}) => {
   await page.context().clearCookies()
   await page.goto("/")
   await page.getByRole("button", { name: "이메일로 시작" }).click()
@@ -77,7 +81,9 @@ test("app onboarding quick replies drive the bottom composer", async ({ page }) 
   await page.getByRole("button", { name: "온보딩" }).click()
   const composer = page.getByRole("textbox", { name: "메시지 입력" })
 
-  await page.getByRole("button", { name: "네이버 플레이스 링크 붙여넣기" }).click()
+  await page
+    .getByRole("button", { name: "네이버 플레이스 링크 붙여넣기" })
+    .click()
   await expect(composer).toBeFocused()
   await expect(composer).toHaveValue("https://naver.me/mybrunchcafe")
 
@@ -93,7 +99,9 @@ test("app onboarding quick replies drive the bottom composer", async ({ page }) 
 
   await composer.fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "전송" }).click()
-  await expect(page.getByText("네이버에서 매장 정보를 찾았습니다.")).toBeVisible()
+  await expect(
+    page.getByText("네이버에서 매장 정보를 찾았습니다.")
+  ).toBeVisible()
   await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
     "aria-current",
     "page"

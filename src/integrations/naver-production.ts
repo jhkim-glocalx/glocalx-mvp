@@ -16,10 +16,7 @@ import type {
 } from "./contracts"
 import { NaverSearchUnavailableError } from "./contracts"
 
-export const naverEnvVars = [
-  "NAVER_CLIENT_ID",
-  "NAVER_CLIENT_SECRET",
-] as const
+export const naverEnvVars = ["NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET"] as const
 const naverLocalSearchUrl = "https://openapi.naver.com/v1/search/local.json"
 const naverPlaceDetailBaseUrl = "https://pcmap.place.naver.com/place"
 const naverPlaceFetchHeaders = {
@@ -102,9 +99,7 @@ function extractNaverPlaceIdFromUrl(url: URL): string | undefined {
   }
 
   if (url.hostname.endsWith(".place.naver.com")) {
-    const placeHostMatch = /(?:^|\/)[^/]+\/(\d+)(?:\/|$)/u.exec(
-      decodedPathname
-    )
+    const placeHostMatch = /(?:^|\/)[^/]+\/(\d+)(?:\/|$)/u.exec(decodedPathname)
     return placeHostMatch?.[1]
   }
 
@@ -171,9 +166,7 @@ function decodeHtmlEntities(value: string): string {
 }
 
 function cleanExtractedString(value: string): string | undefined {
-  const cleanedValue = decodeHtmlEntities(value)
-    .replaceAll(/\s+/gu, " ")
-    .trim()
+  const cleanedValue = decodeHtmlEntities(value).replaceAll(/\s+/gu, " ").trim()
   return cleanedValue === "" ? undefined : cleanedValue
 }
 
@@ -354,11 +347,7 @@ function detailFromRecord(
     readStringFromKnownKeys(record, naverPlaceAddressKeys)
   const category = readStringFromKnownKeys(record, naverPlaceCategoryKeys)
 
-  if (
-    name === undefined ||
-    address === undefined ||
-    category === undefined
-  ) {
+  if (name === undefined || address === undefined || category === undefined) {
     return undefined
   }
 

@@ -152,10 +152,7 @@ export function createStubNaverSearch(
           ? stubCandidateForInput(input)
           : syntheticCandidateForInput(input)
 
-      if (
-        candidate.name.trim() === "" ||
-        candidate.sourceInput.trim() === ""
-      ) {
+      if (candidate.name.trim() === "" || candidate.sourceInput.trim() === "") {
         return {
           kind: "ok",
           value: {

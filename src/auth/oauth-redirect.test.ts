@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { getOAuthRequestOrigin, resolveOAuthRedirectUri } from "./oauth-redirect"
+import {
+  getOAuthRequestOrigin,
+  resolveOAuthRedirectUri,
+} from "./oauth-redirect"
 
 describe("OAuth redirect URI resolution", () => {
   it("uses the host header before Next's parsed origin", () => {

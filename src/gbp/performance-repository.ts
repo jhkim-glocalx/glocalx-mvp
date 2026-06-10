@@ -3,6 +3,7 @@ import { z } from "zod"
 import { locationStatusSchema } from "@/domain/location-status"
 import { googleBusinessManageScope } from "@/integrations/credentials"
 import type { SqliteDatabase } from "@/server/db/sqlite"
+import { decryptToken } from "@/auth/token-encryption"
 
 export type GbpPerformanceConnection =
   | {
@@ -46,15 +47,6 @@ const locationRowSchema = z
   })
   .strict()
 
-function unwrapPlaceholderToken(encryptedToken: string): string | undefined {
-  const prefix = "encrypted:"
-  if (!encryptedToken.startsWith(prefix)) {
-    return undefined
-  }
-  const token = encryptedToken.slice(prefix.length).trim()
-  return token === "" ? undefined : token
-}
-
 function parseScopes(scopesJson: string): readonly string[] {
   let payload: unknown
   try {
@@ -85,7 +77,7 @@ export function loadGbpPerformanceConnection(
     return { kind: "missing_business_manage_scope" }
   }
 
-  const accessToken = unwrapPlaceholderToken(parsed.encrypted_access_token)
+  const accessToken = decryptToken(parsed.encrypted_access_token)
   if (accessToken === undefined) {
     return { kind: "token_unavailable" }
   }

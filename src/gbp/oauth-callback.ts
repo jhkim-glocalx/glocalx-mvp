@@ -1,5 +1,6 @@
 import { googleBusinessManageScope } from "@/integrations/credentials"
 import type { SqliteDatabase } from "@/server/db/sqlite"
+import { encryptToken } from "@/auth/token-encryption"
 
 export const googleOAuthStateCookieName = "glocalx_google_oauth_state"
 export const googleOAuthStateCookieOptions = {
@@ -7,6 +8,7 @@ export const googleOAuthStateCookieOptions = {
   maxAge: 60 * 10,
   path: "/",
   sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
 } as const
 export const expiredGoogleOAuthStateCookieOptions = {
   ...googleOAuthStateCookieOptions,
@@ -57,7 +59,7 @@ export function handleGoogleOAuthCallback(
       options.storeId,
       "GOOGLE",
       "production-google-oauth-placeholder",
-      `encrypted:${options.code}`,
+      encryptToken(options.code),
       null,
       JSON.stringify(googleOAuthScopes),
       null,

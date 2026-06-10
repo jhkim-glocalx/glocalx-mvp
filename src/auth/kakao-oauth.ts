@@ -9,6 +9,7 @@ export const kakaoOAuthStateCookieOptions = {
   maxAge: 60 * 10,
   path: "/",
   sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
 } as const
 export const expiredKakaoOAuthStateCookieOptions = {
   ...kakaoOAuthStateCookieOptions,

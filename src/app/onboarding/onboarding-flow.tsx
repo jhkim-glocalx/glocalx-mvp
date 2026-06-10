@@ -73,7 +73,9 @@ export function OnboardingFlow() {
   function handleNaverLinkAttach(): void {
     setInputMode("naverLink")
     setInput((currentInput) =>
-      currentInput.trim() === "" ? "https://naver.me/mybrunchcafe" : currentInput
+      currentInput.trim() === ""
+        ? "https://naver.me/mybrunchcafe"
+        : currentInput
     )
     focusStoreInput()
   }

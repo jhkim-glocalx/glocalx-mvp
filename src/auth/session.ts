@@ -25,6 +25,7 @@ export const sessionCookieOptions = {
   maxAge: 60 * 60 * 24 * 7,
   path: "/",
   sameSite: "lax",
+  secure: process.env.NODE_ENV === "production",
 } as const
 
 export function ensureDemoOwnerStore(): void {

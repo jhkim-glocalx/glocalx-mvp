@@ -29,6 +29,6 @@ describe("login landing page", () => {
     const html = renderToStaticMarkup(<HomeView authErrorMessage={message} />)
 
     expect(html).toContain("카카오 Client Secret이 필요합니다.")
-    expect(html).toContain("role=\"alert\"")
+    expect(html).toContain('role="alert"')
   })
 })

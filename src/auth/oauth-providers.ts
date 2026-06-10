@@ -119,7 +119,10 @@ async function readJsonResponse(
   if (!response.ok) {
     const payloadRecord = isRecord(payload) ? payload : {}
     const error = readOptionalString(payloadRecord, "error")
-    const errorDescription = readOptionalString(payloadRecord, "error_description")
+    const errorDescription = readOptionalString(
+      payloadRecord,
+      "error_description"
+    )
     const errorCode = payloadRecord["error_code"]
     throw new OAuthProviderError(
       provider,

@@ -84,10 +84,7 @@ export function getIntegrationRuntimeDiagnostics(
     missingNaverEnvVars,
     naverCredentials: {
       NAVER_CLIENT_ID: safeEnvValueDiagnostics(env, "NAVER_CLIENT_ID"),
-      NAVER_CLIENT_SECRET: safeEnvValueDiagnostics(
-        env,
-        "NAVER_CLIENT_SECRET"
-      ),
+      NAVER_CLIENT_SECRET: safeEnvValueDiagnostics(env, "NAVER_CLIENT_SECRET"),
     },
     nodeEnv: env["NODE_ENV"] ?? null,
     selectedNaverSearch,

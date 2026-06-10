@@ -35,11 +35,7 @@ export function OnboardingTopBar() {
           </p>
         </div>
       </div>
-      <span
-        aria-label="더보기"
-        className="gx-app-menu"
-        role="img"
-      >
+      <span aria-label="더보기" className="gx-app-menu" role="img">
         ⋮
       </span>
     </>
@@ -73,7 +69,9 @@ export function OnboardingIntro({
 }) {
   return (
     <section aria-label="온보딩 대화" className="grid gap-3">
-      <div className="gx-chat-divider">STEP 1 · 온보딩 / 구글비즈니스프로필 세팅</div>
+      <div className="gx-chat-divider">
+        STEP 1 · 온보딩 / 구글비즈니스프로필 세팅
+      </div>
       <ChatMessage
         message="안녕하세요 사장님! 👋 저는 가게의 글로벌 마케팅을 도와드릴 글로컬엑스예요. 먼저 가게를 등록할게요. 네이버 플레이스 링크나 가게 이름을 알려주시겠어요?"
         speaker="assistant"

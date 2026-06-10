@@ -24,7 +24,9 @@ function firstHeaderValue(value: string | null): string | undefined {
 }
 
 export function getOAuthRequestOrigin(request: OAuthOriginRequest): string {
-  const forwardedHost = firstHeaderValue(request.headers.get("x-forwarded-host"))
+  const forwardedHost = firstHeaderValue(
+    request.headers.get("x-forwarded-host")
+  )
   const host = forwardedHost ?? firstHeaderValue(request.headers.get("host"))
   if (host === undefined) {
     return request.nextUrl.origin
@@ -33,7 +35,8 @@ export function getOAuthRequestOrigin(request: OAuthOriginRequest): string {
   const forwardedProtocol = firstHeaderValue(
     request.headers.get("x-forwarded-proto")
   )
-  const protocol = forwardedProtocol ?? request.nextUrl.protocol.replace(/:$/, "")
+  const protocol =
+    forwardedProtocol ?? request.nextUrl.protocol.replace(/:$/, "")
   return `${protocol}://${host}`
 }
 
