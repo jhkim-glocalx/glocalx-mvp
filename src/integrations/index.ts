@@ -1,5 +1,4 @@
 import type {
-  AdapterEnvironment,
   CreateIntegrationAdaptersOptions,
   IntegrationAdapters,
 } from "./contracts"
@@ -9,11 +8,10 @@ import {
   createProductionLocalPosts,
   createProductionNaverSearch,
   createProductionReviews,
-  naverEnvVars,
 } from "./production"
-import { missingEnvVars } from "./credentials"
 import { createProductionMarketingGeneration } from "./openai-production"
 import { createProductionPerformance } from "./production-performance"
+import { shouldUsePreviewNaverStub } from "./runtime-diagnostics"
 import {
   createStubBusinessInformation,
   createStubClock,
@@ -27,13 +25,6 @@ import {
   createStubTranslation,
 } from "./stub"
 import { createStubPerformance } from "./stub-performance"
-
-function shouldUsePreviewNaverStub(env: AdapterEnvironment): boolean {
-  return (
-    (env["VERCEL_ENV"] === "preview" || env["VERCEL_ENV"] === "development") &&
-    missingEnvVars(env, naverEnvVars).length > 0
-  )
-}
 
 export function createIntegrationAdapters(
   options: CreateIntegrationAdaptersOptions = {}
