@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import type { ReactNode, Ref } from "react"
 
 type MobileShellProps = {
   readonly bottomBar?: ReactNode
@@ -6,6 +6,7 @@ type MobileShellProps = {
   readonly children: ReactNode
   readonly className?: string
   readonly screenClassName?: string
+  readonly screenRef?: Ref<HTMLDivElement>
   readonly testId?: string
   readonly topBar?: ReactNode
 }
@@ -16,6 +17,7 @@ export function MobileShell({
   children,
   className,
   screenClassName,
+  screenRef,
   testId,
   topBar,
 }: MobileShellProps) {
@@ -36,6 +38,7 @@ export function MobileShell({
         {topBar ? <header className="gx-appbar">{topBar}</header> : null}
         <div
           className={["gx-screen", screenClassName].filter(Boolean).join(" ")}
+          ref={screenRef}
         >
           {children}
         </div>

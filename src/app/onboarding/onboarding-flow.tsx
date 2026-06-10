@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 
 import { MobileShell } from "@/app/_components/mobile-shell"
 
@@ -57,11 +57,30 @@ export function OnboardingFlow() {
     "naverLink"
   )
   const inputRef = useRef<HTMLInputElement>(null)
+  const screenRef = useRef<HTMLDivElement>(null)
   const [profileDraft, setProfileDraft] = useState<
     StoreProfileDraft | undefined
   >(undefined)
   const [setup, setSetup] = useState<SetupState>({ kind: "idle" })
   const [submittedInput, setSubmittedInput] = useState("")
+
+  useEffect(() => {
+    const hasNewResult =
+      extraction.kind !== "idle" ||
+      confirmation.kind !== "idle" ||
+      setup.kind !== "idle"
+
+    if (!hasNewResult) {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const screen = screenRef.current
+      screen?.scrollTo({ behavior: "smooth", top: screen.scrollHeight })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [confirmation.kind, extraction.kind, setup.kind])
 
   function focusStoreInput(): void {
     window.requestAnimationFrame(() => {
@@ -238,6 +257,7 @@ export function OnboardingFlow() {
             </button>
           </form>
         }
+        screenRef={screenRef}
         topBar={<OnboardingTopBar />}
       >
         <OnboardingIntro
