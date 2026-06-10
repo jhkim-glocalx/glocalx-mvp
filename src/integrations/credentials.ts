@@ -19,6 +19,11 @@ export function missingEnvVars(
 ): readonly string[] {
   return names.filter((name) => {
     const value = env[name]
-    return value === undefined || value.trim() === ""
+    if (value === undefined) {
+      return true
+    }
+
+    const trimmedValue = value.trim()
+    return trimmedValue === "" || trimmedValue.startsWith("replace-with-")
   })
 }

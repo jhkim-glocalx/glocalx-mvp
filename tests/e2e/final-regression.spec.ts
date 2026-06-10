@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs"
 
 import { openDatabase } from "../../src/server/db/sqlite"
 import { resetE2eDatabase } from "./global-setup"
+import { uploadMarketingImageAndGenerateDraft } from "./marketing-helpers"
 
 const prototypeChromePatterns = [
   /화면\s*구조도/,
@@ -99,7 +100,8 @@ test("full unified stub happy path", async ({ page }) => {
   await expectNoPrototypeChrome(page)
   await completeSetup(page)
   await expectNoPrototypeChrome(page)
-  await page.getByRole("button", { name: "다채널 포스팅" }).click()
+  await uploadMarketingImageAndGenerateDraft(page)
+  await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
   await page.getByRole("button", { name: /게시물 발행/ }).click()
   await expect(

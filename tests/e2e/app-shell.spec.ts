@@ -46,7 +46,9 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
   await expect(photoTab).toHaveAttribute("aria-current", "page")
   await postingTab.click()
   await expect(postingTab).toHaveAttribute("aria-current", "page")
-  await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
+  await expect(
+    page.getByText("이미지와 홍보 의도를 먼저 분석하면")
+  ).toBeVisible()
 
   writeFileSync(
     ".omo/evidence/task-3-bottom-nav-keyboard.txt",
@@ -114,10 +116,9 @@ test("mobile shell frame keeps controls visible", async ({ page }) => {
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
-  await expect(page.getByRole("button", { name: "사진 고도화" })).toHaveAttribute(
-    "aria-current",
-    "page"
-  )
+  await expect(
+    page.getByRole("button", { name: "사진 고도화" })
+  ).toHaveAttribute("aria-current", "page")
 
   const metrics = await page.evaluate(() => ({
     innerWidth: window.innerWidth,

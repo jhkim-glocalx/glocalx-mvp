@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test"
 
 import { openDatabase } from "../../src/server/db/sqlite"
 import { resetE2eDatabase } from "./global-setup"
+import { uploadMarketingImageAndGenerateDraft } from "./marketing-helpers"
 
 function resetFirstTimeE2eDatabase(): void {
   resetE2eDatabase()
@@ -44,8 +45,17 @@ test("app posting preview matches the reference flow", async ({ page }) => {
     page.getByRole("button", { name: "다채널 포스팅" })
   ).toHaveAttribute("aria-current", "page")
 
+  await expect(
+    page.getByText("이미지와 홍보 의도를 먼저 분석하면")
+  ).toBeVisible()
+  await page.getByRole("button", { name: "사진 고도화" }).click()
+  await uploadMarketingImageAndGenerateDraft(page)
+  await expect(page.getByText("스마트 제안")).toBeVisible()
+  await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
-  await expect(page.getByText("브런치 신메뉴 · 1:1")).toBeVisible()
+  await expect(page.getByRole("tab", { name: "Instagram 피드" })).toBeVisible()
+  await page.getByRole("tab", { name: "Instagram 피드" }).click()
+  await expect(page.getByText("이번 주말")).toBeVisible()
   await expect(page.getByText("#홍대브런치")).toBeVisible()
   await page.screenshot({
     fullPage: true,
@@ -61,6 +71,9 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "다채널 포스팅" })
   ).toHaveAttribute("aria-current", "page")
+  await page.getByRole("button", { name: "사진 고도화" }).click()
+  await uploadMarketingImageAndGenerateDraft(page)
+  await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await page.getByRole("button", { name: /게시물 발행/ }).click()
 
   await expect(
@@ -79,14 +92,17 @@ test("app report and dashboard screens render reference metrics", async ({
   await completeOnboarding(page)
 
   await page.getByRole("button", { name: "성과 리포트" }).click()
-  await expect(page.getByRole("button", { name: "성과 리포트" })).toHaveAttribute(
-    "aria-current",
-    "page"
-  )
+  await expect(
+    page.getByRole("button", { name: "성과 리포트" })
+  ).toHaveAttribute("aria-current", "page")
   await expect(page.getByText("주간 성과 리포트 · 5/26~6/1")).toBeVisible()
   await expect(page.getByText("12,480")).toBeVisible()
 
-  await page.getByRole("button", { name: "📊 성과 대시보드 자세히 보기" }).click()
-  await expect(page.getByRole("heading", { name: "성과 대시보드" })).toBeVisible()
+  await page
+    .getByRole("button", { name: "📊 성과 대시보드 자세히 보기" })
+    .click()
+  await expect(
+    page.getByRole("heading", { name: "성과 대시보드" })
+  ).toBeVisible()
   await expect(page.getByText("프로필 조회")).toBeVisible()
 })

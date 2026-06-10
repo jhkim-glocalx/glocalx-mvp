@@ -39,7 +39,7 @@ describe("post-flow", () => {
     const adapters = createIntegrationAdapters({ database, env: {} })
 
     // When
-    const result = createPostDraft({
+    const result = await createPostDraft({
       adapters,
       database,
       ownerIntent: "주말 브런치 신메뉴 홍보",
@@ -61,11 +61,66 @@ describe("post-flow", () => {
     database.close()
   })
 
+  it("creates an image-led marketing draft with analysis, suggestion, and platform previews", async () => {
+    // Given
+    const database = await createDatabase()
+    const adapters = createIntegrationAdapters({ database, env: {} })
+
+    // When
+    const result = await createPostDraft({
+      adapters,
+      database,
+      imageAssets: [
+        {
+          dataUrl: "data:image/png;base64,c3R1Yi1pbWFnZQ==",
+          id: "asset-menu",
+          mimeType: "image/png",
+          name: "menu.png",
+          sizeBytes: 10,
+        },
+      ],
+      ownerIntent: "이번 주말 브런치 신메뉴 홍보",
+      storeId: "demo-store",
+      suggestionMode: "request",
+      targetChannel: "GBP",
+    })
+
+    // Then
+    expect(result.preview.intentAnalysis).toMatchObject({
+      objective: "주말 신메뉴 프로모션으로 방문 예약과 저장을 유도",
+    })
+    expect(result.preview.images?.[0]).toMatchObject({
+      assetId: "asset-menu",
+      editedLabel: "선명도 + 메뉴 집중",
+    })
+    expect(result.preview.suggestion).toMatchObject({
+      id: "suggest-closeup-weekend-menu",
+    })
+    expect(result.preview.platformPreviews).toHaveLength(2)
+    expect(result.preview.platformPreviews?.[0]).toMatchObject({
+      platform: "GBP",
+      imageAssetId: "asset-menu",
+    })
+
+    const row = database
+      .prepare(
+        "SELECT revision_of_draft_id, marketing_preview_json FROM post_drafts WHERE id = ?"
+      )
+      .get(result.draftId) as
+      | { revision_of_draft_id: string | null; marketing_preview_json: string }
+      | undefined
+    expect(row?.revision_of_draft_id).toBeNull()
+    expect(JSON.parse(row?.marketing_preview_json ?? "{}")).toMatchObject({
+      platformPreviews: [{ platform: "GBP" }, { platform: "INSTAGRAM" }],
+    })
+    database.close()
+  })
+
   it("publishes a draft idempotently with deterministic stub history", async () => {
     // Given
     const database = await createDatabase()
     const adapters = createIntegrationAdapters({ database, env: {} })
-    const draft = createPostDraft({
+    const draft = await createPostDraft({
       adapters,
       database,
       ownerIntent: "주말 브런치 신메뉴 홍보",
@@ -125,7 +180,7 @@ describe("post-flow", () => {
     database
       .prepare("UPDATE gbp_locations SET status = ? WHERE id = ?")
       .run("VERIFICATION_PENDING", "demo-gbp-location")
-    const draft = createPostDraft({
+    const draft = await createPostDraft({
       adapters,
       database,
       ownerIntent: "주말 브런치 신메뉴 홍보",
@@ -156,7 +211,7 @@ describe("post-flow", () => {
     // Given
     const database = await createDatabase()
     const adapters = createIntegrationAdapters({ database, env: {} })
-    const draft = createPostDraft({
+    const draft = await createPostDraft({
       adapters,
       database,
       ownerIntent: "주말 브런치 신메뉴 홍보",
@@ -204,7 +259,7 @@ describe("post-flow", () => {
     // Given
     const database = await createDatabase()
     const adapters = createIntegrationAdapters({ database, env: {} })
-    const original = createPostDraft({
+    const original = await createPostDraft({
       adapters,
       database,
       ownerIntent: "주말 브런치 신메뉴 홍보",
@@ -213,7 +268,7 @@ describe("post-flow", () => {
     })
 
     // When
-    const revised = revisePostDraft({
+    const revised = await revisePostDraft({
       adapters,
       database,
       originalDraftId: original.draftId,

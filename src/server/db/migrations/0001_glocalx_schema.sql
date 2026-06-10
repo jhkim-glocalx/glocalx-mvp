@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS post_drafts (
   status TEXT NOT NULL CHECK (status IN ('DRAFT', 'APPROVED', 'PUBLISHED', 'FAILED')),
   korean_copy TEXT NOT NULL,
   english_copy TEXT NOT NULL,
+  revision_of_draft_id TEXT REFERENCES post_drafts(id),
+  marketing_preview_json TEXT,
   created_at TEXT NOT NULL
 );
 

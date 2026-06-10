@@ -37,4 +37,24 @@ describe("missing-credentials", () => {
       missingEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
     })
   })
+
+  it("reports missing OpenAI credentials for live marketing generation", async () => {
+    const adapters = createIntegrationAdapters({
+      env: { APP_INTEGRATION_MODE: "production" },
+    })
+
+    const result = await adapters.marketingGeneration.generateMarketingDraft({
+      imageAssets: [],
+      ownerIntent: "이번 주말 브런치 신메뉴 홍보",
+      storeAddress: "서울 마포구 와우산로 123",
+      storeName: "브런치모먼트 홍대점",
+      suggestionMode: "request",
+    })
+
+    expect(result).toEqual({
+      kind: "blocked_by_credentials",
+      code: "BLOCKED_BY_CREDENTIALS",
+      missingEnvVars: ["OPENAI_API_KEY"],
+    })
+  })
 })

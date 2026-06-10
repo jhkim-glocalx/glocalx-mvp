@@ -1,12 +1,20 @@
 import type { LocationStatus } from "@/domain/location-status"
-import type { IntegrationAdapters } from "@/integrations/contracts"
+import type {
+  IntegrationAdapters,
+  MarketingGenerationResult,
+  MarketingImageAssetInput,
+  MarketingSuggestionMode,
+} from "@/integrations/contracts"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
 export type CreatePostDraftOptions = {
+  readonly acceptedSuggestionId?: string
   readonly adapters: IntegrationAdapters
   readonly database: SqliteDatabase
+  readonly imageAssets?: readonly MarketingImageAssetInput[]
   readonly ownerIntent: string
   readonly storeId: string
+  readonly suggestionMode?: MarketingSuggestionMode
   readonly targetChannel: "GBP"
 }
 
@@ -36,12 +44,21 @@ export type StoredPostDraft = {
   readonly id: string
   readonly koreanCopy: string
   readonly englishCopy: string
+  readonly preview: PostPreview | null
 }
 
-export type PostPreview = {
+export type MarketingGenerationStatus =
+  | { readonly kind: "stub" | "ready" }
+  | {
+      readonly kind: "blocked_by_credentials"
+      readonly missingEnvVars: readonly string[]
+    }
+
+export type PostPreview = Partial<MarketingGenerationResult> & {
   readonly canPublish: boolean
   readonly koreanCopy: string
   readonly englishCopy: string
+  readonly generationStatus?: MarketingGenerationStatus
 }
 
 export type PostDraftResult = {

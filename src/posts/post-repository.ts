@@ -27,6 +27,7 @@ const draftRowSchema = z.object({
   id: z.string(),
   korean_copy: z.string(),
   english_copy: z.string(),
+  marketing_preview_json: z.string().nullable().optional(),
 })
 
 const attemptRowSchema = z.object({
@@ -46,6 +47,7 @@ type InsertDraftOptions = {
   readonly now: Date
   readonly ownerIntent: string
   readonly preview: PostPreview
+  readonly revisionOfDraftId?: string
   readonly storeId: string
   readonly targetChannel: "GBP"
 }
@@ -104,7 +106,7 @@ export function getDraft(
   const parsed = draftRowSchema.parse(
     database
       .prepare(
-        "SELECT id, korean_copy, english_copy FROM post_drafts WHERE id = ?"
+        "SELECT id, korean_copy, english_copy, marketing_preview_json FROM post_drafts WHERE id = ?"
       )
       .get(draftId)
   )
@@ -112,6 +114,11 @@ export function getDraft(
     id: parsed.id,
     koreanCopy: parsed.korean_copy,
     englishCopy: parsed.english_copy,
+    preview:
+      parsed.marketing_preview_json === null ||
+      parsed.marketing_preview_json === undefined
+        ? null
+        : (JSON.parse(parsed.marketing_preview_json) as PostPreview),
   }
 }
 
@@ -189,7 +196,7 @@ export function nextAttemptNumber(
 export function insertDraft(options: InsertDraftOptions): void {
   options.database
     .prepare(
-      "INSERT OR REPLACE INTO post_drafts (id, store_id, owner_intent, target_channel, status, korean_copy, english_copy, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT OR REPLACE INTO post_drafts (id, store_id, owner_intent, target_channel, status, korean_copy, english_copy, created_at, revision_of_draft_id, marketing_preview_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       options.draftId,
@@ -199,7 +206,9 @@ export function insertDraft(options: InsertDraftOptions): void {
       "DRAFT",
       options.preview.koreanCopy,
       options.preview.englishCopy,
-      options.now.toISOString()
+      options.now.toISOString(),
+      options.revisionOfDraftId ?? null,
+      JSON.stringify(options.preview)
     )
 }
 

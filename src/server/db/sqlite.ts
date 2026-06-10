@@ -49,6 +49,28 @@ const migrationPath = join(
   "0001_glocalx_schema.sql"
 )
 
+function ensureColumn(
+  database: SqliteDatabase,
+  tableName: string,
+  columnName: string,
+  definition: string
+): void {
+  const rows = database.prepare(`PRAGMA table_info(${tableName})`).all()
+  const hasColumn = rows.some(
+    (row) =>
+      typeof row === "object" &&
+      row !== null &&
+      "name" in row &&
+      row.name === columnName
+  )
+
+  if (!hasColumn) {
+    database.exec(
+      `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`
+    )
+  }
+}
+
 export function resolveDefaultDatabasePath(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): string {
@@ -83,6 +105,8 @@ export function openDatabase(
 
 export function applyMigrations(database: SqliteDatabase): void {
   database.exec(readFileSync(migrationPath, "utf8"))
+  ensureColumn(database, "post_drafts", "revision_of_draft_id", "TEXT")
+  ensureColumn(database, "post_drafts", "marketing_preview_json", "TEXT")
 }
 
 export function seedDemoData(database: SqliteDatabase): void {
@@ -195,7 +219,7 @@ export function seedDemoData(database: SqliteDatabase): void {
 
   database
     .prepare(
-      "INSERT OR IGNORE INTO post_drafts (id, store_id, owner_intent, target_channel, status, korean_copy, english_copy, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT OR IGNORE INTO post_drafts (id, store_id, owner_intent, target_channel, status, korean_copy, english_copy, created_at, revision_of_draft_id, marketing_preview_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       "demo-post-draft",
@@ -205,7 +229,9 @@ export function seedDemoData(database: SqliteDatabase): void {
       "DRAFT",
       "이번 주말 브런치 신메뉴를 만나보세요.",
       "Try our new weekend brunch menu.",
-      createdAt
+      createdAt,
+      null,
+      null
     )
 
   database

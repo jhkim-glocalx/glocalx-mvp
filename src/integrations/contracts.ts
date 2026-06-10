@@ -96,6 +96,74 @@ export type CreateLocalPostInput = {
   readonly summary: string
 }
 
+export type MarketingPlatform = "GBP" | "INSTAGRAM"
+
+export type MarketingSuggestionMode = "request" | "accepted" | "skipped"
+
+export type MarketingImageAssetInput = {
+  readonly dataUrl?: string | undefined
+  readonly id: string
+  readonly name: string
+  readonly mimeType: string
+  readonly sizeBytes: number
+}
+
+export type MarketingGenerationInput = {
+  readonly acceptedSuggestionId?: string
+  readonly imageAssets: readonly MarketingImageAssetInput[]
+  readonly ownerIntent: string
+  readonly storeAddress: string
+  readonly storeName: string
+  readonly suggestionMode: MarketingSuggestionMode
+}
+
+export type MarketingIntentAnalysis = {
+  readonly audience: string
+  readonly keywords: readonly string[]
+  readonly objective: string
+  readonly promotionWindow: string
+  readonly tone: string
+}
+
+export type MarketingImageOutput = {
+  readonly altText: string
+  readonly assetId: string
+  readonly cropFocus: string
+  readonly cssFilter: string
+  readonly editedDataUrl?: string | undefined
+  readonly editedLabel: string
+  readonly editSummary: string
+  readonly originalLabel: string
+  readonly qualityScore: number
+}
+
+export type MarketingSuggestion = {
+  readonly id: string
+  readonly message: string
+  readonly ownerAction: string
+  readonly rationale: string
+  readonly revisedIntent: string
+  readonly title: string
+}
+
+export type MarketingPlatformPreview = {
+  readonly aspectRatio: string
+  readonly callToAction: string
+  readonly copy: string
+  readonly hashtags: readonly string[]
+  readonly imageAssetId: string | null
+  readonly label: string
+  readonly platform: MarketingPlatform
+  readonly uploadNotes: readonly string[]
+}
+
+export type MarketingGenerationResult = {
+  readonly images: readonly MarketingImageOutput[]
+  readonly intentAnalysis: MarketingIntentAnalysis
+  readonly platformPreviews: readonly MarketingPlatformPreview[]
+  readonly suggestion: MarketingSuggestion | null
+}
+
 export type ListReviewsInput = {
   readonly accessToken: string
   readonly parent: string
@@ -207,6 +275,12 @@ export interface ContentGenerationAdapter {
   ): AdapterResult<{ readonly korean: string; readonly english: string }>
 }
 
+export interface MarketingGenerationAdapter {
+  generateMarketingDraft(
+    input: MarketingGenerationInput
+  ): Promise<AdapterResult<MarketingGenerationResult>>
+}
+
 export interface TranslationAdapter {
   translate(
     text: string,
@@ -231,6 +305,7 @@ export type IntegrationAdapters = {
   readonly gbpPerformance: GbpPerformanceAdapter
   readonly gbpReviews: GbpReviewsAdapter
   readonly contentGeneration: ContentGenerationAdapter
+  readonly marketingGeneration: MarketingGenerationAdapter
   readonly translation: TranslationAdapter
   readonly clock: ClockAdapter
   readonly jobScheduler: JobSchedulerAdapter

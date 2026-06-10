@@ -59,11 +59,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const adapters = createIntegrationAdapters({ database })
-    const result = createPostDraft({
+    const result = await createPostDraft({
       adapters,
       database,
+      ...(parsed.value.acceptedSuggestionId === undefined
+        ? {}
+        : { acceptedSuggestionId: parsed.value.acceptedSuggestionId }),
+      imageAssets: parsed.value.imageAssets ?? [],
       ownerIntent: parsed.value.ownerIntent,
       storeId: parsed.value.storeId,
+      suggestionMode: parsed.value.suggestionMode ?? "request",
       targetChannel: parsed.value.targetChannel,
     })
     return Response.json(result)

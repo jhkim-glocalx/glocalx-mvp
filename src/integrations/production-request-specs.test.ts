@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { createIntegrationAdapters } from "./index"
 import {
@@ -14,6 +14,7 @@ const productionEnv = {
   NAVER_CLIENT_SECRET: "test-naver-secret",
   GOOGLE_CLIENT_ID: "test-google-client",
   GOOGLE_CLIENT_SECRET: "test-google-secret",
+  OPENAI_API_KEY: "test-openai-key",
 } as const
 
 function responseWithUrl(body: string, url: string): Response {
@@ -302,6 +303,110 @@ describe("production request specs", () => {
         headers: { Authorization: "Bearer test-access-token" },
         requiredScopes: ["https://www.googleapis.com/auth/business.manage"],
         body: { comment: "감사합니다." },
+      },
+    })
+  })
+
+  it("generates a live marketing draft through OpenAI responses and image edits", async () => {
+    const marketingPayload = {
+      images: [
+        {
+          altText: "브런치모먼트 홍대점 신메뉴",
+          assetId: "asset-menu",
+          cropFocus: "메뉴 중심",
+          cssFilter: "contrast(1.08) saturate(1.12)",
+          editedLabel: "선명한 메뉴컷",
+          editSummary: "대표 메뉴를 선명하게 보정",
+          originalLabel: "menu.png",
+          qualityScore: 91,
+        },
+      ],
+      intentAnalysis: {
+        audience: "홍대 브런치 방문객",
+        keywords: ["브런치", "신메뉴"],
+        objective: "주말 신메뉴 방문 유도",
+        promotionWindow: "이번 주말",
+        tone: "따뜻하고 활기찬 톤",
+      },
+      platformPreviews: [
+        {
+          aspectRatio: "4:3",
+          callToAction: "길찾기",
+          copy: "브런치모먼트 홍대점에서 이번 주말 신메뉴를 만나보세요.",
+          hashtags: ["#홍대브런치"],
+          imageAssetId: "asset-menu",
+          label: "Google 비즈니스 프로필",
+          platform: "GBP",
+          uploadNotes: ["매장명 포함"],
+        },
+      ],
+      suggestion: null,
+    }
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            output_text: JSON.stringify(marketingPayload),
+          })
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: [{ b64_json: "ZWRpdGVkLWltYWdl" }],
+          })
+        )
+      )
+    const adapters = createIntegrationAdapters({
+      env: productionEnv,
+      fetchImpl,
+    })
+
+    const result = await adapters.marketingGeneration.generateMarketingDraft({
+      imageAssets: [
+        {
+          dataUrl: "data:image/png;base64,bWVudS1pbWFnZQ==",
+          id: "asset-menu",
+          mimeType: "image/png",
+          name: "menu.png",
+          sizeBytes: 10,
+        },
+      ],
+      ownerIntent: "이번 주말 브런치 신메뉴 홍보",
+      storeAddress: "서울 마포구 와우산로 123",
+      storeName: "브런치모먼트 홍대점",
+      suggestionMode: "request",
+    })
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      1,
+      "https://api.openai.com/v1/responses",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-openai-key",
+          "Content-Type": "application/json",
+        }),
+        method: "POST",
+      })
+    )
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      "https://api.openai.com/v1/images/edits",
+      expect.objectContaining({
+        headers: { Authorization: "Bearer test-openai-key" },
+        method: "POST",
+      })
+    )
+    expect(result).toMatchObject({
+      kind: "ok",
+      value: {
+        images: [
+          {
+            assetId: "asset-menu",
+            editedDataUrl: "data:image/png;base64,ZWRpdGVkLWltYWdl",
+          },
+        ],
       },
     })
   })

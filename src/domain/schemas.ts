@@ -52,9 +52,32 @@ export const gbpSetupRequestSchema = z
   })
   .strict()
 
+export const marketingSuggestionModeSchema = z.enum([
+  "request",
+  "accepted",
+  "skipped",
+])
+
+export const postImageAssetSchema = z
+  .object({
+    dataUrl: z
+      .string()
+      .regex(/^data:image\/(png|jpe?g|webp);base64,/)
+      .max(1_700_000)
+      .optional(),
+    id: nonEmptyStringSchema,
+    mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    name: nonEmptyStringSchema,
+    sizeBytes: z.number().int().nonnegative().max(1_200_000),
+  })
+  .strict()
+
 export const postDraftRequestSchema = z
   .object({
+    acceptedSuggestionId: nonEmptyStringSchema.optional(),
+    imageAssets: z.array(postImageAssetSchema).max(4).optional(),
     storeId: nonEmptyStringSchema,
+    suggestionMode: marketingSuggestionModeSchema.optional(),
     ownerIntent: nonEmptyStringSchema,
     targetChannel: z.literal("GBP"),
   })
@@ -73,6 +96,10 @@ export type OnboardingExtractionRequest = z.infer<
 export type GbpSetupRequest = z.infer<typeof gbpSetupRequestSchema>
 export type PostDraftRequest = z.infer<typeof postDraftRequestSchema>
 export type PostPublishRequest = z.infer<typeof postPublishRequestSchema>
+export type PostImageAsset = z.infer<typeof postImageAssetSchema>
+export type MarketingSuggestionMode = z.infer<
+  typeof marketingSuggestionModeSchema
+>
 export type MissingBusinessField = z.infer<typeof missingBusinessFieldSchema>
 export type BusinessProfileCoordinates = z.infer<
   typeof businessProfileCoordinatesSchema

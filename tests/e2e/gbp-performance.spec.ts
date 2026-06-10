@@ -88,10 +88,9 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
 
   // Then: the default photo-enhancement step is visible.
   await expect(page.getByText("STEP 2 · 사진 자동 고도화")).toBeVisible()
-  await expect(page.getByRole("button", { name: "사진 고도화" })).toHaveAttribute(
-    "aria-current",
-    "page"
-  )
+  await expect(
+    page.getByRole("button", { name: "사진 고도화" })
+  ).toHaveAttribute("aria-current", "page")
 
   // When: the owner opens the reference report and dashboard screens.
   await page.getByRole("button", { name: "성과 리포트" }).click()
@@ -99,8 +98,12 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
   // Then: the report card is visible.
   await expect(page.getByText("주간 성과 리포트 · 5/26~6/1")).toBeVisible()
   await expect(page.getByText("12,480")).toBeVisible()
-  await page.getByRole("button", { name: "📊 성과 대시보드 자세히 보기" }).click()
-  await expect(page.getByRole("heading", { name: "성과 대시보드" })).toBeVisible()
+  await page
+    .getByRole("button", { name: "📊 성과 대시보드 자세히 보기" })
+    .click()
+  await expect(
+    page.getByRole("heading", { name: "성과 대시보드" })
+  ).toBeVisible()
   await expect(page.getByText("채널별 노출 비중")).toBeVisible()
   const dashboardMetrics = await readOverflowMetrics(page)
   await page.screenshot({
@@ -118,8 +121,10 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
   await page.getByRole("button", { name: "뒤로" }).click()
   await page.getByRole("button", { name: "다채널 포스팅" }).click()
 
-  // Then: the posting preview remains available.
-  await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
+  // Then: the posting flow remains available.
+  await expect(
+    page.getByText("이미지와 홍보 의도를 먼저 분석하면")
+  ).toBeVisible()
   const metrics = await readOverflowMetrics(page)
   expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
   expect(metrics.bodyScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)

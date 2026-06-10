@@ -1,6 +1,8 @@
 "use client"
 
-import type { CSSProperties, ReactNode } from "react"
+/* eslint-disable @next/next/no-img-element */
+
+import type { CSSProperties, FormEvent, ReactNode } from "react"
 
 import { ChatMessage } from "@/app/_components/chat-message"
 import { ExtractionPanel } from "@/app/onboarding/onboarding-panels"
@@ -12,11 +14,23 @@ import type {
 import {
   appNavItems,
   type AppNavId,
+  type DraftImagePreview,
+  type DraftState,
+  type MarketingImageAsset,
+  type MarketingPlatform,
   type PublishState,
 } from "./app-workspace-model"
 
 type ReferenceFlowScreensProps = {
   readonly activeNavId: AppNavId
+  readonly activePlatform: MarketingPlatform
+  readonly draft: DraftState
+  readonly imageAssets: readonly MarketingImageAsset[]
+  readonly intent: string
+  readonly onDraftSubmit: () => void
+  readonly onImageFiles: (files: FileList | null) => void
+  readonly onIntentChange: (intent: string) => void
+  readonly onPlatformChange: (platform: MarketingPlatform) => void
   readonly onComposerPreset: (message: string) => void
   readonly onboardingExtraction: ExtractionState
   readonly onboardingProfileDraft: StoreProfileDraft | undefined
@@ -24,6 +38,8 @@ type ReferenceFlowScreensProps = {
   readonly onOnboardingCandidateSelect: (candidate: StoreProfileDraft) => void
   readonly onPublish: () => void
   readonly onSelect: (navId: AppNavId) => void
+  readonly onSuggestionAccept: () => void
+  readonly onSuggestionSkip: () => void
   readonly publish: PublishState
 }
 
@@ -98,7 +114,12 @@ function ChoiceButton({
   readonly tone?: "primary" | "ghost"
 }) {
   return (
-    <button className="gx-choice-chip" data-tone={tone} onClick={onClick} type="button">
+    <button
+      className="gx-choice-chip"
+      data-tone={tone}
+      onClick={onClick}
+      type="button"
+    >
       {children}
     </button>
   )
@@ -158,126 +179,323 @@ function OnboardingSnapshot({
   )
 }
 
-function PhotoScreen({ onSelect }: Pick<ReferenceFlowScreensProps, "onSelect">) {
+function AssetThumbs({
+  imageAssets,
+}: {
+  readonly imageAssets: readonly MarketingImageAsset[]
+}) {
+  if (imageAssets.length === 0) {
+    return (
+      <div className="gx-upload-empty">
+        <strong>이미지 자리</strong>
+        <span>메뉴, 매장, 이벤트 사진을 올릴 수 있습니다.</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="gx-upload-grid" aria-label="업로드된 이미지">
+      {imageAssets.map((asset) => (
+        <figure key={asset.id}>
+          <img alt={asset.name} src={asset.dataUrl} />
+          <figcaption>{asset.name}</figcaption>
+        </figure>
+      ))}
+    </div>
+  )
+}
+
+function ImageComparison({
+  image,
+  imageAssets,
+}: {
+  readonly image: DraftImagePreview
+  readonly imageAssets: readonly MarketingImageAsset[]
+}) {
+  const asset = imageAssets.find((candidate) => candidate.id === image.assetId)
+  const originalSrc = asset?.dataUrl
+  const editedSrc = image.editedDataUrl ?? originalSrc
+
+  return (
+    <div className="gx-image-compare gx-image-compare-live">
+      <figure>
+        {originalSrc === undefined ? null : (
+          <img alt={`${image.originalLabel} 원본`} src={originalSrc} />
+        )}
+        <figcaption>
+          <span>원본</span>
+          <strong>{image.originalLabel}</strong>
+        </figcaption>
+      </figure>
+      <figure>
+        {editedSrc === undefined ? null : (
+          <img
+            alt={image.altText}
+            src={editedSrc}
+            style={{
+              filter:
+                image.editedDataUrl === null ? image.cssFilter : undefined,
+            }}
+          />
+        )}
+        <figcaption>
+          <span>{image.editedLabel}</span>
+          <strong>
+            {image.qualityScore}점 · {image.cropFocus}
+          </strong>
+        </figcaption>
+      </figure>
+      <p>{image.editSummary}</p>
+    </div>
+  )
+}
+
+function PhotoScreen({
+  draft,
+  imageAssets,
+  intent,
+  onDraftSubmit,
+  onImageFiles,
+  onIntentChange,
+  onSelect,
+  onSuggestionAccept,
+  onSuggestionSkip,
+}: Pick<
+  ReferenceFlowScreensProps,
+  | "draft"
+  | "imageAssets"
+  | "intent"
+  | "onDraftSubmit"
+  | "onImageFiles"
+  | "onIntentChange"
+  | "onSelect"
+  | "onSuggestionAccept"
+  | "onSuggestionSkip"
+>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    onDraftSubmit()
+  }
+
   return (
     <>
       <ChatDivider>STEP 2 · 사진 자동 고도화</ChatDivider>
-      <ChatMessage
-        message='"이번 주말 브런치 신메뉴 홍보하고 싶어요. 사진 3장 올릴게요"'
-        speaker="owner"
-      />
       <ChatMessage speaker="assistant">
-        좋아요! 메시지에서 뭘 홍보하려는지 분석했어요.{" "}
-        <b>(FT-07 분석)</b>
+        먼저 게시물에 쓸 이미지와 홍보 의도를 함께 볼게요. 이미지의 목적, 보정
+        방향, 채널별 문구까지 한 번에 준비합니다.
       </ChatMessage>
-      <FlowCard title="🎯 의도 분석 결과">
-        <dl className="gx-check-list">
-          <div>
-            <dt>홍보 목적</dt>
-            <dd>주말 신메뉴 프로모션</dd>
-          </div>
-          <div>
-            <dt>업종</dt>
-            <dd>브런치 카페</dd>
-          </div>
-          <div>
-            <dt>SEO 키워드 힌트</dt>
-            <dd>브런치, 주말, 신메뉴</dd>
-          </div>
-        </dl>
+      <FlowCard title="이미지 + 홍보 의도">
+        <form className="gx-marketing-form" onSubmit={handleSubmit}>
+          <label className="gx-upload-picker">
+            <input
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              onChange={(event) => onImageFiles(event.currentTarget.files)}
+              type="file"
+            />
+            <span>이미지 업로드</span>
+          </label>
+          <AssetThumbs imageAssets={imageAssets} />
+          <label className="gx-intent-field">
+            <span>홍보 의도</span>
+            <textarea
+              onChange={(event) => onIntentChange(event.currentTarget.value)}
+              value={intent}
+            />
+          </label>
+          <button
+            className="gx-choice-chip"
+            disabled={draft.kind === "loading"}
+            type="submit"
+          >
+            AI 분석 및 이미지 개선
+          </button>
+        </form>
       </FlowCard>
-      <ChatMessage speaker="assistant">
-        올려주신 사진 화질을 확인했어요. 1장이 저해상도라 AI 깨끗하게 만들고 +
-        배경 정리를 했어요. <b>(FT-08)</b>
-      </ChatMessage>
-      <FlowCard title="🖼️ 이미지 품질 개선 (FT-08)">
-        <div className="gx-image-compare">
-          <div data-tone="muted">
-            <span>원본 · 저해상도</span>
-            <strong>흐릿한 사진</strong>
+      {draft.kind === "loading" ? (
+        <ChatMessage
+          message="이미지와 홍보 의도를 분석하는 중"
+          speaker="assistant"
+        />
+      ) : null}
+      {draft.kind === "error" ? (
+        <ChatMessage message={draft.message} speaker="assistant" />
+      ) : null}
+      {draft.kind === "ready" ? (
+        <>
+          <ChatMessage message={intent} speaker="owner" />
+          {draft.intentAnalysis === null ? null : (
+            <FlowCard title="의도 분석 결과">
+              <dl className="gx-check-list">
+                <div>
+                  <dt>목표</dt>
+                  <dd>{draft.intentAnalysis.objective}</dd>
+                </div>
+                <div>
+                  <dt>고객</dt>
+                  <dd>{draft.intentAnalysis.audience}</dd>
+                </div>
+                <div>
+                  <dt>키워드</dt>
+                  <dd>{draft.intentAnalysis.keywords.join(", ")}</dd>
+                </div>
+              </dl>
+            </FlowCard>
+          )}
+          {draft.images.length > 0 ? (
+            <FlowCard title="이미지 개선 결과">
+              <div className="gx-image-result-list">
+                {draft.images.map((image) => (
+                  <ImageComparison
+                    image={image}
+                    imageAssets={imageAssets}
+                    key={image.assetId}
+                  />
+                ))}
+              </div>
+            </FlowCard>
+          ) : null}
+          {draft.suggestion === null ? null : (
+            <FlowCard title="스마트 제안">
+              <div className="gx-suggestion-card">
+                <strong>{draft.suggestion.title}</strong>
+                <p>{draft.suggestion.message}</p>
+                <small>{draft.suggestion.rationale}</small>
+              </div>
+              <div className="gx-actions-row">
+                <ChoiceButton onClick={onSuggestionAccept}>
+                  제안 반영
+                </ChoiceButton>
+                <ChoiceButton onClick={onSuggestionSkip} tone="ghost">
+                  제안 없이 진행
+                </ChoiceButton>
+              </div>
+            </FlowCard>
+          )}
+          <div className="gx-actions-row">
+            <ChoiceButton onClick={() => onSelect("posting")}>
+              게시물 미리보기
+            </ChoiceButton>
           </div>
-          <div data-tone="accent">
-            <span>AI 보정 ✨</span>
-            <strong>선명 · 배경정리</strong>
-          </div>
-        </div>
-      </FlowCard>
-      <ChatMessage speaker="assistant">
-        각 채널에 맞는 크기로 자동 변환했어요. <b>(FT-09 크기 변환)</b>
-      </ChatMessage>
-      <FlowCard title="📐 채널별 크기 변환 (FT-09)">
-        <ul className="gx-size-list">
-          <li>
-            <span>인스타 피드</span>
-            <strong>1:1 / 4:5</strong>
-          </li>
-          <li>
-            <span>인스타 릴스/스토리</span>
-            <strong>9:16</strong>
-          </li>
-          <li>
-            <span>구글비즈니스프로필 게시물</span>
-            <strong>4:3 / 16:9</strong>
-          </li>
-        </ul>
-      </FlowCard>
-      <ChatMessage speaker="assistant">
-        포스팅을 더 잘 나가게 하려면 <b>음식 클로즈업 1장</b>이 더 있으면
-        좋아요. 추가해 주실 수 있을까요? <b>(FT-10 소스 요청)</b>
-      </ChatMessage>
-      <div className="gx-actions-row">
-        <ChoiceButton>📷 사진 추가 업로드</ChoiceButton>
-        <ChoiceButton onClick={() => onSelect("posting")} tone="ghost">
-          이대로 진행
-        </ChoiceButton>
-      </div>
+        </>
+      ) : null}
     </>
   )
 }
 
 function PostingScreen({
+  activePlatform,
+  draft,
+  imageAssets,
+  onPlatformChange,
   onPublish,
   publish,
-}: Pick<ReferenceFlowScreensProps, "onPublish" | "publish">) {
+}: Pick<
+  ReferenceFlowScreensProps,
+  | "activePlatform"
+  | "draft"
+  | "imageAssets"
+  | "onPlatformChange"
+  | "onPublish"
+  | "publish"
+>) {
+  if (draft.kind !== "ready") {
+    return (
+      <>
+        <ChatDivider>STEP 3 · 다채널 자동 포스팅</ChatDivider>
+        <ChatMessage
+          message="이미지와 홍보 의도를 먼저 분석하면 채널별 게시물 미리보기가 생성됩니다."
+          speaker="assistant"
+        />
+      </>
+    )
+  }
+
+  const selectedPreview =
+    draft.platformPreviews.find(
+      (preview) => preview.platform === activePlatform
+    ) ?? draft.platformPreviews[0]
+  const selectedImage =
+    selectedPreview === undefined
+      ? undefined
+      : draft.images.find(
+          (image) => image.assetId === selectedPreview.imageAssetId
+        )
+  const selectedAsset =
+    selectedPreview?.imageAssetId === null || selectedPreview === undefined
+      ? undefined
+      : imageAssets.find((asset) => asset.id === selectedPreview.imageAssetId)
+  const imageSrc = selectedImage?.editedDataUrl ?? selectedAsset?.dataUrl
+  const platformLabel = (preview: { readonly platform: MarketingPlatform }) =>
+    preview.platform === "GBP" ? "GBP" : "Instagram"
+  const publishStatusMessage =
+    publish.kind === "loading"
+      ? "GBP 게시 상태를 확인하는 중"
+      : publish.kind === "blocked"
+        ? "게시 전 Google 비즈니스 프로필 인증이 필요합니다."
+        : publish.kind === "published"
+          ? "게시 요청이 완료됐습니다."
+          : null
+
   return (
     <>
       <ChatDivider>STEP 3 · 다채널 자동 포스팅</ChatDivider>
       <ChatMessage speaker="assistant">
-        사진 준비 끝! 구글 트렌드 키워드를 결합해 채널 공통 핵심 메시지를 만들고,
-        채널별 맞춤 형태로 재가공했어요. <b>(FT-11·12)</b>
-        <br />
-        완성된 거 확인해주세요 👇
+        이미지 개선과 문구 생성이 끝났습니다. 업로드 전에 채널별 미리보기를
+        확인해주세요.
       </ChatMessage>
-      <FlowCard title="📨 완성된 게시물을 확인해주세요 (FT-13)">
+      <FlowCard title="완성된 게시물을 확인해주세요">
         <div className="gx-post-tabs" role="tablist">
-          <span role="tab" aria-selected="true">
-            📍 구글비즈니스프로필
-          </span>
-          <span role="tab">📷 인스타그램</span>
+          {draft.platformPreviews.map((preview) => (
+            <button
+              aria-label={preview.label}
+              aria-selected={preview.platform === activePlatform}
+              key={preview.platform}
+              onClick={() => onPlatformChange(preview.platform)}
+              role="tab"
+              type="button"
+            >
+              {platformLabel(preview)}
+            </button>
+          ))}
         </div>
-        <div className="gx-post-image">브런치 신메뉴 · 1:1</div>
+        <div className="gx-post-image gx-post-image-live">
+          {imageSrc === undefined ? (
+            <span>{selectedPreview?.aspectRatio ?? "1:1"}</span>
+          ) : (
+            <img
+              alt={selectedImage?.altText ?? "게시 미리보기 이미지"}
+              src={imageSrc}
+              style={{
+                filter:
+                  selectedImage?.editedDataUrl === null
+                    ? selectedImage.cssFilter
+                    : undefined,
+              }}
+            />
+          )}
+          <strong>{selectedPreview?.aspectRatio ?? "1:1"}</strong>
+        </div>
         <p className="gx-post-copy">
-          주말 한정 🥞 인생 브런치가 홍대에 떴습니다. 따뜻한 수플레 팬케이크와
-          직접 내린 핸드드립 한 잔, 지금 만나보세요 ☕✨
+          {selectedPreview?.copy ?? draft.koreanCopy}
         </p>
         <div className="gx-hashtag-row">
-          <span>#홍대브런치</span>
-          <span>#주말브런치</span>
-          <span>#수플레팬케이크</span>
-          <span>#hongdaecafe</span>
+          {(selectedPreview?.hashtags ?? []).map((hashtag) => (
+            <span key={hashtag}>{hashtag}</span>
+          ))}
         </div>
         <div className="gx-channel-select">
-          <p>업로드 채널 선택</p>
-          <span>✓ 구글비즈니스프로필</span>
-          <span>✓ 인스타그램</span>
+          <p>업로드 전 체크</p>
+          {(selectedPreview?.uploadNotes ?? []).map((note) => (
+            <span key={note}>✓ {note}</span>
+          ))}
         </div>
       </FlowCard>
-      <div className="gx-actions-row">
-        <ChoiceButton tone="ghost">✏️ 수정</ChoiceButton>
-        <ChoiceButton onClick={onPublish}>🚀 게시물 발행</ChoiceButton>
-      </div>
       {publish.kind === "loading" ? (
-        <ChatMessage message="GBP 게시 상태를 확인하는 중" speaker="assistant" />
+        <ChatMessage
+          message="GBP 게시 상태를 확인하는 중"
+          speaker="assistant"
+        />
       ) : null}
       {publish.kind === "blocked" ? (
         <ChatMessage message={publish.message} speaker="assistant" />
@@ -285,6 +503,12 @@ function PostingScreen({
       {publish.kind === "published" ? (
         <ChatMessage message={publish.message} speaker="assistant" />
       ) : null}
+      <div className="gx-actions-row gx-publish-actions">
+        {publishStatusMessage === null ? null : (
+          <p className="gx-publish-status">{publishStatusMessage}</p>
+        )}
+        <ChoiceButton onClick={onPublish}>게시물 발행</ChoiceButton>
+      </div>
     </>
   )
 }
@@ -310,9 +534,15 @@ function ReviewsScreen() {
         </div>
         <p className="gx-card-note">톤을 골라주세요 (선택 시 자동 번역·등록)</p>
         <div className="gx-reply-list">
-          <button type="button">😊 친근하게 <span>AI 생성</span></button>
-          <button type="button">🙏 정중하게 <span>AI 생성</span></button>
-          <button type="button">✨ 위트있게 <span>AI 생성</span></button>
+          <button type="button">
+            😊 친근하게 <span>AI 생성</span>
+          </button>
+          <button type="button">
+            🙏 정중하게 <span>AI 생성</span>
+          </button>
+          <button type="button">
+            ✨ 위트있게 <span>AI 생성</span>
+          </button>
         </div>
       </FlowCard>
       <div className="gx-actions-row">
@@ -327,8 +557,8 @@ function TargetsScreen() {
     <>
       <ChatDivider>STEP 5 · 타겟 국가 추천</ChatDivider>
       <ChatMessage speaker="assistant">
-        사장님 가게(브런치 카페·홍대·객단가 1.8만원)를 분석했어요. 우선 업종 기반
-        기본 타겟을 추천드려요. <b>(FT-20 기본 추천)</b>
+        사장님 가게(브런치 카페·홍대·객단가 1.8만원)를 분석했어요. 우선 업종
+        기반 기본 타겟을 추천드려요. <b>(FT-20 기본 추천)</b>
       </ChatMessage>
       <FlowCard title="🌏 기본 타겟 국가 추천 (FT-20 기본 추천)">
         <div className="gx-country-list">
@@ -352,7 +582,9 @@ function TargetsScreen() {
   )
 }
 
-function ReportScreen({ onSelect }: Pick<ReferenceFlowScreensProps, "onSelect">) {
+function ReportScreen({
+  onSelect,
+}: Pick<ReferenceFlowScreensProps, "onSelect">) {
   return (
     <>
       <ChatDivider>STEP 6 · 성과 리포팅</ChatDivider>
@@ -389,23 +621,25 @@ function ReportScreen({ onSelect }: Pick<ReferenceFlowScreensProps, "onSelect">)
   )
 }
 
-function DashboardScreen({
-  onBack,
-}: {
-  readonly onBack: () => void
-}) {
+function DashboardScreen({ onBack }: { readonly onBack: () => void }) {
   return (
     <section className="gx-dashboard">
       <header className="gx-dashboard-head">
-        <button aria-label="뒤로" onClick={onBack} type="button">←</button>
+        <button aria-label="뒤로" onClick={onBack} type="button">
+          ←
+        </button>
         <div>
           <h1>성과 대시보드</h1>
           <p>2026.05.26 ~ 06.01 · 주간</p>
         </div>
-        <button aria-label="공유" type="button">↗</button>
+        <button aria-label="공유" type="button">
+          ↗
+        </button>
       </header>
       <div className="gx-segmented">
-        <button aria-current="true" type="button">이번 주</button>
+        <button aria-current="true" type="button">
+          이번 주
+        </button>
         <button type="button">지난 4주</button>
         <button type="button">전체</button>
       </div>
@@ -431,27 +665,55 @@ function DashboardScreen({
       </div>
       <FlowCard title="📡 채널별 노출 비중">
         <div className="gx-donut-row">
-          <div className="gx-donut"><span>12.4K<br />총 노출</span></div>
+          <div className="gx-donut">
+            <span>
+              12.4K
+              <br />총 노출
+            </span>
+          </div>
           <div className="gx-donut-legend">
-            <p><i data-tone="orange" />인스타그램 <b>62% · 7,740</b></p>
-            <p><i data-tone="mint" />구글비즈니스프로필 <b>38% · 4,740</b></p>
+            <p>
+              <i data-tone="orange" />
+              인스타그램 <b>62% · 7,740</b>
+            </p>
+            <p>
+              <i data-tone="mint" />
+              구글비즈니스프로필 <b>38% · 4,740</b>
+            </p>
             <small>릴스 1건이 전체 노출의 34% 기여</small>
           </div>
         </div>
       </FlowCard>
       <FlowCard title="🌏 국가별 노출">
         <div className="gx-country-bars gx-dashboard-bars">
-          <span style={{ "--bar": "92%" } as CSSProperties}>🇯🇵 일본 <b>4,210</b></span>
-          <span style={{ "--bar": "78%" } as CSSProperties}>🇰🇷 한국 <b>3,460</b></span>
-          <span style={{ "--bar": "56%" } as CSSProperties}>🇹🇼 대만 <b>2,180</b></span>
-          <span style={{ "--bar": "42%" } as CSSProperties}>🇺🇸 미국 <b>1,490</b></span>
+          <span style={{ "--bar": "92%" } as CSSProperties}>
+            🇯🇵 일본 <b>4,210</b>
+          </span>
+          <span style={{ "--bar": "78%" } as CSSProperties}>
+            🇰🇷 한국 <b>3,460</b>
+          </span>
+          <span style={{ "--bar": "56%" } as CSSProperties}>
+            🇹🇼 대만 <b>2,180</b>
+          </span>
+          <span style={{ "--bar": "42%" } as CSSProperties}>
+            🇺🇸 미국 <b>1,490</b>
+          </span>
         </div>
       </FlowCard>
       <FlowCard title="🏆 TOP 게시물">
         <ol className="gx-top-posts">
-          <li><b>🥞 수플레 팬케이크 릴스</b><span>인스타 릴스 · 노출 4,210</span></li>
-          <li><b>☕ 주말 브런치 신메뉴</b><span>구글비즈니스프로필 · 노출 2,180</span></li>
-          <li><b>📸 핸드드립 스토리</b><span>인스타 스토리 · 노출 1,540</span></li>
+          <li>
+            <b>🥞 수플레 팬케이크 릴스</b>
+            <span>인스타 릴스 · 노출 4,210</span>
+          </li>
+          <li>
+            <b>☕ 주말 브런치 신메뉴</b>
+            <span>구글비즈니스프로필 · 노출 2,180</span>
+          </li>
+          <li>
+            <b>📸 핸드드립 스토리</b>
+            <span>인스타 스토리 · 노출 1,540</span>
+          </li>
         </ol>
       </FlowCard>
       <FlowCard title="💡 AI 인사이트">
@@ -467,6 +729,14 @@ function DashboardScreen({
 
 export function ReferenceFlowScreens({
   activeNavId,
+  activePlatform,
+  draft,
+  imageAssets,
+  intent,
+  onDraftSubmit,
+  onImageFiles,
+  onIntentChange,
+  onPlatformChange,
   onComposerPreset,
   onboardingExtraction,
   onboardingProfileDraft,
@@ -474,6 +744,8 @@ export function ReferenceFlowScreens({
   onOnboardingCandidateSelect,
   onPublish,
   onSelect,
+  onSuggestionAccept,
+  onSuggestionSkip,
   publish,
 }: ReferenceFlowScreensProps) {
   if (activeNavId === "dashboard") {
@@ -492,9 +764,28 @@ export function ReferenceFlowScreens({
           onOnboardingCandidateSelect={onOnboardingCandidateSelect}
         />
       ) : null}
-      {activeNavId === "photo" ? <PhotoScreen onSelect={onSelect} /> : null}
+      {activeNavId === "photo" ? (
+        <PhotoScreen
+          draft={draft}
+          imageAssets={imageAssets}
+          intent={intent}
+          onDraftSubmit={onDraftSubmit}
+          onImageFiles={onImageFiles}
+          onIntentChange={onIntentChange}
+          onSelect={onSelect}
+          onSuggestionAccept={onSuggestionAccept}
+          onSuggestionSkip={onSuggestionSkip}
+        />
+      ) : null}
       {activeNavId === "posting" ? (
-        <PostingScreen onPublish={onPublish} publish={publish} />
+        <PostingScreen
+          activePlatform={activePlatform}
+          draft={draft}
+          imageAssets={imageAssets}
+          onPlatformChange={onPlatformChange}
+          onPublish={onPublish}
+          publish={publish}
+        />
       ) : null}
       {activeNavId === "reviews" ? <ReviewsScreen /> : null}
       {activeNavId === "targets" ? <TargetsScreen /> : null}

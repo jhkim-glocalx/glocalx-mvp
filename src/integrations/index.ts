@@ -9,6 +9,7 @@ import {
   createProductionNaverSearch,
   createProductionReviews,
 } from "./production"
+import { createProductionMarketingGeneration } from "./openai-production"
 import { createProductionPerformance } from "./production-performance"
 import {
   createStubBusinessInformation,
@@ -17,6 +18,7 @@ import {
   createStubGoogleOAuth,
   createStubJobScheduler,
   createStubLocalPosts,
+  createStubMarketingGeneration,
   createStubNaverSearch,
   createStubReviews,
   createStubTranslation,
@@ -42,6 +44,7 @@ export function createIntegrationAdapters(
       gbpPerformance: createProductionPerformance(env),
       gbpReviews: createProductionReviews(env),
       contentGeneration: createStubContentGeneration(),
+      marketingGeneration: createProductionMarketingGeneration(env, fetchImpl),
       translation: createStubTranslation(),
       clock: createStubClock(now),
       jobScheduler: createStubJobScheduler(),
@@ -57,6 +60,7 @@ export function createIntegrationAdapters(
     gbpPerformance: createStubPerformance(),
     gbpReviews: createStubReviews(),
     contentGeneration: createStubContentGeneration(),
+    marketingGeneration: createStubMarketingGeneration(),
     translation: createStubTranslation(),
     clock: createStubClock(now),
     jobScheduler: createStubJobScheduler(),
