@@ -16,7 +16,10 @@ import type {
 } from "./contracts"
 import { NaverSearchUnavailableError } from "./contracts"
 
-const naverEnvVars = ["NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET"] as const
+export const naverEnvVars = [
+  "NAVER_CLIENT_ID",
+  "NAVER_CLIENT_SECRET",
+] as const
 const naverLocalSearchUrl = "https://openapi.naver.com/v1/search/local.json"
 const naverPlaceDetailBaseUrl = "https://pcmap.place.naver.com/place"
 const naverPlaceFetchHeaders = {
@@ -559,6 +562,16 @@ function toNaverSearchUnavailableError(
   return new NaverSearchUnavailableError("NETWORK_ERROR")
 }
 
+function isRecoverableNaverPlaceLookupError(error: unknown): boolean {
+  return (
+    error instanceof NaverSearchUnavailableError ||
+    (error instanceof Error &&
+      (error.name === "AbortError" ||
+        error.name === "TimeoutError" ||
+        error.name === "TypeError"))
+  )
+}
+
 export function createProductionNaverSearch(
   env: AdapterEnvironment,
   fetchImpl: ExternalFetch
@@ -579,7 +592,9 @@ export function createProductionNaverSearch(
           fetchImpl
         )
       } catch (error) {
-        throw toNaverSearchUnavailableError(error)
+        if (!isRecoverableNaverPlaceLookupError(error)) {
+          throw error
+        }
       }
 
       if (naverPlaceCandidate !== undefined) {

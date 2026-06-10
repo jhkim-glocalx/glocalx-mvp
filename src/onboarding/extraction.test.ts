@@ -292,6 +292,67 @@ describe("extractBusinessProfile", () => {
     }
   })
 
+  it("falls back to production Naver local search when place detail lookup is rejected", async () => {
+    // Given
+    const requestedUrls: string[] = []
+    const adapters = createIntegrationAdapters({
+      env: {
+        APP_INTEGRATION_MODE: "production",
+        NAVER_CLIENT_ID: "test-naver-client",
+        NAVER_CLIENT_SECRET: "test-naver-secret",
+      },
+      fetchImpl: async (input) => {
+        requestedUrls.push(input)
+        if (input.startsWith("https://pcmap.place.naver.com/place/")) {
+          return new Response(null, { status: 429 })
+        }
+
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                title: "<b>브런치모먼트</b> 홍대점",
+                link: "https://map.naver.com/p/entry/place/123456789",
+                category: "음식점>카페",
+                telephone: "",
+                address: "서울 마포구 서교동 1",
+                roadAddress: "서울 마포구 와우산로 123",
+                mapx: "126923456",
+                mapy: "37551234",
+              },
+            ],
+          })
+        )
+      },
+    })
+
+    // When
+    const result = await extractBusinessProfile({
+      adapters,
+      input: "https://map.naver.com/p/entry/place/123456789",
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result.status).toBe("CANDIDATES_FOUND")
+    expect(requestedUrls[0]).toBe(
+      "https://pcmap.place.naver.com/place/123456789/home"
+    )
+    expect(requestedUrls[1]).toContain(
+      "https://openapi.naver.com/v1/search/local.json"
+    )
+    if (result.status === "CANDIDATES_FOUND") {
+      expect(result.candidates[0]).toMatchObject({
+        source: "NAVER_LOCAL",
+        sourceInput: "https://map.naver.com/p/entry/place/123456789",
+        name: "브런치모먼트 홍대점",
+        address: "서울 마포구 와우산로 123",
+        category: "음식점>카페",
+        naverPlaceUrl: "https://map.naver.com/p/entry/place/123456789",
+      })
+    }
+  })
+
   it("returns manual recovery copy when production Naver fetch times out", async () => {
     // Given
     const adapters = createIntegrationAdapters({

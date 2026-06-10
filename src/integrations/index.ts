@@ -1,4 +1,5 @@
 import type {
+  AdapterEnvironment,
   CreateIntegrationAdaptersOptions,
   IntegrationAdapters,
 } from "./contracts"
@@ -8,7 +9,9 @@ import {
   createProductionLocalPosts,
   createProductionNaverSearch,
   createProductionReviews,
+  naverEnvVars,
 } from "./production"
+import { missingEnvVars } from "./credentials"
 import { createProductionMarketingGeneration } from "./openai-production"
 import { createProductionPerformance } from "./production-performance"
 import {
@@ -25,6 +28,13 @@ import {
 } from "./stub"
 import { createStubPerformance } from "./stub-performance"
 
+function shouldUsePreviewNaverStub(env: AdapterEnvironment): boolean {
+  return (
+    (env["VERCEL_ENV"] === "preview" || env["VERCEL_ENV"] === "development") &&
+    missingEnvVars(env, naverEnvVars).length > 0
+  )
+}
+
 export function createIntegrationAdapters(
   options: CreateIntegrationAdaptersOptions = {}
 ): IntegrationAdapters {
@@ -37,7 +47,9 @@ export function createIntegrationAdapters(
   if (mode === "production") {
     return {
       mode,
-      naverSearch: createProductionNaverSearch(env, fetchImpl),
+      naverSearch: shouldUsePreviewNaverStub(env)
+        ? createStubNaverSearch(options.database)
+        : createProductionNaverSearch(env, fetchImpl),
       googleOAuth: createProductionGoogleOAuth(env),
       gbpBusinessInformation: createProductionBusinessInformation(env),
       gbpLocalPosts: createProductionLocalPosts(env),

@@ -20,6 +20,7 @@ import type {
 export {
   buildNaverLocalSearchRequest,
   createProductionNaverSearch,
+  naverEnvVars,
 } from "./naver-production"
 
 const googleEnvVars = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"] as const
