@@ -1,14 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { MobileShell } from "@/app/_components/mobile-shell"
 import { ReferenceComposer } from "@/app/_components/reference-composer"
-import {
-  toExtractionState,
-  type ExtractionState,
-  type StoreProfileDraft,
-} from "@/app/onboarding/onboarding-model"
 
 import {
   appNavItems,
@@ -16,12 +11,13 @@ import {
   parsePublishState,
   type AppNavId,
   type DraftState,
-  type MarketingImageAsset,
   type MarketingPlatform,
   type PublishState,
 } from "./app-workspace-model"
 import { AppWorkspaceTopBar } from "./app-workspace-topbar"
 import { ReferenceFlowScreens } from "./reference-flow-screens"
+import { useAppOnboarding } from "./use-app-onboarding"
+import { useImageAssets } from "./use-image-assets"
 
 type AppWorkspaceProps = {
   readonly storeId: string
@@ -30,113 +26,57 @@ type AppWorkspaceProps = {
 const publishNetworkErrorMessage =
   "게시 상태를 확인하지 못했습니다. 잠시 후 다시 시도해주세요."
 
-function selectedDraftFromExtraction(
-  extraction: ExtractionState
-): StoreProfileDraft | undefined {
-  switch (extraction.kind) {
-    case "candidates":
-      return extraction.candidates[0]
-    case "manual":
-      return extraction.draft
-    case "error":
-    case "idle":
-    case "loading":
-    case "searchQueryRequired":
-      return undefined
-  }
-}
-
-const maxImageBytes = 1_200_000
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.addEventListener("load", () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result)
-        return
-      }
-      reject(new Error("이미지를 읽지 못했습니다."))
-    })
-    reader.addEventListener("error", () => reject(reader.error))
-    reader.readAsDataURL(file)
-  })
-}
-
-function isSupportedImageType(
-  mimeType: string
-): mimeType is MarketingImageAsset["mimeType"] {
-  return (
-    mimeType === "image/jpeg" ||
-    mimeType === "image/png" ||
-    mimeType === "image/webp"
-  )
+function isAppNavId(navId: string): navId is AppNavId {
+  return appNavItems.some((item) => item.id === navId)
 }
 
 export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   const [activeNavId, setActiveNavId] = useState<AppNavId>("photo")
   const [composerFocusKey, setComposerFocusKey] = useState(0)
   const [composerMessage, setComposerMessage] = useState("")
-  const [onboardingExtraction, setOnboardingExtraction] =
-    useState<ExtractionState>({ kind: "idle" })
-  const [onboardingProfileDraft, setOnboardingProfileDraft] = useState<
-    StoreProfileDraft | undefined
-  >(undefined)
-  const [onboardingSubmittedInput, setOnboardingSubmittedInput] = useState("")
+  const screenRef = useRef<HTMLDivElement>(null)
+  const onboarding = useAppOnboarding()
   const [activePlatform, setActivePlatform] = useState<MarketingPlatform>("GBP")
   const [draft, setDraft] = useState<DraftState>({ kind: "idle" })
-  const [imageAssets, setImageAssets] = useState<
-    readonly MarketingImageAsset[]
-  >([])
   const [intent, setIntent] = useState("이번 주말 브런치 신메뉴 홍보")
   const [publish, setPublish] = useState<PublishState>({ kind: "idle" })
+  const { handleImageFiles, imageAssets } = useImageAssets({
+    onImagesSelected: () => {
+      setDraft({ kind: "idle" })
+      setPublish({ kind: "idle" })
+    },
+    onInvalidImage: (message) => {
+      setDraft({ kind: "error", message })
+    },
+  })
+
+  useEffect(() => {
+    const hasOnboardingResult =
+      onboarding.extraction.kind !== "idle" ||
+      onboarding.confirmation.kind !== "idle" ||
+      onboarding.setup.kind !== "idle"
+
+    if (activeNavId !== "onboarding" || !hasOnboardingResult) {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const screen = screenRef.current
+      screen?.scrollTo({ behavior: "smooth", top: screen.scrollHeight })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [
+    activeNavId,
+    onboarding.confirmation.kind,
+    onboarding.extraction.kind,
+    onboarding.setup.kind,
+  ])
 
   function handleNavChange(navId: string) {
-    if (appNavItems.some((item) => item.id === navId)) {
-      setActiveNavId(navId as AppNavId)
+    if (isAppNavId(navId)) {
+      setActiveNavId(navId)
     }
-  }
-
-  async function handleImageFiles(files: FileList | null) {
-    if (files === null || files.length === 0) {
-      return
-    }
-
-    const selectedFiles = Array.from(files).slice(0, 4)
-    const unsupportedFile = selectedFiles.find(
-      (file) => !isSupportedImageType(file.type)
-    )
-    if (unsupportedFile !== undefined) {
-      setDraft({
-        kind: "error",
-        message: "JPG, PNG, WEBP 이미지만 업로드할 수 있습니다.",
-      })
-      return
-    }
-
-    const oversizedFile = selectedFiles.find(
-      (file) => file.size > maxImageBytes
-    )
-    if (oversizedFile !== undefined) {
-      setDraft({
-        kind: "error",
-        message: "이미지는 장당 1.2MB 이하로 올려주세요.",
-      })
-      return
-    }
-
-    const nextAssets = await Promise.all(
-      selectedFiles.map(async (file, index) => ({
-        dataUrl: await readFileAsDataUrl(file),
-        id: `asset-${file.name}-${file.lastModified}-${index}`,
-        mimeType: file.type as MarketingImageAsset["mimeType"],
-        name: file.name,
-        sizeBytes: file.size,
-      }))
-    )
-    setImageAssets(nextAssets)
-    setDraft({ kind: "idle" })
-    setPublish({ kind: "idle" })
   }
 
   async function requestDraft(options: {
@@ -224,7 +164,11 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
       })
       const payload: unknown = await response.json()
       setPublish(parsePublishState(payload))
-    } catch {
+    } catch (error) {
+      if (!(error instanceof Error)) {
+        throw error
+      }
+
       setPublish({
         kind: "blocked",
         message: publishNetworkErrorMessage,
@@ -250,35 +194,9 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
     focusComposer()
   }
 
-  async function handleOnboardingSearch(input: string): Promise<void> {
-    setOnboardingExtraction({ kind: "loading" })
-    setOnboardingProfileDraft(undefined)
-    setOnboardingSubmittedInput(input)
-
-    try {
-      const response = await fetch("/api/onboarding/extractions", {
-        body: JSON.stringify({ input }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      })
-      const payload: unknown = await response.json()
-      const nextExtraction = toExtractionState(payload, input)
-      setOnboardingExtraction(nextExtraction)
-      setOnboardingProfileDraft(selectedDraftFromExtraction(nextExtraction))
-    } catch (error) {
-      setOnboardingExtraction({
-        kind: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "가게 정보 조회에 실패했습니다.",
-      })
-    }
-  }
-
   function handleComposerSubmit(message: string): void {
     if (activeNavId === "onboarding") {
-      void handleOnboardingSearch(message)
+      void onboarding.search(message)
     }
   }
 
@@ -302,6 +220,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
         screenClassName={
           activeNavId === "dashboard" ? "gx-dashboard-screen" : "gx-chat-screen"
         }
+        screenRef={screenRef}
         testId="app-stage"
         topBar={
           activeNavId === "dashboard" ? undefined : <AppWorkspaceTopBar />
@@ -318,10 +237,15 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
           onIntentChange={setIntent}
           onPlatformChange={setActivePlatform}
           onComposerPreset={handleComposerPreset}
-          onboardingExtraction={onboardingExtraction}
-          onboardingProfileDraft={onboardingProfileDraft}
-          onboardingSubmittedInput={onboardingSubmittedInput}
-          onOnboardingCandidateSelect={setOnboardingProfileDraft}
+          onboardingConfirmation={onboarding.confirmation}
+          onboardingExtraction={onboarding.extraction}
+          onboardingProfileDraft={onboarding.profileDraft}
+          onboardingSetup={onboarding.setup}
+          onboardingSubmittedInput={onboarding.submittedInput}
+          onOnboardingCandidateSelect={onboarding.selectCandidate}
+          onOnboardingConfirm={onboarding.confirm}
+          onOnboardingFieldChange={onboarding.changeDraftField}
+          onOnboardingSetup={onboarding.checkSetup}
           onPublish={handlePublish}
           onSelect={handleNavChange}
           onSuggestionAccept={handleSuggestionAccept}

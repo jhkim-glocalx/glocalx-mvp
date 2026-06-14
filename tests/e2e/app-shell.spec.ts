@@ -116,6 +116,51 @@ test("app onboarding quick replies drive the bottom composer", async ({
   )
 })
 
+test("app onboarding keeps Korean composition input and exposes editable store fields", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await page.context().clearCookies()
+  await page.goto("/")
+  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await completeOnboarding(page)
+
+  await page.getByRole("button", { name: "온보딩" }).click()
+  const composer = page.getByRole("textbox", { name: "메시지 입력" })
+
+  await composer.dispatchEvent("compositionstart")
+  await composer.fill("떡")
+  await composer.press("Enter")
+  await expect(composer).toHaveValue("떡")
+
+  await composer.dispatchEvent("compositionend")
+  await composer.fill("우빈떡볶이")
+  await page.getByRole("button", { name: "전송" }).click()
+
+  await expect(page.getByText("우빈떡볶이", { exact: true })).toBeVisible()
+  const storeName = page.getByRole("textbox", { name: "상호" })
+  await expect(storeName).toBeVisible()
+  await expect(storeName).toHaveValue("우빈떡볶이 홍대점")
+
+  await storeName.fill("우빈떡볶이 신촌점")
+  await expect(storeName).toHaveValue("우빈떡볶이 신촌점")
+
+  const screenScroll = await page.locator(".gx-screen").evaluate((element) => {
+    element.scrollTop = 0
+    const before = element.scrollTop
+    element.scrollTo({ top: element.scrollHeight })
+    return {
+      after: element.scrollTop,
+      before,
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }
+  })
+
+  expect(screenScroll.scrollHeight).toBeGreaterThan(screenScroll.clientHeight)
+  expect(screenScroll.after).toBeGreaterThan(screenScroll.before)
+})
+
 test("responsive browser shell keeps controls visible on mobile", async ({
   page,
 }) => {

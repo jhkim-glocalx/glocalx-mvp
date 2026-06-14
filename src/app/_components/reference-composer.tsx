@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type CompositionEvent,
   type FormEvent,
   type KeyboardEvent,
 } from "react"
@@ -26,6 +27,7 @@ export function ReferenceComposer({
   value,
 }: ReferenceComposerProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const isComposingRef = useRef(false)
   const [internalMessage, setInternalMessage] = useState("")
   const message = value ?? internalMessage
 
@@ -47,6 +49,10 @@ export function ReferenceComposer({
   }
 
   function submitMessage(): void {
+    if (isComposingRef.current) {
+      return
+    }
+
     const trimmedMessage = message.trim()
     if (trimmedMessage === "") {
       return
@@ -61,8 +67,23 @@ export function ReferenceComposer({
     submitMessage()
   }
 
+  function handleCompositionStart(): void {
+    isComposingRef.current = true
+  }
+
+  function handleCompositionEnd(
+    event: CompositionEvent<HTMLInputElement>
+  ): void {
+    isComposingRef.current = false
+    updateMessage(event.currentTarget.value)
+  }
+
   function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
     if (event.key !== "Enter") {
+      return
+    }
+
+    if (event.nativeEvent.isComposing || isComposingRef.current) {
       return
     }
 
@@ -91,6 +112,8 @@ export function ReferenceComposer({
         className="gx-composer-input"
         id="reference-composer-input"
         onChange={(event) => updateMessage(event.currentTarget.value)}
+        onCompositionEnd={handleCompositionEnd}
+        onCompositionStart={handleCompositionStart}
         onKeyDown={handleInputKeyDown}
         placeholder={label}
         ref={inputRef}

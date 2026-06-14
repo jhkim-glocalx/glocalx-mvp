@@ -5,9 +5,11 @@
 import type { CSSProperties, FormEvent, ReactNode } from "react"
 
 import { ChatMessage } from "@/app/_components/chat-message"
-import { ExtractionPanel } from "@/app/onboarding/onboarding-panels"
+import type { StoreProfileField } from "@/app/onboarding/onboarding-components"
 import type {
+  ConfirmationState,
   ExtractionState,
+  SetupState,
   StoreProfileDraft,
 } from "@/app/onboarding/onboarding-model"
 
@@ -20,6 +22,7 @@ import {
   type MarketingPlatform,
   type PublishState,
 } from "./app-workspace-model"
+import { OnboardingSnapshot } from "./onboarding-snapshot"
 
 type ReferenceFlowScreensProps = {
   readonly activeNavId: AppNavId
@@ -32,10 +35,18 @@ type ReferenceFlowScreensProps = {
   readonly onIntentChange: (intent: string) => void
   readonly onPlatformChange: (platform: MarketingPlatform) => void
   readonly onComposerPreset: (message: string) => void
+  readonly onboardingConfirmation: ConfirmationState
   readonly onboardingExtraction: ExtractionState
   readonly onboardingProfileDraft: StoreProfileDraft | undefined
+  readonly onboardingSetup: SetupState
   readonly onboardingSubmittedInput: string
   readonly onOnboardingCandidateSelect: (candidate: StoreProfileDraft) => void
+  readonly onOnboardingConfirm: () => void
+  readonly onOnboardingFieldChange: (
+    field: StoreProfileField,
+    value: string
+  ) => void
+  readonly onOnboardingSetup: () => void
   readonly onPublish: () => void
   readonly onSelect: (navId: AppNavId) => void
   readonly onSuggestionAccept: () => void
@@ -54,6 +65,10 @@ type MetricTileProps = {
   readonly value: string
 }
 
+type BarStyle = CSSProperties & {
+  readonly "--bar": string
+}
+
 const countryRows = [
   ["🇯🇵", "일본", "인근 업종 인기 · 객단가 적합", "1위"],
   ["🇨🇳", "중국", "홍대 상권 방문 비중 높음", "2위"],
@@ -66,6 +81,10 @@ const reportMetrics = [
   { label: "신규 리뷰", trend: "▲ 5건", value: "17건" },
   { label: "쿠폰 사용", trend: "▲ 11건", value: "34건" },
 ] as const
+
+function barStyle(value: string): BarStyle {
+  return { "--bar": value }
+}
 
 function FlowNav({
   activeNavId,
@@ -132,50 +151,6 @@ function MetricTile({ label, trend, value }: MetricTileProps) {
       <strong>{value}</strong>
       <em>{trend}</em>
     </div>
-  )
-}
-
-function OnboardingSnapshot({
-  onComposerPreset,
-  onboardingExtraction,
-  onboardingProfileDraft,
-  onboardingSubmittedInput,
-  onOnboardingCandidateSelect,
-}: Pick<
-  ReferenceFlowScreensProps,
-  | "onComposerPreset"
-  | "onboardingExtraction"
-  | "onboardingProfileDraft"
-  | "onboardingSubmittedInput"
-  | "onOnboardingCandidateSelect"
->) {
-  return (
-    <>
-      <ChatDivider>STEP 1 · 온보딩 / 구글비즈니스프로필 세팅</ChatDivider>
-      <ChatMessage
-        message="안녕하세요 사장님! 👋 저는 가게의 글로벌 마케팅을 도와드릴 글로컬엑스예요. 먼저 가게를 등록할게요. 네이버 플레이스 링크나 가게 이름을 알려주시겠어요?"
-        speaker="assistant"
-      />
-      <div className="gx-actions-row">
-        <ChoiceButton
-          onClick={() => onComposerPreset("https://naver.me/mybrunchcafe")}
-        >
-          네이버 플레이스 링크 붙여넣기
-        </ChoiceButton>
-        <ChoiceButton
-          onClick={() => onComposerPreset("브런치모먼트")}
-          tone="ghost"
-        >
-          상호명으로 검색
-        </ChoiceButton>
-      </div>
-      <ExtractionPanel
-        extraction={onboardingExtraction}
-        onCandidateSelect={onOnboardingCandidateSelect}
-        profileDraft={onboardingProfileDraft}
-        submittedInput={onboardingSubmittedInput}
-      />
-    </>
   )
 }
 
@@ -600,10 +575,10 @@ function ReportScreen({
         </div>
         <div className="gx-country-bars">
           <p>국가별 노출 (현지화 후)</p>
-          <span style={{ "--bar": "88%" } as CSSProperties}>🇰🇷 한국</span>
-          <span style={{ "--bar": "74%" } as CSSProperties}>🇯🇵 일본</span>
-          <span style={{ "--bar": "52%" } as CSSProperties}>🇹🇼 대만</span>
-          <span style={{ "--bar": "38%" } as CSSProperties}>🇺🇸 미국</span>
+          <span style={barStyle("88%")}>🇰🇷 한국</span>
+          <span style={barStyle("74%")}>🇯🇵 일본</span>
+          <span style={barStyle("52%")}>🇹🇼 대만</span>
+          <span style={barStyle("38%")}>🇺🇸 미국</span>
         </div>
         <p className="gx-card-note">
           요약 — 일본 타겟 현지화가 적중했어요! 노출이 전주 대비 크게 늘었고,
@@ -686,16 +661,16 @@ function DashboardScreen({ onBack }: { readonly onBack: () => void }) {
       </FlowCard>
       <FlowCard title="🌏 국가별 노출">
         <div className="gx-country-bars gx-dashboard-bars">
-          <span style={{ "--bar": "92%" } as CSSProperties}>
+          <span style={barStyle("92%")}>
             🇯🇵 일본 <b>4,210</b>
           </span>
-          <span style={{ "--bar": "78%" } as CSSProperties}>
+          <span style={barStyle("78%")}>
             🇰🇷 한국 <b>3,460</b>
           </span>
-          <span style={{ "--bar": "56%" } as CSSProperties}>
+          <span style={barStyle("56%")}>
             🇹🇼 대만 <b>2,180</b>
           </span>
-          <span style={{ "--bar": "42%" } as CSSProperties}>
+          <span style={barStyle("42%")}>
             🇺🇸 미국 <b>1,490</b>
           </span>
         </div>
@@ -738,10 +713,15 @@ export function ReferenceFlowScreens({
   onIntentChange,
   onPlatformChange,
   onComposerPreset,
+  onboardingConfirmation,
   onboardingExtraction,
   onboardingProfileDraft,
+  onboardingSetup,
   onboardingSubmittedInput,
   onOnboardingCandidateSelect,
+  onOnboardingConfirm,
+  onOnboardingFieldChange,
+  onOnboardingSetup,
   onPublish,
   onSelect,
   onSuggestionAccept,
@@ -757,11 +737,16 @@ export function ReferenceFlowScreens({
       <FlowNav activeNavId={activeNavId} onSelect={onSelect} />
       {activeNavId === "onboarding" ? (
         <OnboardingSnapshot
+          confirmation={onboardingConfirmation}
+          extraction={onboardingExtraction}
+          onCandidateSelect={onOnboardingCandidateSelect}
+          onConfirm={onOnboardingConfirm}
+          onFieldChange={onOnboardingFieldChange}
           onComposerPreset={onComposerPreset}
-          onboardingExtraction={onboardingExtraction}
-          onboardingProfileDraft={onboardingProfileDraft}
-          onboardingSubmittedInput={onboardingSubmittedInput}
-          onOnboardingCandidateSelect={onOnboardingCandidateSelect}
+          onSetup={onOnboardingSetup}
+          profileDraft={onboardingProfileDraft}
+          setup={onboardingSetup}
+          submittedInput={onboardingSubmittedInput}
         />
       ) : null}
       {activeNavId === "photo" ? (
