@@ -100,9 +100,18 @@ a {
   padding: 0;
 }
 
+.gx-entry-page {
+  --gx-shell-max: 720px;
+}
+
+.gx-route-page {
+  --gx-shell-max: 840px;
+}
+
 .gx-shell {
+  position: relative;
   display: flex;
-  width: min(100%, 430px);
+  width: 100%;
   min-height: 100dvh;
   margin: 0 auto;
   flex-direction: column;
@@ -115,7 +124,7 @@ a {
     ),
     var(--phone-bg);
   color: var(--ink);
-  box-shadow: 0 28px 80px -48px rgba(0, 0, 0, 0.82);
+  box-shadow: none;
 }
 
 .gx-appbar {
@@ -628,7 +637,7 @@ a {
 .gx-card {
   display: grid;
   gap: 0;
-  width: min(100%, 360px);
+  width: min(100%, 640px);
   align-self: flex-start;
   overflow: hidden;
   border-radius: 18px;
@@ -875,13 +884,15 @@ a {
 @media (width >= 680px) {
   .gx-entry-page,
   .gx-route-page {
-    padding: 24px;
+    padding: clamp(20px, 4vw, 48px);
   }
 
   .gx-shell {
+    width: min(100%, var(--gx-shell-max));
     min-height: min(860px, calc(100dvh - 48px));
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 34px;
+    border-radius: 24px;
+    box-shadow: 0 28px 80px -48px rgba(0, 0, 0, 0.82);
   }
 }
 
@@ -931,7 +942,6 @@ a {
   }
 }
 
-/* Reference prototype mobile surface */
 body {
   background:
     radial-gradient(
@@ -945,110 +955,26 @@ body {
 .gx-entry-page,
 .gx-route-page {
   min-height: 100dvh;
-  padding: 8px;
+  padding: 0;
 }
 
 .gx-shell {
   position: relative;
-  width: min(calc(100vw - 16px), 359px);
-  height: min(794px, calc(100dvh - 16px));
-  min-height: min(794px, calc(100dvh - 16px));
-  overflow: visible;
-  border-radius: 50px;
-  background: #0a0a0d;
-  padding: 13px;
-  box-shadow:
-    0 24px 60px -28px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 2px #2a2730,
-    0 0 0 7px #050507;
-}
-
-.gx-device-island {
-  position: absolute;
-  top: 13px;
-  left: 50%;
-  z-index: 30;
-  width: 106px;
-  height: 28px;
-  border-radius: 0 0 18px 18px;
-  background: #000000;
-  transform: translateX(-50%);
-}
-
-.gx-phone-screen {
+  width: 100%;
   display: flex;
-  height: 100%;
-  min-height: 0;
+  min-height: 100dvh;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 39px;
-  background: var(--phone-bg);
-  color: var(--ink);
-}
-
-.gx-statusbar {
-  display: flex;
-  height: 40px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 26px 6px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.gx-status-icons {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.gx-signal {
-  display: inline-block;
-  width: 18px;
-  height: 13px;
+  border-radius: 0;
   background:
-    linear-gradient(to top, var(--ink) 0 35%, transparent 35%) 0 100% / 3px 100%
-      no-repeat,
-    linear-gradient(to top, var(--ink) 0 52%, transparent 52%) 5px 100% / 3px
-      100% no-repeat,
-    linear-gradient(to top, var(--ink) 0 70%, transparent 70%) 10px 100% / 3px
-      100% no-repeat,
-    linear-gradient(to top, var(--ink) 0 88%, transparent 88%) 15px 100% / 3px
-      100% no-repeat;
-}
-
-.gx-battery {
-  position: relative;
-  display: inline-block;
-  width: 22px;
-  height: 12px;
-  border: 1.6px solid var(--ink);
-  border-radius: 4px;
-}
-
-.gx-battery::before {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 6px;
-  border-radius: 2px;
-  background: var(--ink);
-  content: "";
-}
-
-.gx-battery::after {
-  position: absolute;
-  top: 3px;
-  right: -4px;
-  width: 2px;
-  height: 5px;
-  border-radius: 0 2px 2px 0;
-  background: var(--ink);
-  content: "";
+    radial-gradient(
+      520px 340px at 82% 0%,
+      rgba(255, 106, 61, 0.1),
+      transparent 68%
+    ),
+    var(--phone-bg);
+  color: var(--ink);
+  box-shadow: none;
 }
 
 .gx-appbar {
@@ -1247,10 +1173,11 @@ body {
 
 .gx-flow-nav {
   display: flex;
-  margin: -4px -16px 2px;
+  flex-wrap: wrap;
+  margin: -4px 0 2px;
   gap: 6px;
-  overflow-x: auto;
-  padding: 0 16px 4px;
+  overflow-x: visible;
+  padding: 0 0 4px;
   scrollbar-width: none;
 }
 
@@ -1259,7 +1186,7 @@ body {
 }
 
 .gx-flow-tab {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.8);
@@ -1307,7 +1234,7 @@ body {
 }
 
 .gx-bubble {
-  max-width: 80%;
+  max-width: min(82%, 620px);
   border-radius: 18px;
   padding: 12px 14px;
   font-size: 14px;
@@ -1361,7 +1288,7 @@ body {
 }
 
 .gx-ref-card {
-  width: min(100%, 304px);
+  width: min(100%, 640px);
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -1911,7 +1838,7 @@ body {
 .gx-report-grid,
 .gx-dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
   gap: 10px;
 }
 
@@ -1978,12 +1905,14 @@ body {
 }
 
 .gx-inputbar {
-  position: relative;
-  bottom: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
   flex: 0 0 auto;
   border-top: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.96);
-  padding: 11px 14px 16px;
+  padding: 11px 14px calc(16px + env(safe-area-inset-bottom));
+  backdrop-filter: blur(14px);
 }
 
 .gx-input-plus,
@@ -2238,26 +2167,21 @@ body {
 @media (width >= 680px) {
   .gx-entry-page,
   .gx-route-page {
-    padding: 24px;
+    padding: clamp(20px, 4vw, 48px);
   }
 
   .gx-shell {
-    height: 794px;
-    min-height: 794px;
+    width: min(100%, var(--gx-shell-max));
+    min-height: min(860px, calc(100dvh - 48px));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 28px 80px -48px rgba(0, 0, 0, 0.82);
   }
 }
 
 @media (width <= 360px) {
   .gx-shell {
-    width: calc(100vw - 12px);
-    height: calc(100dvh - 12px);
-    min-height: calc(100dvh - 12px);
-    padding: 10px;
-    border-radius: 42px;
-  }
-
-  .gx-phone-screen {
-    border-radius: 32px;
+    min-height: 100dvh;
   }
 
   .gx-login-screen {

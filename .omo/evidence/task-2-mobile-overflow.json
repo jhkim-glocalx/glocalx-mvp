@@ -1,4 +1,6 @@
 {
+  "bodyScrollWidth": 390,
+  "documentScrollWidth": 390,
   "innerWidth": 390,
-  "scrollWidth": 390
+  "overflowingElements": []
 }

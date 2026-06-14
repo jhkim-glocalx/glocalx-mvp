@@ -15,10 +15,15 @@ async function expectNoPrototypeChrome(page: Page): Promise<void> {
   }
 }
 
-test("App boots locally and shows the GlocalX shell", async ({ page }) => {
+test("App boots locally and shows the native GlocalX shell", async ({
+  page,
+}) => {
   await page.goto("/")
 
   await expect(page.getByTestId("entry-device")).toBeVisible()
+  await expect(
+    page.locator(".gx-device-island, .gx-statusbar, .gx-phone-screen")
+  ).toHaveCount(0)
   await expect(
     page.getByRole("heading", { name: /혼자서도\s*전 세계에 팝니다\./ })
   ).toBeVisible()

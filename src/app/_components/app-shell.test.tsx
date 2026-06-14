@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import { ActionChip } from "./action-chip"
 import { BottomNav } from "./bottom-nav"
 import { ChatMessage } from "./chat-message"
-import { MobileShell } from "./mobile-shell"
+import { ResponsiveShell } from "./mobile-shell"
 import { StatusCard } from "./status-card"
 
 const navItems = [
@@ -13,9 +13,9 @@ const navItems = [
 ] as const
 
 describe("app shell primitives", () => {
-  it("marks the active bottom tab inside the mobile shell", () => {
+  it("marks the active bottom tab inside the responsive browser shell", () => {
     const html = renderToStaticMarkup(
-      <MobileShell
+      <ResponsiveShell
         bottomNav={
           <BottomNav
             activeId="post"
@@ -27,12 +27,15 @@ describe("app shell primitives", () => {
         topBar={<span>포스팅 작업실</span>}
       >
         <p>작업실 본문</p>
-      </MobileShell>
+      </ResponsiveShell>
     )
 
     expect(html).toContain('data-testid="app-stage"')
     expect(html).toContain('aria-current="page"')
     expect(html).toContain("포스팅")
+    expect(html).not.toContain("gx-device-island")
+    expect(html).not.toContain("gx-statusbar")
+    expect(html).not.toContain("gx-phone-screen")
   })
 
   it("renders disabled action chips as unavailable actions", () => {

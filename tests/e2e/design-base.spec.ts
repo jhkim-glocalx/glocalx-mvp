@@ -58,22 +58,31 @@ async function readOverflowMetrics(page: Page) {
   })
 }
 
-test("design base desktop keeps the mobile shell without prototype chrome", async ({
+test("design base desktop uses a native browser shell without prototype chrome", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto("/")
 
   await expect(page.getByTestId("entry-device")).toBeVisible()
+  await expect(
+    page.locator(".gx-device-island, .gx-statusbar, .gx-phone-screen")
+  ).toHaveCount(0)
   await expectNoPrototypeChrome(page)
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-2-design-base-desktop.png",
+    path: ".omo/evidence/task-2-native-browser-desktop.png",
   })
 
   const shellBox = await page.getByTestId("entry-device").boundingBox()
   expect(shellBox).not.toBeNull()
-  expect(shellBox?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(480)
+  expect(shellBox?.width ?? 0).toBeGreaterThanOrEqual(680)
+  expect(shellBox?.width ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(760)
+
+  const metrics = await readOverflowMetrics(page)
+  expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
+  expect(metrics.bodyScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
+  expect(metrics.overflowingElements).toEqual([])
 })
 
 test("design base mobile overflow stays within viewport", async ({ page }) => {
@@ -81,6 +90,9 @@ test("design base mobile overflow stays within viewport", async ({ page }) => {
   await page.goto("/")
 
   await expectNoPrototypeChrome(page)
+  await expect(
+    page.locator(".gx-device-island, .gx-statusbar, .gx-phone-screen")
+  ).toHaveCount(0)
   const metrics = await readOverflowMetrics(page)
   writeFileSync(
     ".omo/evidence/task-2-mobile-overflow.json",

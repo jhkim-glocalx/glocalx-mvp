@@ -116,7 +116,9 @@ test("app onboarding quick replies drive the bottom composer", async ({
   )
 })
 
-test("mobile shell frame keeps controls visible", async ({ page }) => {
+test("responsive browser shell keeps controls visible on mobile", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 900 })
   await page.context().clearCookies()
   await page.goto("/")
@@ -124,6 +126,9 @@ test("mobile shell frame keeps controls visible", async ({ page }) => {
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
+  await expect(
+    page.locator(".gx-device-island, .gx-statusbar, .gx-phone-screen")
+  ).toHaveCount(0)
   await expect(
     page.getByRole("button", { name: "사진 고도화" })
   ).toHaveAttribute("aria-current", "page")
@@ -134,7 +139,7 @@ test("mobile shell frame keeps controls visible", async ({ page }) => {
   }))
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-3-mobile-shell.png",
+    path: ".omo/evidence/task-3-responsive-mobile-shell.png",
   })
 
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth)
