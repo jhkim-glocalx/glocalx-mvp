@@ -108,7 +108,9 @@ export interface GbpBusinessInformationAdapter {
   validateLocation(
     input: CreateLocationInput
   ): Promise<AdapterResult<HttpRequestSpec>>
-  createLocation(input: CreateLocationInput): Promise<AdapterResult<HttpRequestSpec>>
+  createLocation(
+    input: CreateLocationInput
+  ): Promise<AdapterResult<HttpRequestSpec>>
 }
 
 export interface GbpLocalPostsAdapter {

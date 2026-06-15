@@ -36,11 +36,7 @@ export const onboardingConversationStateSchema = z.enum(
   onboardingConversationStates
 )
 export const postingConversationStateSchema = z.enum(postingConversationStates)
-export const conversationActorSchema = z.enum([
-  "owner",
-  "assistant",
-  "system",
-])
+export const conversationActorSchema = z.enum(["owner", "assistant", "system"])
 export const conversationSurfaceSchema = z.enum(["ONBOARDING", "POSTING"])
 export const clientEventIdSchema = nonEmptyStringSchema.max(120)
 

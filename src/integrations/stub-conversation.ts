@@ -31,9 +31,7 @@ function normalizeHourRange(startRaw: string, endRaw: string): string {
 }
 
 function extractHours(ownerMessage: string): string | undefined {
-  const weekdayMatch = /평일\s*(\d{1,2})\s*[-~]\s*(\d{1,2})/u.exec(
-    ownerMessage
-  )
+  const weekdayMatch = /평일\s*(\d{1,2})\s*[-~]\s*(\d{1,2})/u.exec(ownerMessage)
   const start = weekdayMatch?.[1]
   const end = weekdayMatch?.[2]
   if (start !== undefined && end !== undefined) {
@@ -63,7 +61,7 @@ function extractOnboardingSlots(
     ...(hours === undefined ? {} : { hours: "high" as const }),
     ...(phone === undefined
       ? {}
-      : { phone: phones.length === 1 ? "high" as const : "low" as const }),
+      : { phone: phones.length === 1 ? ("high" as const) : ("low" as const) }),
   }
   const missingFields = remainingFields(input.missingFields, {
     hours,
@@ -148,9 +146,9 @@ export function createStubOnboardingConversation(): OnboardingConversationAdapte
         },
       }
     },
-    async extractStoreSlots(input): Promise<
-      AdapterResult<OnboardingConversationOutput>
-    > {
+    async extractStoreSlots(
+      input
+    ): Promise<AdapterResult<OnboardingConversationOutput>> {
       return {
         kind: "ok",
         value: extractOnboardingSlots(input),

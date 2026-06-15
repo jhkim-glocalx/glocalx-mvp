@@ -1,5 +1,9 @@
 import { blockedByCredentials, missingEnvVars } from "./credentials"
-import type { AdapterEnvironment, AdapterResult, ExternalFetch } from "./contracts"
+import type {
+  AdapterEnvironment,
+  AdapterResult,
+  ExternalFetch,
+} from "./contracts"
 import type {
   OnboardingConversationAdapter,
   OnboardingSlotExtractionInput,

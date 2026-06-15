@@ -342,7 +342,9 @@ export function OnboardingFlow() {
       <MobileShell
         bottomBar={
           <form
-            aria-label={isSlotCollectionActive() ? "매장 정보 답변" : "네이버 정보 제출"}
+            aria-label={
+              isSlotCollectionActive() ? "매장 정보 답변" : "네이버 정보 제출"
+            }
             className="gx-inputbar"
             onSubmit={handleBottomSubmit}
           >
@@ -365,8 +367,8 @@ export function OnboardingFlow() {
                 isSlotCollectionActive()
                   ? "예: 평일 9-6이고 번호는 1-2342-232예요"
                   : inputMode === "naverLink"
-                  ? "네이버 플레이스 링크 붙여넣기"
-                  : "상호명을 입력하세요"
+                    ? "네이버 플레이스 링크 붙여넣기"
+                    : "상호명을 입력하세요"
               }
               ref={inputRef}
               type="text"

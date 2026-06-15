@@ -73,7 +73,8 @@ describe("conversation-contracts", () => {
     const postingSchema = toPostingDecisionJsonSchema()
     const onboardingProperties =
       jsonSchemaObjectSchema.parse(onboardingSchema).properties
-    const postingProperties = jsonSchemaObjectSchema.parse(postingSchema).properties
+    const postingProperties =
+      jsonSchemaObjectSchema.parse(postingSchema).properties
     const onboardingNextStates = [
       ...jsonSchemaEnumSchema.parse(onboardingProperties["nextState"]).enum,
     ].sort()

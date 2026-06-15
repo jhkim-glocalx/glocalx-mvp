@@ -376,20 +376,20 @@ function PhotoScreen({
                 <p>{draft.suggestion.message}</p>
                 <small>{draft.suggestion.rationale}</small>
               </div>
-          <div className="gx-actions-row">
-            <ChoiceButton onClick={onSuggestionAccept}>
-              제안 반영
-            </ChoiceButton>
-            <ChoiceButton onClick={onSuggestionSkip} tone="ghost">
-              제안 없이 진행
-            </ChoiceButton>
-          </div>
-          <PostingDecisionMessages
-            postingChatTurns={postingChatTurns}
-            postingDecision={postingDecision}
-          />
-        </FlowCard>
-      )}
+              <div className="gx-actions-row">
+                <ChoiceButton onClick={onSuggestionAccept}>
+                  제안 반영
+                </ChoiceButton>
+                <ChoiceButton onClick={onSuggestionSkip} tone="ghost">
+                  제안 없이 진행
+                </ChoiceButton>
+              </div>
+              <PostingDecisionMessages
+                postingChatTurns={postingChatTurns}
+                postingDecision={postingDecision}
+              />
+            </FlowCard>
+          )}
           <div className="gx-actions-row">
             <ChoiceButton onClick={() => onSelect("posting")}>
               게시물 미리보기

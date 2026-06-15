@@ -168,7 +168,8 @@ export function ConfirmationPanel({
   return (
     <>
       {profileDraft !== undefined ? (
-        profileDraft.source === "MANUAL" ? (
+        profileDraft.source === "MANUAL" ||
+        profileDraft.missingFields.length > 0 ? (
           <StoreProfileConfirmForm
             disabled={confirmation.kind === "loading"}
             draft={profileDraft}

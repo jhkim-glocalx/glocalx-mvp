@@ -1,9 +1,6 @@
 import { z } from "zod"
 
-import type {
-  AdapterEnvironment,
-  ExternalFetch,
-} from "./contracts"
+import type { AdapterEnvironment, ExternalFetch } from "./contracts"
 import type { ConversationJsonSchema } from "@/conversations/contracts"
 
 const responsesUrl = "https://api.openai.com/v1/responses"

@@ -145,14 +145,13 @@ export async function processOnboardingSlotTurn(
     return replay
   }
 
-  const extracted = await options.adapters.onboardingConversation.extractStoreSlots(
-    {
+  const extracted =
+    await options.adapters.onboardingConversation.extractStoreSlots({
       candidateName: options.request.candidate.name,
       currentState: options.request.currentState,
       missingFields: options.request.candidate.missingFields,
       ownerMessage: options.request.ownerMessage,
-    }
-  )
+    })
 
   if (extracted.kind === "blocked_by_credentials") {
     return {

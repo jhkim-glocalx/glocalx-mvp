@@ -78,7 +78,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const parsed = parseRoutePayload(postingDecisionRequestSchema, payload.payload)
+  const parsed = parseRoutePayload(
+    postingDecisionRequestSchema,
+    payload.payload
+  )
   if (parsed.kind === "validation_error") {
     return Response.json(
       {
@@ -109,11 +112,13 @@ export async function POST(request: NextRequest) {
       request: parsed.value,
       storeId: session.storeId,
     })
-    const status =
-      result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
+    const status = result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
     return Response.json(result, { status })
   } catch (error) {
-    return conversationFailureResponse(error)
+    if (error instanceof Error) {
+      return conversationFailureResponse(error)
+    }
+    throw error
   } finally {
     database.close()
   }

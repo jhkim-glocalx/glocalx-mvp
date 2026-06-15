@@ -76,7 +76,8 @@ async function draftForDecision(
         database: options.database,
         imageAssets: options.request.imageAssets ?? [],
         ownerIntent:
-          options.request.suggestionRevisedIntent ?? options.request.ownerIntent,
+          options.request.suggestionRevisedIntent ??
+          options.request.ownerIntent,
         storeId: options.storeId,
         suggestionMode: "accepted",
         targetChannel: "GBP",
@@ -179,15 +180,14 @@ export async function processPostingDecision(
     return replay
   }
 
-  const classified = await options.adapters.postingConversation.classifyOwnerReply(
-    {
+  const classified =
+    await options.adapters.postingConversation.classifyOwnerReply({
       activeSuggestionId: options.request.activeSuggestionId,
       currentState: sessionStateForAdapter(session.state),
       draftSummary: options.request.draftSummary,
       ownerMessage: options.request.ownerMessage,
       suggestionMessage: options.request.suggestionMessage,
-    }
-  )
+    })
 
   if (classified.kind === "blocked_by_credentials") {
     return {

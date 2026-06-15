@@ -92,10 +92,13 @@ describe("post API route authorization", () => {
     vi.stubGlobal(
       "fetch",
       async () =>
-        new Response(JSON.stringify({ error: { message: "upstream failed" } }), {
-          headers: { "Content-Type": "application/json" },
-          status: 500,
-        })
+        new Response(
+          JSON.stringify({ error: { message: "upstream failed" } }),
+          {
+            headers: { "Content-Type": "application/json" },
+            status: 500,
+          }
+        )
     )
 
     const response = await createDraft(
@@ -133,10 +136,13 @@ describe("post API route authorization", () => {
     vi.stubGlobal(
       "fetch",
       async () =>
-        new Response(JSON.stringify({ error: { message: "upstream failed" } }), {
-          headers: { "Content-Type": "application/json" },
-          status: 500,
-        })
+        new Response(
+          JSON.stringify({ error: { message: "upstream failed" } }),
+          {
+            headers: { "Content-Type": "application/json" },
+            status: 500,
+          }
+        )
     )
 
     const response = await postingDecision(

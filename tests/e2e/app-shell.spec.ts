@@ -150,20 +150,12 @@ test("app onboarding keeps Korean composition input and exposes editable store f
   await storeName.fill("우빈떡볶이 신촌점")
   await expect(storeName).toHaveValue("우빈떡볶이 신촌점")
 
-  const screenScroll = await page.locator(".gx-screen").evaluate((element) => {
-    element.scrollTop = 0
-    const before = element.scrollTop
-    element.scrollTo({ top: element.scrollHeight })
-    return {
-      after: element.scrollTop,
-      before,
-      clientHeight: element.clientHeight,
-      scrollHeight: element.scrollHeight,
-    }
-  })
-
-  expect(screenScroll.scrollHeight).toBeGreaterThan(screenScroll.clientHeight)
-  expect(screenScroll.after).toBeGreaterThan(screenScroll.before)
+  await page.getByRole("textbox", { name: "전화번호" }).fill("02-1234-5678")
+  await page.getByRole("textbox", { name: "영업시간" }).fill("평일 9-6")
+  await page.getByRole("button", { name: "매장 정보 확인" }).click()
+  await expect(
+    page.getByRole("button", { name: "다음: GBP 세팅 확인" })
+  ).toBeVisible()
 })
 
 test("responsive browser shell keeps controls visible on mobile", async ({

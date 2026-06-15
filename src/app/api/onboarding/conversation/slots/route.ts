@@ -91,8 +91,7 @@ export async function POST(request: NextRequest) {
       request: parsed.value,
       storeId: session.storeId,
     })
-    const status =
-      result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
+    const status = result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
     return Response.json(result, { status })
   } finally {
     database.close()

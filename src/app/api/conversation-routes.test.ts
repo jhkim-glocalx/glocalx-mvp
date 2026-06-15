@@ -109,7 +109,8 @@ describe("conversation API routes", () => {
         activeSuggestionId: "suggest-closeup-weekend-menu",
         clientEventId: "posting-decision-1",
         draftId: "demo-post-draft",
-        draftSummary: "브런치모먼트 홍대점에서 주말 브런치 신메뉴를 소개합니다.",
+        draftSummary:
+          "브런치모먼트 홍대점에서 주말 브런치 신메뉴를 소개합니다.",
         ownerIntent: "이번 주말 브런치 신메뉴 홍보",
         ownerMessage: "더 젊은 톤으로 바꿔줘",
         storeId: "demo-store",
