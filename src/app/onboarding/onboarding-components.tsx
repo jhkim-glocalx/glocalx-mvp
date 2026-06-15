@@ -51,7 +51,7 @@ export function CandidatePicker({
 }: {
   readonly candidates: readonly StoreProfileDraft[]
   readonly onSelect: (candidate: StoreProfileDraft) => void
-  readonly selectedCandidateId: string
+  readonly selectedCandidateId: string | undefined
 }) {
   if (candidates.length <= 1) {
     return null

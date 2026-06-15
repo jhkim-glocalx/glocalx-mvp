@@ -9,9 +9,12 @@ import {
   toConfirmationState,
   toConfirmedStoreProfilePayload,
   toExtractionState,
+  toOnboardingSlotTurnState,
   toSetupState,
   type ConfirmationState,
   type ExtractionState,
+  type OnboardingChatTurn,
+  type OnboardingSlotTurnState,
   type SetupState,
   type StoreProfileDraft,
 } from "./onboarding-model"
@@ -21,6 +24,7 @@ import {
   OnboardingIntro,
   OnboardingTopBar,
   SetupPanel,
+  SlotCollectionPanel,
 } from "./onboarding-panels"
 
 function assertNever(value: never): never {
@@ -39,7 +43,7 @@ function selectedDraftFromExtraction(
     case "manual":
       return extraction.draft
     case "candidates":
-      return extraction.candidates[0]
+      return extraction.requiresSelection ? undefined : extraction.candidates[0]
     default:
       return assertNever(extraction)
   }
@@ -63,10 +67,18 @@ export function OnboardingFlow() {
   >(undefined)
   const [setup, setSetup] = useState<SetupState>({ kind: "idle" })
   const [submittedInput, setSubmittedInput] = useState("")
+  const [slotMessages, setSlotMessages] = useState<
+    readonly OnboardingChatTurn[]
+  >([])
+  const [slotSessionId, setSlotSessionId] = useState<string>()
+  const [slotState, setSlotState] = useState<OnboardingSlotTurnState>({
+    kind: "idle",
+  })
 
   useEffect(() => {
     const hasNewResult =
       extraction.kind !== "idle" ||
+      slotState.kind !== "idle" ||
       confirmation.kind !== "idle" ||
       setup.kind !== "idle"
 
@@ -80,7 +92,7 @@ export function OnboardingFlow() {
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [confirmation.kind, extraction.kind, setup.kind])
+  }, [confirmation.kind, extraction.kind, setup.kind, slotState.kind])
 
   function focusStoreInput(): void {
     window.requestAnimationFrame(() => {
@@ -109,9 +121,22 @@ export function OnboardingFlow() {
     focusStoreInput()
   }
 
-  async function handleExtraction(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const nextInput = input.trim()
+  function resetSlotConversation(): void {
+    setSlotMessages([])
+    setSlotSessionId(undefined)
+    setSlotState({ kind: "idle" })
+  }
+
+  function isSlotCollectionActive(): boolean {
+    return (
+      profileDraft !== undefined &&
+      profileDraft.source !== "MANUAL" &&
+      profileDraft.missingFields.length > 0 &&
+      extraction.kind !== "loading"
+    )
+  }
+
+  async function handleExtraction(nextInput: string) {
     if (nextInput === "") {
       focusStoreInput()
       return
@@ -122,6 +147,7 @@ export function OnboardingFlow() {
     setSetup({ kind: "idle" })
     setProfileDraft(undefined)
     setSubmittedInput(nextInput)
+    resetSlotConversation()
 
     try {
       const response = await fetch("/api/onboarding/extractions", {
@@ -142,6 +168,102 @@ export function OnboardingFlow() {
             : "가게 정보 조회에 실패했습니다.",
       })
     }
+  }
+
+  async function handleSlotTurn(ownerMessage: string): Promise<void> {
+    if (profileDraft === undefined) {
+      return
+    }
+
+    const clientEventId = window.crypto.randomUUID()
+    const ownerTurn: OnboardingChatTurn = {
+      id: `owner-${clientEventId}`,
+      message: ownerMessage,
+      speaker: "owner",
+    }
+    setSlotMessages((currentTurns) => [...currentTurns, ownerTurn])
+    setSlotState({ kind: "loading" })
+    setConfirmation({ kind: "idle" })
+    setSetup({ kind: "idle" })
+
+    try {
+      const response = await fetch("/api/onboarding/conversation/slots", {
+        body: JSON.stringify({
+          candidate: toConversationCandidate(profileDraft),
+          clientEventId,
+          currentState:
+            profileDraft.source === "MANUAL"
+              ? "manual_collection"
+              : slotSessionId === undefined
+                ? "slot_elicitation"
+                : "slot_clarification",
+          ...(slotSessionId === undefined ? {} : { sessionId: slotSessionId }),
+          ownerMessage,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      })
+      const payload: unknown = await response.json()
+      const nextState = toOnboardingSlotTurnState(payload)
+      setSlotState(nextState)
+      if (nextState.kind !== "ready") {
+        return
+      }
+
+      setSlotSessionId(nextState.sessionId)
+      setProfileDraft(nextState.draft)
+      setSlotMessages((currentTurns) => [
+        ...currentTurns,
+        {
+          id: `assistant-${clientEventId}`,
+          message: nextState.assistantMessage,
+          speaker: "assistant",
+        },
+      ])
+      setSlotState({ kind: "idle" })
+    } catch (error) {
+      setSlotState({
+        kind: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "답변에서 매장 정보를 확인하지 못했습니다.",
+      })
+    }
+  }
+
+  function toConversationCandidate(draft: StoreProfileDraft) {
+    return {
+      address: draft.address,
+      candidateId: draft.candidateId,
+      category: draft.category,
+      missingFields: draft.missingFields,
+      name: draft.name,
+      ...(draft.hours.trim() === "" ? {} : { hours: draft.hours }),
+      ...(draft.naverPlaceUrl.trim() === ""
+        ? {}
+        : { naverPlaceUrl: draft.naverPlaceUrl }),
+      ...(draft.phone.trim() === "" ? {} : { phone: draft.phone }),
+      source: draft.source,
+      sourceInput: draft.sourceInput,
+    }
+  }
+
+  async function handleBottomSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const nextInput = input.trim()
+    if (nextInput === "") {
+      focusStoreInput()
+      return
+    }
+
+    setInput("")
+    if (isSlotCollectionActive()) {
+      await handleSlotTurn(nextInput)
+      return
+    }
+
+    await handleExtraction(nextInput)
   }
 
   async function handleConfirmation() {
@@ -192,6 +314,13 @@ export function OnboardingFlow() {
     }
   }
 
+  function handleCandidateSelect(candidate: StoreProfileDraft): void {
+    setProfileDraft(candidate)
+    setConfirmation({ kind: "idle" })
+    setSetup({ kind: "idle" })
+    resetSlotConversation()
+  }
+
   function handleDraftFieldChange(
     field: StoreProfileField,
     value: string
@@ -208,20 +337,14 @@ export function OnboardingFlow() {
     setSetup({ kind: "idle" })
   }
 
-  function handleCandidateSelect(candidate: StoreProfileDraft): void {
-    setProfileDraft(candidate)
-    setConfirmation({ kind: "idle" })
-    setSetup({ kind: "idle" })
-  }
-
   return (
     <main className="gx-route-page">
       <MobileShell
         bottomBar={
           <form
-            aria-label="네이버 정보 제출"
+            aria-label={isSlotCollectionActive() ? "매장 정보 답변" : "네이버 정보 제출"}
             className="gx-inputbar"
-            onSubmit={handleExtraction}
+            onSubmit={handleBottomSubmit}
           >
             <button
               aria-label="네이버 링크 첨부"
@@ -239,7 +362,9 @@ export function OnboardingFlow() {
               id="naver-store-input"
               onChange={(event) => setInput(event.currentTarget.value)}
               placeholder={
-                inputMode === "naverLink"
+                isSlotCollectionActive()
+                  ? "예: 평일 9-6이고 번호는 1-2342-232예요"
+                  : inputMode === "naverLink"
                   ? "네이버 플레이스 링크 붙여넣기"
                   : "상호명을 입력하세요"
               }
@@ -250,7 +375,11 @@ export function OnboardingFlow() {
             <button
               aria-label="네이버 정보 제출"
               className="gx-input-send"
-              disabled={extraction.kind === "loading" || input.trim() === ""}
+              disabled={
+                extraction.kind === "loading" ||
+                slotState.kind === "loading" ||
+                input.trim() === ""
+              }
               type="submit"
             >
               <span aria-hidden="true">➤</span>
@@ -270,6 +399,11 @@ export function OnboardingFlow() {
           onCandidateSelect={handleCandidateSelect}
           profileDraft={profileDraft}
           submittedInput={submittedInput}
+        />
+        <SlotCollectionPanel
+          profileDraft={profileDraft}
+          slotMessages={slotMessages}
+          slotState={slotState}
         />
         <ConfirmationPanel
           confirmation={confirmation}

@@ -34,6 +34,11 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
 
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
   await expect(page.getByText("영업시간 필요")).toBeVisible()
+  await page
+    .getByRole("textbox", { name: "네이버 정보", exact: true })
+    .fill("평일 9-6이에요")
+  await page.getByRole("button", { name: "네이버 정보 제출" }).click()
+  await expect(page.getByText("매장 정보 요약")).toBeVisible()
   await expect(
     page.getByRole("button", { name: "매장 정보 확인" })
   ).toBeVisible()

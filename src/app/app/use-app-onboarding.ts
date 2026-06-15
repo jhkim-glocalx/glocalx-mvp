@@ -19,7 +19,7 @@ function selectedDraftFromExtraction(
 ): StoreProfileDraft | undefined {
   switch (extraction.kind) {
     case "candidates":
-      return extraction.candidates[0]
+      return extraction.requiresSelection ? undefined : extraction.candidates[0]
     case "manual":
       return extraction.draft
     case "error":

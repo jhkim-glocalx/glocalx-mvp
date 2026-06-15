@@ -3,13 +3,15 @@ import type { NextRequest } from "next/server"
 import {
   demoSessionCookieName,
   demoStoreCookieName,
-  ensureDemoOwnerStore,
   getStoredSessionFromCookieValues,
   onboardingCompleteCookieName,
 } from "@/auth/session"
-import { parseRoutePayload, postDraftRequestSchema } from "@/domain/schemas"
+import {
+  parseRoutePayload,
+  postingDecisionRequestSchema,
+} from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
-import { createPostDraft } from "@/posts/post-flow"
+import { processPostingDecision } from "@/posts/posting-conversation"
 import { openDatabase } from "@/server/db/sqlite"
 
 type JsonPayloadResult =
@@ -37,12 +39,12 @@ async function readJsonPayload(
   }
 }
 
-function generationFailureResponse(error: unknown): Response {
-  console.error("Post draft generation failed", error)
+function conversationFailureResponse(error: unknown): Response {
+  console.error("Posting conversation failed", error)
   return Response.json(
     {
-      status: "POST_DRAFT_GENERATION_FAILED",
-      message: "AI 분석을 완료하지 못했습니다. 잠시 후 다시 시도해주세요.",
+      status: "POSTING_CONVERSATION_FAILED",
+      message: "AI 제안 응답을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.",
     },
     { status: 502 }
   )
@@ -76,7 +78,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const parsed = parseRoutePayload(postDraftRequestSchema, payload.payload)
+  const parsed = parseRoutePayload(postingDecisionRequestSchema, payload.payload)
   if (parsed.kind === "validation_error") {
     return Response.json(
       {
@@ -97,26 +99,21 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  ensureDemoOwnerStore()
   const database = openDatabase()
 
   try {
     const adapters = createIntegrationAdapters({ database })
-    const result = await createPostDraft({
+    const result = await processPostingDecision({
       adapters,
       database,
-      ...(parsed.value.acceptedSuggestionId === undefined
-        ? {}
-        : { acceptedSuggestionId: parsed.value.acceptedSuggestionId }),
-      imageAssets: parsed.value.imageAssets ?? [],
-      ownerIntent: parsed.value.ownerIntent,
+      request: parsed.value,
       storeId: session.storeId,
-      suggestionMode: parsed.value.suggestionMode ?? "request",
-      targetChannel: parsed.value.targetChannel,
     })
-    return Response.json(result)
+    const status =
+      result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
+    return Response.json(result, { status })
   } catch (error) {
-    return generationFailureResponse(error)
+    return conversationFailureResponse(error)
   } finally {
     database.close()
   }

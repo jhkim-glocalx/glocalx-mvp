@@ -9,9 +9,17 @@ import {
   createProductionNaverSearch,
   createProductionReviews,
 } from "./production"
+import {
+  createProductionOnboardingConversation,
+  createProductionPostingConversation,
+} from "./openai-conversation"
 import { createProductionMarketingGeneration } from "./openai-production"
 import { createProductionPerformance } from "./production-performance"
 import { shouldUsePreviewNaverStub } from "./runtime-diagnostics"
+import {
+  createStubOnboardingConversation,
+  createStubPostingConversation,
+} from "./stub-conversation"
 import {
   createStubBusinessInformation,
   createStubClock,
@@ -48,6 +56,11 @@ export function createIntegrationAdapters(
       gbpReviews: createProductionReviews(env),
       contentGeneration: createStubContentGeneration(),
       marketingGeneration: createProductionMarketingGeneration(env, fetchImpl),
+      onboardingConversation: createProductionOnboardingConversation(
+        env,
+        fetchImpl
+      ),
+      postingConversation: createProductionPostingConversation(env, fetchImpl),
       translation: createStubTranslation(),
       clock: createStubClock(now),
       jobScheduler: createStubJobScheduler(),
@@ -64,6 +77,8 @@ export function createIntegrationAdapters(
     gbpReviews: createStubReviews(),
     contentGeneration: createStubContentGeneration(),
     marketingGeneration: createStubMarketingGeneration(),
+    onboardingConversation: createStubOnboardingConversation(),
+    postingConversation: createStubPostingConversation(),
     translation: createStubTranslation(),
     clock: createStubClock(now),
     jobScheduler: createStubJobScheduler(),

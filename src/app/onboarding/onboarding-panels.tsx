@@ -14,6 +14,8 @@ import {
 import type {
   ConfirmationState,
   ExtractionState,
+  OnboardingChatTurn,
+  OnboardingSlotTurnState,
   SetupState,
   StoreProfileDraft,
 } from "./onboarding-model"
@@ -113,24 +115,30 @@ export function ExtractionPanel({
       {extraction.kind === "manual" ? (
         <ChatMessage message={extraction.message} speaker="assistant" />
       ) : null}
-      {extraction.kind === "candidates" && profileDraft !== undefined ? (
+      {extraction.kind === "candidates" ? (
         <div className="grid gap-3">
           <ChatMessage message={extraction.message} speaker="assistant" />
           <div aria-label="추출 결과 상태" className="flex flex-wrap gap-2">
             <StatusPill>후보 {extraction.candidates.length}개</StatusPill>
-            <StatusPill>상호·주소 확인</StatusPill>
             <StatusPill>
-              {profileDraft.missingFields.includes("hours")
-                ? "영업시간 필요"
-                : "필수 정보 확인"}
+              {profileDraft === undefined ? "선택 필요" : "상호·주소 확인"}
             </StatusPill>
+            {profileDraft === undefined ? null : (
+              <StatusPill>
+                {profileDraft.missingFields.includes("hours")
+                  ? "영업시간 필요"
+                  : "필수 정보 확인"}
+              </StatusPill>
+            )}
           </div>
           <CandidatePicker
             candidates={extraction.candidates}
             onSelect={onCandidateSelect}
-            selectedCandidateId={profileDraft.candidateId}
+            selectedCandidateId={profileDraft?.candidateId}
           />
-          <StoreInfoCard draft={profileDraft} />
+          {profileDraft === undefined ? null : (
+            <StoreInfoCard draft={profileDraft} />
+          )}
         </div>
       ) : null}
       {extraction.kind === "error" ? (
@@ -160,12 +168,23 @@ export function ConfirmationPanel({
   return (
     <>
       {profileDraft !== undefined ? (
-        <StoreProfileConfirmForm
-          disabled={confirmation.kind === "loading"}
-          draft={profileDraft}
-          onChange={onFieldChange}
-          onConfirm={onConfirm}
-        />
+        profileDraft.source === "MANUAL" ? (
+          <StoreProfileConfirmForm
+            disabled={confirmation.kind === "loading"}
+            draft={profileDraft}
+            onChange={onFieldChange}
+            onConfirm={onConfirm}
+          />
+        ) : (
+          <StoreSummaryConfirm
+            disabled={
+              confirmation.kind === "loading" ||
+              profileDraft.missingFields.length > 0
+            }
+            draft={profileDraft}
+            onConfirm={onConfirm}
+          />
+        )
       ) : null}
       {confirmation.kind === "loading" ? (
         <TypingIndicator label="매장 정보를 확인하는 중" />
@@ -190,6 +209,113 @@ export function ConfirmationPanel({
         </div>
       ) : null}
     </>
+  )
+}
+
+function missingFieldCopy(missingFields: readonly string[]): string {
+  const needsPhone = missingFields.includes("phone")
+  const needsHours = missingFields.includes("hours")
+  if (needsPhone && needsHours) {
+    return "전화번호와 영업시간을 알려주세요. 예: 평일 9-6이고 번호는 1-2342-232예요."
+  }
+  if (needsPhone) {
+    return "매장 전화번호를 알려주세요."
+  }
+  if (needsHours) {
+    return "영업시간을 알려주세요. 예: 평일 9-6이에요."
+  }
+  return "등록 정보를 요약해서 확인할게요."
+}
+
+export function SlotCollectionPanel({
+  profileDraft,
+  slotMessages,
+  slotState,
+}: {
+  readonly profileDraft: StoreProfileDraft | undefined
+  readonly slotMessages: readonly OnboardingChatTurn[]
+  readonly slotState: OnboardingSlotTurnState
+}) {
+  if (profileDraft === undefined || profileDraft.source === "MANUAL") {
+    return null
+  }
+
+  return (
+    <div className="grid gap-3">
+      {profileDraft.missingFields.length > 0 ? (
+        <ChatMessage
+          message={missingFieldCopy(profileDraft.missingFields)}
+          speaker="assistant"
+        />
+      ) : (
+        <ChatMessage
+          message="필요한 정보를 모두 확인했어요. 아래 요약이 맞으면 확인을 눌러주세요."
+          speaker="assistant"
+        />
+      )}
+      {slotMessages.map((turn) => (
+        <ChatMessage
+          key={turn.id}
+          message={turn.message}
+          speaker={turn.speaker}
+        />
+      ))}
+      {slotState.kind === "loading" ? (
+        <TypingIndicator label="답변에서 매장 정보를 확인하는 중" />
+      ) : null}
+      {slotState.kind === "error" ? (
+        <div role="alert">
+          <ChatMessage message={slotState.message} speaker="assistant" />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function StoreSummaryConfirm({
+  disabled,
+  draft,
+  onConfirm,
+}: {
+  readonly disabled: boolean
+  readonly draft: StoreProfileDraft
+  readonly onConfirm: () => void
+}) {
+  if (draft.missingFields.length > 0) {
+    return null
+  }
+
+  return (
+    <article className="gx-onboarding-form">
+      <div className="grid gap-2">
+        <p className="text-xs font-black text-[var(--accent)]">
+          매장 정보 요약
+        </p>
+        <StoreInfoCard draft={draft} />
+        <dl className="grid gap-2 text-sm font-bold text-[var(--ink-soft)]">
+          <div className="grid gap-1">
+            <dt className="text-[11px] font-black uppercase text-[var(--muted)]">
+              전화번호
+            </dt>
+            <dd>{draft.phone}</dd>
+          </div>
+          <div className="grid gap-1">
+            <dt className="text-[11px] font-black uppercase text-[var(--muted)]">
+              영업시간
+            </dt>
+            <dd>{draft.hours || "미입력"}</dd>
+          </div>
+        </dl>
+      </div>
+      <button
+        className="gx-onboarding-primary"
+        disabled={disabled}
+        onClick={onConfirm}
+        type="button"
+      >
+        매장 정보 확인
+      </button>
+    </article>
   )
 }
 

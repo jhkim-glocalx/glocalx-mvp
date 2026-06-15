@@ -161,3 +161,67 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   redacted_payload_json TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS conversation_sessions (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('onboarding', 'posting')),
+  state TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('active', 'completed')),
+  selected_candidate_id TEXT,
+  selected_candidate_json TEXT,
+  support_metadata_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  completed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_sessions_store_kind_status_updated
+  ON conversation_sessions (store_id, kind, status, updated_at);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('owner', 'assistant')),
+  client_event_id TEXT,
+  content TEXT NOT NULL,
+  redacted_content TEXT NOT NULL,
+  sequence INTEGER NOT NULL CHECK (sequence >= 1),
+  created_at TEXT NOT NULL,
+  UNIQUE (session_id, sequence)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversation_messages_client_event
+  ON conversation_messages (session_id, client_event_id)
+  WHERE client_event_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_conversation_messages_session_sequence
+  ON conversation_messages (session_id, sequence);
+
+CREATE TABLE IF NOT EXISTS conversation_slot_values (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
+  slot_key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  source TEXT NOT NULL,
+  confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversation_slot_values_latest
+  ON conversation_slot_values (session_id, slot_key);
+
+CREATE TABLE IF NOT EXISTS conversation_events (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL REFERENCES conversation_sessions(id) ON DELETE CASCADE,
+  client_event_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  response_message_id TEXT REFERENCES conversation_messages(id) ON DELETE SET NULL,
+  public_response_json TEXT NOT NULL,
+  redacted_payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversation_events_client_event
+  ON conversation_events (session_id, client_event_id);

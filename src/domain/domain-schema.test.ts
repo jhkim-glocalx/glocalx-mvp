@@ -63,6 +63,34 @@ describe("domain-schema persistence", () => {
 
     database.close()
   })
+
+  it("creates the durable conversation persistence tables", async () => {
+    const tempPath = await mkdtemp(join(tmpdir(), "glocalx-domain-schema-"))
+    tempPaths.push(tempPath)
+    const database = openDatabase(join(tempPath, "domain.db"))
+
+    applyMigrations(database)
+
+    const tableRows = z
+      .array(tableNameRowSchema)
+      .parse(
+        database
+          .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+          .all()
+      )
+    const tableNames = tableRows.map((row) => row.name)
+
+    expect(tableNames).toEqual(
+      expect.arrayContaining([
+        "conversation_sessions",
+        "conversation_messages",
+        "conversation_slot_values",
+        "conversation_events",
+      ])
+    )
+
+    database.close()
+  })
 })
 
 describe("default SQLite database path", () => {

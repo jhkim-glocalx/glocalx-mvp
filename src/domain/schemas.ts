@@ -90,12 +90,48 @@ export const postPublishRequestSchema = z
   })
   .strict()
 
+export const onboardingSlotTurnRequestSchema = z
+  .object({
+    candidate: adapterBusinessProfileCandidateSchema,
+    clientEventId: nonEmptyStringSchema.max(120),
+    currentState: z.enum([
+      "manual_collection",
+      "slot_elicitation",
+      "slot_clarification",
+    ]),
+    ownerMessage: nonEmptyStringSchema,
+    sessionId: nonEmptyStringSchema.optional(),
+  })
+  .strict()
+
+export const postingDecisionRequestSchema = z
+  .object({
+    activeSuggestionId: nonEmptyStringSchema,
+    clientEventId: nonEmptyStringSchema.max(120),
+    draftId: nonEmptyStringSchema,
+    draftSummary: nonEmptyStringSchema,
+    imageAssets: z.array(postImageAssetSchema).max(4).optional(),
+    ownerIntent: nonEmptyStringSchema,
+    ownerMessage: nonEmptyStringSchema,
+    sessionId: nonEmptyStringSchema.optional(),
+    storeId: nonEmptyStringSchema,
+    suggestionMessage: nonEmptyStringSchema,
+    suggestionRevisedIntent: nonEmptyStringSchema.optional(),
+  })
+  .strict()
+
 export type OnboardingExtractionRequest = z.infer<
   typeof onboardingExtractionRequestSchema
 >
 export type GbpSetupRequest = z.infer<typeof gbpSetupRequestSchema>
 export type PostDraftRequest = z.infer<typeof postDraftRequestSchema>
 export type PostPublishRequest = z.infer<typeof postPublishRequestSchema>
+export type OnboardingSlotTurnRequest = z.infer<
+  typeof onboardingSlotTurnRequestSchema
+>
+export type PostingDecisionRequest = z.infer<
+  typeof postingDecisionRequestSchema
+>
 export type PostImageAsset = z.infer<typeof postImageAssetSchema>
 export type MarketingSuggestionMode = z.infer<
   typeof marketingSuggestionModeSchema

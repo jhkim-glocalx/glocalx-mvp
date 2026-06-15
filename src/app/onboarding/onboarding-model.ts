@@ -65,6 +65,25 @@ export type SetupState =
     }
   | { readonly kind: "error"; readonly message: string }
 
+export type OnboardingChatTurn = {
+  readonly id: string
+  readonly message: string
+  readonly speaker: "assistant" | "owner"
+}
+
+export type OnboardingSlotTurnState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "loading" }
+  | {
+      readonly assistantMessage: string
+      readonly draft: StoreProfileDraft
+      readonly kind: "ready"
+      readonly needsOwnerConfirmation: boolean
+      readonly nextState: string
+      readonly sessionId: string
+    }
+  | { readonly kind: "error"; readonly message: string }
+
 function readCandidate(payload: unknown): StoreProfileDraft | undefined {
   if (!isRecord(payload)) {
     return undefined
@@ -241,5 +260,46 @@ export function toSetupState(payload: unknown): SetupState {
     message:
       readString(payload["message"]) ??
       "GBP 세팅 상태를 확인했어요. 대시보드에서 다음 작업을 이어갈 수 있어요.",
+  }
+}
+
+export function toOnboardingSlotTurnState(
+  payload: unknown
+): OnboardingSlotTurnState {
+  if (!isRecord(payload)) {
+    return { kind: "error", message: "대화 응답을 읽지 못했습니다." }
+  }
+
+  const status = readString(payload["status"])
+  if (status !== "ONBOARDING_CONVERSATION_TURN") {
+    return {
+      kind: "error",
+      message:
+        readString(payload["assistantMessage"]) ??
+        readString(payload["message"]) ??
+        "AI 매장 정보 확인에 실패했습니다.",
+    }
+  }
+
+  const assistantMessage = readString(payload["assistantMessage"])
+  const draft = readCandidate(payload["draft"])
+  const nextState = readString(payload["nextState"])
+  const sessionId = readString(payload["sessionId"])
+  if (
+    assistantMessage === undefined ||
+    draft === undefined ||
+    nextState === undefined ||
+    sessionId === undefined
+  ) {
+    return { kind: "error", message: "대화 응답 형식이 올바르지 않습니다." }
+  }
+
+  return {
+    assistantMessage,
+    draft,
+    kind: "ready",
+    needsOwnerConfirmation: payload["needsOwnerConfirmation"] === true,
+    nextState,
+    sessionId,
   }
 }

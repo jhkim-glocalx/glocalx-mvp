@@ -21,6 +21,8 @@ import {
   type MarketingImageAsset,
   type MarketingPlatform,
   type PublishState,
+  type PostingChatTurn,
+  type PostingDecisionTurnState,
 } from "./app-workspace-model"
 import { OnboardingSnapshot } from "./onboarding-snapshot"
 
@@ -51,6 +53,8 @@ type ReferenceFlowScreensProps = {
   readonly onSelect: (navId: AppNavId) => void
   readonly onSuggestionAccept: () => void
   readonly onSuggestionSkip: () => void
+  readonly postingChatTurns: readonly PostingChatTurn[]
+  readonly postingDecision: PostingDecisionTurnState
   readonly publish: PublishState
 }
 
@@ -225,6 +229,37 @@ function ImageComparison({
   )
 }
 
+function PostingDecisionMessages({
+  postingChatTurns,
+  postingDecision,
+}: {
+  readonly postingChatTurns: readonly PostingChatTurn[]
+  readonly postingDecision: PostingDecisionTurnState
+}) {
+  return (
+    <div className="grid gap-2">
+      {postingChatTurns.map((turn) => (
+        <ChatMessage
+          key={turn.id}
+          message={turn.message}
+          speaker={turn.speaker}
+        />
+      ))}
+      {postingDecision.kind === "loading" ? (
+        <ChatMessage
+          message="제안 반영 여부를 이해하는 중"
+          speaker="assistant"
+        />
+      ) : null}
+      {postingDecision.kind === "error" ? (
+        <div role="alert">
+          <ChatMessage message={postingDecision.message} speaker="assistant" />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function PhotoScreen({
   draft,
   imageAssets,
@@ -235,6 +270,8 @@ function PhotoScreen({
   onSelect,
   onSuggestionAccept,
   onSuggestionSkip,
+  postingChatTurns,
+  postingDecision,
 }: Pick<
   ReferenceFlowScreensProps,
   | "draft"
@@ -246,6 +283,8 @@ function PhotoScreen({
   | "onSelect"
   | "onSuggestionAccept"
   | "onSuggestionSkip"
+  | "postingChatTurns"
+  | "postingDecision"
 >) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -337,16 +376,20 @@ function PhotoScreen({
                 <p>{draft.suggestion.message}</p>
                 <small>{draft.suggestion.rationale}</small>
               </div>
-              <div className="gx-actions-row">
-                <ChoiceButton onClick={onSuggestionAccept}>
-                  제안 반영
-                </ChoiceButton>
-                <ChoiceButton onClick={onSuggestionSkip} tone="ghost">
-                  제안 없이 진행
-                </ChoiceButton>
-              </div>
-            </FlowCard>
-          )}
+          <div className="gx-actions-row">
+            <ChoiceButton onClick={onSuggestionAccept}>
+              제안 반영
+            </ChoiceButton>
+            <ChoiceButton onClick={onSuggestionSkip} tone="ghost">
+              제안 없이 진행
+            </ChoiceButton>
+          </div>
+          <PostingDecisionMessages
+            postingChatTurns={postingChatTurns}
+            postingDecision={postingDecision}
+          />
+        </FlowCard>
+      )}
           <div className="gx-actions-row">
             <ChoiceButton onClick={() => onSelect("posting")}>
               게시물 미리보기
@@ -726,6 +769,8 @@ export function ReferenceFlowScreens({
   onSelect,
   onSuggestionAccept,
   onSuggestionSkip,
+  postingChatTurns,
+  postingDecision,
   publish,
 }: ReferenceFlowScreensProps) {
   if (activeNavId === "dashboard") {
@@ -760,6 +805,8 @@ export function ReferenceFlowScreens({
           onSelect={onSelect}
           onSuggestionAccept={onSuggestionAccept}
           onSuggestionSkip={onSuggestionSkip}
+          postingChatTurns={postingChatTurns}
+          postingDecision={postingDecision}
         />
       ) : null}
       {activeNavId === "posting" ? (

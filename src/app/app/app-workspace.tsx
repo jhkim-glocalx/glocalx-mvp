@@ -8,13 +8,17 @@ import { ReferenceComposer } from "@/app/_components/reference-composer"
 import {
   appNavItems,
   parseDraftState,
+  parsePostingDecisionTurnState,
   parsePublishState,
   type AppNavId,
   type DraftState,
   type MarketingPlatform,
+  type PostingChatTurn,
+  type PostingDecisionTurnState,
   type PublishState,
 } from "./app-workspace-model"
 import { AppWorkspaceTopBar } from "./app-workspace-topbar"
+import { readAppJsonResponse } from "./app-workspace-response"
 import { ReferenceFlowScreens } from "./reference-flow-screens"
 import { useAppOnboarding } from "./use-app-onboarding"
 import { useImageAssets } from "./use-image-assets"
@@ -39,10 +43,19 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   const [activePlatform, setActivePlatform] = useState<MarketingPlatform>("GBP")
   const [draft, setDraft] = useState<DraftState>({ kind: "idle" })
   const [intent, setIntent] = useState("이번 주말 브런치 신메뉴 홍보")
+  const [postingChatTurns, setPostingChatTurns] = useState<
+    readonly PostingChatTurn[]
+  >([])
+  const [postingDecision, setPostingDecision] =
+    useState<PostingDecisionTurnState>({ kind: "idle" })
+  const [postingSessionId, setPostingSessionId] = useState<string>()
   const [publish, setPublish] = useState<PublishState>({ kind: "idle" })
   const { handleImageFiles, imageAssets } = useImageAssets({
     onImagesSelected: () => {
       setDraft({ kind: "idle" })
+      setPostingChatTurns([])
+      setPostingDecision({ kind: "idle" })
+      setPostingSessionId(undefined)
       setPublish({ kind: "idle" })
     },
     onInvalidImage: (message) => {
@@ -94,6 +107,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
     }
 
     setDraft({ kind: "loading" })
+    setPostingDecision({ kind: "idle" })
     setPublish({ kind: "idle" })
     try {
       const response = await fetch("/api/posts/drafts", {
@@ -110,7 +124,10 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
         headers: { "Content-Type": "application/json" },
         method: "POST",
       })
-      const payload: unknown = await response.json()
+      const payload = await readAppJsonResponse(
+        response,
+        "마케팅 초안을 생성하지 못했습니다."
+      )
       setDraft(parseDraftState(payload))
       setActivePlatform("GBP")
     } catch (caught) {
@@ -125,25 +142,94 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   }
 
   async function handleDraftSubmit() {
+    setPostingChatTurns([])
+    setPostingDecision({ kind: "idle" })
+    setPostingSessionId(undefined)
     await requestDraft({ suggestionMode: "request" })
   }
 
-  async function handleSuggestionAccept() {
+  async function handleSuggestionReply(ownerMessage: string) {
     if (draft.kind !== "ready" || draft.suggestion === null) {
       return
     }
 
-    const nextIntent = draft.suggestion.revisedIntent || intent
-    setIntent(nextIntent)
-    await requestDraft({
-      acceptedSuggestionId: draft.suggestion.id,
-      nextIntent,
-      suggestionMode: "accepted",
-    })
+    const clientEventId = window.crypto.randomUUID()
+    setPostingChatTurns((currentTurns) => [
+      ...currentTurns,
+      {
+        id: `owner-${clientEventId}`,
+        message: ownerMessage,
+        speaker: "owner",
+      },
+    ])
+    setPostingDecision({ kind: "loading" })
+    setPublish({ kind: "idle" })
+
+    try {
+      const response = await fetch("/api/posts/conversation/decision", {
+        body: JSON.stringify({
+          activeSuggestionId: draft.suggestion.id,
+          clientEventId,
+          draftId: draft.draftId,
+          draftSummary: draft.koreanCopy,
+          imageAssets,
+          ownerIntent: intent,
+          ownerMessage,
+          ...(postingSessionId === undefined
+            ? {}
+            : { sessionId: postingSessionId }),
+          storeId,
+          suggestionMessage: draft.suggestion.message,
+          suggestionRevisedIntent: draft.suggestion.revisedIntent,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      })
+      const payload = await readAppJsonResponse(
+        response,
+        "제안 응답을 처리하지 못했습니다."
+      )
+      const nextDecision = parsePostingDecisionTurnState(payload)
+      setPostingDecision(nextDecision)
+      if (nextDecision.kind !== "ready") {
+        return
+      }
+
+      setPostingSessionId(nextDecision.sessionId)
+      if (nextDecision.revisedIntent !== null) {
+        setIntent(nextDecision.revisedIntent)
+      }
+      setPostingChatTurns((currentTurns) => [
+        ...currentTurns,
+        {
+          id: `assistant-${clientEventId}`,
+          message: nextDecision.assistantMessage,
+          speaker: "assistant",
+        },
+      ])
+      if (nextDecision.draft !== null) {
+        setDraft(nextDecision.draft)
+        setActivePlatform("GBP")
+        setActiveNavId("posting")
+      }
+      setPostingDecision({ kind: "idle" })
+    } catch (caught) {
+      setPostingDecision({
+        kind: "error",
+        message:
+          caught instanceof Error
+            ? caught.message
+            : "제안 응답을 처리하지 못했습니다.",
+      })
+    }
   }
 
-  function handleSuggestionSkip() {
-    setActiveNavId("posting")
+  async function handleSuggestionAccept() {
+    await handleSuggestionReply("좋아, 제안 반영해줘")
+  }
+
+  async function handleSuggestionSkip() {
+    await handleSuggestionReply("그냥 진행할게")
   }
 
   async function handlePublish() {
@@ -162,7 +248,10 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
         headers: { "Content-Type": "application/json" },
         method: "POST",
       })
-      const payload: unknown = await response.json()
+      const payload = await readAppJsonResponse(
+        response,
+        publishNetworkErrorMessage
+      )
       setPublish(parsePublishState(payload))
     } catch (error) {
       if (!(error instanceof Error)) {
@@ -197,6 +286,15 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   function handleComposerSubmit(message: string): void {
     if (activeNavId === "onboarding") {
       void onboarding.search(message)
+      return
+    }
+
+    if (
+      (activeNavId === "photo" || activeNavId === "posting") &&
+      draft.kind === "ready" &&
+      draft.suggestion !== null
+    ) {
+      void handleSuggestionReply(message)
     }
   }
 
@@ -250,6 +348,8 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
           onSelect={handleNavChange}
           onSuggestionAccept={handleSuggestionAccept}
           onSuggestionSkip={handleSuggestionSkip}
+          postingChatTurns={postingChatTurns}
+          postingDecision={postingDecision}
           publish={publish}
         />
       </MobileShell>

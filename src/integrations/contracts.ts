@@ -1,5 +1,60 @@
 import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
 import type { SqliteDatabase } from "@/server/db/sqlite"
+import type {
+  GbpBusinessInformationAdapter,
+  GbpLocalPostsAdapter,
+  GbpPerformanceAdapter,
+  GbpReviewsAdapter,
+} from "./gbp-contracts"
+import type { MarketingGenerationAdapter } from "./marketing-contracts"
+import type {
+  OnboardingConversationAdapter,
+  PostingConversationAdapter,
+} from "./conversation-contracts"
+
+export type {
+  CreateLocalPostInput,
+  CreateLocationInput,
+  FetchGbpPerformanceInput,
+  GbpBusinessInformationAdapter,
+  GbpLocalPostsAdapter,
+  GbpPerformanceAdapter,
+  GbpPerformanceApiResponse,
+  GbpPerformanceDailyMetric,
+  GbpPerformanceDailyMetricTimeSeries,
+  GbpPerformanceDailyRange,
+  GbpPerformanceDate,
+  GbpPerformanceDatedValue,
+  GbpPerformancePeriod,
+  GbpReviewsAdapter,
+  GoogleLocationMatch,
+  ListReviewsInput,
+  RequestAdminRightsInput,
+  SearchGoogleLocationsInput,
+  SearchGoogleLocationsResult,
+  UpdateReplyInput,
+} from "./gbp-contracts"
+export { gbpPerformanceDailyMetrics } from "./gbp-contracts"
+export type {
+  MarketingGenerationAdapter,
+  MarketingGenerationInput,
+  MarketingGenerationResult,
+  MarketingImageAssetInput,
+  MarketingImageOutput,
+  MarketingIntentAnalysis,
+  MarketingPlatform,
+  MarketingPlatformPreview,
+  MarketingSuggestion,
+  MarketingSuggestionMode,
+} from "./marketing-contracts"
+export type {
+  OnboardingConversationAdapter,
+  OnboardingNextPromptInput,
+  OnboardingNextPromptOutput,
+  OnboardingSlotExtractionInput,
+  PostingConversationAdapter,
+  PostingOwnerReplyInput,
+} from "./conversation-contracts"
 
 export type IntegrationMode = "stub" | "production"
 
@@ -63,172 +118,6 @@ export type NaverSearchResult = {
   readonly candidates: readonly AdapterBusinessProfileCandidate[]
 }
 
-export type CreateLocationInput = {
-  readonly accessToken: string
-  readonly accountName: string
-  readonly requestId: string
-  readonly location: Readonly<Record<string, unknown>>
-}
-
-export type SearchGoogleLocationsInput = {
-  readonly accessToken: string
-  readonly location: Readonly<Record<string, unknown>>
-}
-
-export type GoogleLocationMatch = {
-  readonly googleLocationId: string
-  readonly requestAdminRightsUrl?: string
-}
-
-export type SearchGoogleLocationsResult = {
-  readonly matches: readonly GoogleLocationMatch[]
-}
-
-export type RequestAdminRightsInput = {
-  readonly accessToken: string
-  readonly googleLocationId: string
-  readonly requestAdminRightsUrl: string
-}
-
-export type CreateLocalPostInput = {
-  readonly accessToken: string
-  readonly parent: string
-  readonly summary: string
-}
-
-export type MarketingPlatform = "GBP" | "INSTAGRAM"
-
-export type MarketingSuggestionMode = "request" | "accepted" | "skipped"
-
-export type MarketingImageAssetInput = {
-  readonly dataUrl?: string | undefined
-  readonly id: string
-  readonly name: string
-  readonly mimeType: string
-  readonly sizeBytes: number
-}
-
-export type MarketingGenerationInput = {
-  readonly acceptedSuggestionId?: string
-  readonly imageAssets: readonly MarketingImageAssetInput[]
-  readonly ownerIntent: string
-  readonly storeAddress: string
-  readonly storeName: string
-  readonly suggestionMode: MarketingSuggestionMode
-}
-
-export type MarketingIntentAnalysis = {
-  readonly audience: string
-  readonly keywords: readonly string[]
-  readonly objective: string
-  readonly promotionWindow: string
-  readonly tone: string
-}
-
-export type MarketingImageOutput = {
-  readonly altText: string
-  readonly assetId: string
-  readonly cropFocus: string
-  readonly cssFilter: string
-  readonly editedDataUrl?: string | undefined
-  readonly editedLabel: string
-  readonly editSummary: string
-  readonly originalLabel: string
-  readonly qualityScore: number
-}
-
-export type MarketingSuggestion = {
-  readonly id: string
-  readonly message: string
-  readonly ownerAction: string
-  readonly rationale: string
-  readonly revisedIntent: string
-  readonly title: string
-}
-
-export type MarketingPlatformPreview = {
-  readonly aspectRatio: string
-  readonly callToAction: string
-  readonly copy: string
-  readonly hashtags: readonly string[]
-  readonly imageAssetId: string | null
-  readonly label: string
-  readonly platform: MarketingPlatform
-  readonly uploadNotes: readonly string[]
-}
-
-export type MarketingGenerationResult = {
-  readonly images: readonly MarketingImageOutput[]
-  readonly intentAnalysis: MarketingIntentAnalysis
-  readonly platformPreviews: readonly MarketingPlatformPreview[]
-  readonly suggestion: MarketingSuggestion | null
-}
-
-export type ListReviewsInput = {
-  readonly accessToken: string
-  readonly parent: string
-  readonly pageSize: number
-  readonly pageToken?: string
-}
-
-export type UpdateReplyInput = {
-  readonly accessToken: string
-  readonly reviewName: string
-  readonly comment: string
-}
-
-export const gbpPerformanceDailyMetrics = [
-  "BUSINESS_IMPRESSIONS_DESKTOP_MAPS",
-  "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH",
-  "BUSINESS_IMPRESSIONS_MOBILE_MAPS",
-  "BUSINESS_IMPRESSIONS_MOBILE_SEARCH",
-  "BUSINESS_DIRECTION_REQUESTS",
-  "CALL_CLICKS",
-  "WEBSITE_CLICKS",
-] as const
-
-export type GbpPerformanceDailyMetric =
-  (typeof gbpPerformanceDailyMetrics)[number]
-
-export type GbpPerformancePeriod = "current" | "previous"
-
-export type GbpPerformanceDate = {
-  readonly day: number
-  readonly month: number
-  readonly year: number
-}
-
-export type GbpPerformanceDailyRange = {
-  readonly endDate: GbpPerformanceDate
-  readonly startDate: GbpPerformanceDate
-}
-
-export type FetchGbpPerformanceInput = {
-  readonly accessToken: string
-  readonly dailyMetrics: readonly GbpPerformanceDailyMetric[]
-  readonly dailyRange: GbpPerformanceDailyRange
-  readonly location: string
-  readonly period: GbpPerformancePeriod
-}
-
-export type GbpPerformanceDatedValue = {
-  readonly date: GbpPerformanceDate
-  readonly value?: string | undefined
-}
-
-export type GbpPerformanceDailyMetricTimeSeries = {
-  readonly dailyMetric: GbpPerformanceDailyMetric
-  readonly timeSeries: {
-    readonly datedValues: readonly GbpPerformanceDatedValue[]
-  }
-}
-
-export type GbpPerformanceApiResponse = {
-  readonly multiDailyMetricTimeSeries: readonly {
-    readonly dailyMetricTimeSeries: readonly GbpPerformanceDailyMetricTimeSeries[]
-  }[]
-}
-
 export interface NaverSearchAdapter {
   searchLocal(
     input: NaverSearchInput
@@ -239,46 +128,10 @@ export interface GoogleOAuthAdapter {
   connect(): AdapterResult<{ readonly subjectId: string }>
 }
 
-export interface GbpBusinessInformationAdapter {
-  searchLocations(
-    input: SearchGoogleLocationsInput
-  ): Promise<AdapterResult<SearchGoogleLocationsResult | HttpRequestSpec>>
-  requestAdminRights(
-    input: RequestAdminRightsInput
-  ): Promise<AdapterResult<HttpRequestSpec>>
-  validateLocation(
-    input: CreateLocationInput
-  ): Promise<AdapterResult<HttpRequestSpec>>
-  createLocation(
-    input: CreateLocationInput
-  ): Promise<AdapterResult<HttpRequestSpec>>
-}
-
-export interface GbpLocalPostsAdapter {
-  createLocalPost(input: CreateLocalPostInput): AdapterResult<HttpRequestSpec>
-}
-
-export interface GbpReviewsAdapter {
-  listReviews(input: ListReviewsInput): AdapterResult<HttpRequestSpec>
-  updateReply(input: UpdateReplyInput): AdapterResult<HttpRequestSpec>
-}
-
-export interface GbpPerformanceAdapter {
-  fetchMultiDailyMetricsTimeSeries(
-    input: FetchGbpPerformanceInput
-  ): AdapterResult<GbpPerformanceApiResponse | HttpRequestSpec>
-}
-
 export interface ContentGenerationAdapter {
   generatePostCopy(
     intent: string
   ): AdapterResult<{ readonly korean: string; readonly english: string }>
-}
-
-export interface MarketingGenerationAdapter {
-  generateMarketingDraft(
-    input: MarketingGenerationInput
-  ): Promise<AdapterResult<MarketingGenerationResult>>
 }
 
 export interface TranslationAdapter {
@@ -306,6 +159,8 @@ export type IntegrationAdapters = {
   readonly gbpReviews: GbpReviewsAdapter
   readonly contentGeneration: ContentGenerationAdapter
   readonly marketingGeneration: MarketingGenerationAdapter
+  readonly onboardingConversation: OnboardingConversationAdapter
+  readonly postingConversation: PostingConversationAdapter
   readonly translation: TranslationAdapter
   readonly clock: ClockAdapter
   readonly jobScheduler: JobSchedulerAdapter
