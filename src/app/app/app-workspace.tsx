@@ -66,6 +66,8 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
   useEffect(() => {
     const hasOnboardingResult =
       onboarding.extraction.kind !== "idle" ||
+      onboarding.slotState.kind !== "idle" ||
+      onboarding.slotMessages.length > 0 ||
       onboarding.confirmation.kind !== "idle" ||
       onboarding.setup.kind !== "idle"
 
@@ -84,6 +86,8 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
     onboarding.confirmation.kind,
     onboarding.extraction.kind,
     onboarding.setup.kind,
+    onboarding.slotMessages.length,
+    onboarding.slotState.kind,
   ])
 
   function handleNavChange(navId: string) {
@@ -274,6 +278,11 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
     focusComposer()
   }
 
+  function handleOnboardingSearchAgain(): void {
+    onboarding.searchAgain()
+    handleComposerPreset("")
+  }
+
   function handleComposerAttach(): void {
     if (activeNavId === "onboarding") {
       handleComposerPreset("https://naver.me/mybrunchcafe")
@@ -285,7 +294,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
 
   function handleComposerSubmit(message: string): void {
     if (activeNavId === "onboarding") {
-      void onboarding.search(message)
+      void onboarding.submitComposerMessage(message)
       return
     }
 
@@ -339,7 +348,10 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
           onboardingExtraction={onboarding.extraction}
           onboardingProfileDraft={onboarding.profileDraft}
           onboardingSetup={onboarding.setup}
+          onboardingSlotMessages={onboarding.slotMessages}
+          onboardingSlotState={onboarding.slotState}
           onboardingSubmittedInput={onboarding.submittedInput}
+          onOnboardingCandidateSearchAgain={handleOnboardingSearchAgain}
           onOnboardingCandidateSelect={onboarding.selectCandidate}
           onOnboardingConfirm={onboarding.confirm}
           onOnboardingFieldChange={onboarding.changeDraftField}

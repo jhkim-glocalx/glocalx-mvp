@@ -16,6 +16,8 @@ import type { IntegrationAdapters } from "@/integrations/contracts"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
 import type { OnboardingConversationOutput } from "@/conversations/contracts"
+import { requestedFieldForTurn } from "./guided-slot-output"
+import { extractGuidedSlotOutput } from "./slot-extraction"
 
 type OnboardingSlotTurnOptions = {
   readonly adapters: IntegrationAdapters
@@ -145,32 +147,21 @@ export async function processOnboardingSlotTurn(
     return replay
   }
 
-  const extracted =
-    await options.adapters.onboardingConversation.extractStoreSlots({
-      candidateName: options.request.candidate.name,
-      currentState: options.request.currentState,
-      missingFields: options.request.candidate.missingFields,
-      ownerMessage: options.request.ownerMessage,
-    })
+  const requestedField = requestedFieldForTurn(options.request)
+  const conversationOutput = await extractGuidedSlotOutput({
+    adapters: options.adapters,
+    request: options.request,
+    requestedField,
+  })
 
-  if (extracted.kind === "blocked_by_credentials") {
-    return {
-      status: "LLM_CREDENTIALS_REQUIRED",
-      assistantMessage:
-        "AI 정보 확인 설정이 필요합니다. 잠시 후 직원이 이어서 확인할게요.",
-      missingEnvVars: extracted.missingEnvVars,
-      sessionId: session.id,
-    }
-  }
-
-  const draft = updateCandidate(options.request.candidate, extracted.value)
+  const draft = updateCandidate(options.request.candidate, conversationOutput)
   const response: OnboardingSlotTurnResponse = {
-    assistantMessage: extracted.value.assistantMessage,
-    confidence: extracted.value.confidence,
+    assistantMessage: conversationOutput.assistantMessage,
+    confidence: conversationOutput.confidence,
     draft,
-    missingFields: extracted.value.missingFields,
-    needsOwnerConfirmation: extracted.value.needsOwnerConfirmation,
-    nextState: extracted.value.nextState,
+    missingFields: conversationOutput.missingFields,
+    needsOwnerConfirmation: conversationOutput.needsOwnerConfirmation,
+    nextState: conversationOutput.nextState,
     sessionId: session.id,
     status: "ONBOARDING_CONVERSATION_TURN",
   }
@@ -185,7 +176,7 @@ export async function processOnboardingSlotTurn(
     ownerMessage: options.request.ownerMessage,
     publicResponse: response,
     sessionId: session.id,
-    slots: slotInputs(extracted.value),
+    slots: slotInputs(conversationOutput),
     storeId: options.storeId,
   })
 

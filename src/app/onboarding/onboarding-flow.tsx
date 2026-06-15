@@ -5,6 +5,13 @@ import { useEffect, useRef, useState, type FormEvent } from "react"
 import { MobileShell } from "@/app/_components/mobile-shell"
 
 import type { StoreProfileField } from "./onboarding-components"
+import { toConversationCandidate } from "./onboarding-conversation-candidate"
+import { storeSearchAgainPrompt } from "./onboarding-copy"
+import {
+  firstMissingStoreProfileField,
+  updateStoreProfileDraftField,
+  type MissingStoreProfileField,
+} from "./onboarding-draft-fields"
 import {
   toConfirmationState,
   toConfirmedStoreProfilePayload,
@@ -19,33 +26,28 @@ import {
   type StoreProfileDraft,
 } from "./onboarding-model"
 import {
-  ConfirmationPanel,
+  GbpHandoffPanel,
+  SetupPanel,
+  StoreProfileFormPanel,
+} from "./onboarding-gbp-panels"
+import {
   ExtractionPanel,
   OnboardingIntro,
   OnboardingTopBar,
-  SetupPanel,
   SlotCollectionPanel,
 } from "./onboarding-panels"
+import { selectedDraftFromExtraction } from "./selected-draft"
 
-function assertNever(value: never): never {
-  throw new Error(`Unexpected onboarding state: ${JSON.stringify(value)}`)
-}
-
-function selectedDraftFromExtraction(
-  extraction: ExtractionState
-): StoreProfileDraft | undefined {
-  switch (extraction.kind) {
-    case "idle":
-    case "loading":
-    case "searchQueryRequired":
-    case "error":
-      return undefined
-    case "manual":
-      return extraction.draft
-    case "candidates":
-      return extraction.requiresSelection ? undefined : extraction.candidates[0]
-    default:
-      return assertNever(extraction)
+function slotPlaceholder(
+  requestedField: MissingStoreProfileField | undefined
+): string {
+  switch (requestedField) {
+    case "phone":
+      return "전화번호를 입력해주세요"
+    case "hours":
+      return "예: 평일 오후 6시부터 10시까지"
+    case undefined:
+      return "매장 정보를 입력해주세요"
   }
 }
 
@@ -121,6 +123,20 @@ export function OnboardingFlow() {
     focusStoreInput()
   }
 
+  function handleCandidateSearchAgain(): void {
+    setInputMode("storeName")
+    setInput("")
+    setProfileDraft(undefined)
+    setConfirmation({ kind: "idle" })
+    setSetup({ kind: "idle" })
+    setExtraction({
+      kind: "searchQueryRequired",
+      message: storeSearchAgainPrompt,
+    })
+    resetSlotConversation()
+    focusStoreInput()
+  }
+
   function resetSlotConversation(): void {
     setSlotMessages([])
     setSlotSessionId(undefined)
@@ -174,6 +190,10 @@ export function OnboardingFlow() {
     if (profileDraft === undefined) {
       return
     }
+    const requestedField = firstMissingStoreProfileField(profileDraft)
+    if (requestedField === undefined) {
+      return
+    }
 
     const clientEventId = window.crypto.randomUUID()
     const ownerTurn: OnboardingChatTurn = {
@@ -199,6 +219,7 @@ export function OnboardingFlow() {
                 : "slot_clarification",
           ...(slotSessionId === undefined ? {} : { sessionId: slotSessionId }),
           ownerMessage,
+          requestedField,
         }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
@@ -229,23 +250,6 @@ export function OnboardingFlow() {
             ? error.message
             : "답변에서 매장 정보를 확인하지 못했습니다.",
       })
-    }
-  }
-
-  function toConversationCandidate(draft: StoreProfileDraft) {
-    return {
-      address: draft.address,
-      candidateId: draft.candidateId,
-      category: draft.category,
-      missingFields: draft.missingFields,
-      name: draft.name,
-      ...(draft.hours.trim() === "" ? {} : { hours: draft.hours }),
-      ...(draft.naverPlaceUrl.trim() === ""
-        ? {}
-        : { naverPlaceUrl: draft.naverPlaceUrl }),
-      ...(draft.phone.trim() === "" ? {} : { phone: draft.phone }),
-      source: draft.source,
-      sourceInput: draft.sourceInput,
     }
   }
 
@@ -328,10 +332,7 @@ export function OnboardingFlow() {
     setProfileDraft((currentDraft) =>
       currentDraft === undefined
         ? currentDraft
-        : {
-            ...currentDraft,
-            [field]: value,
-          }
+        : updateStoreProfileDraftField(currentDraft, field, value)
     )
     setConfirmation({ kind: "idle" })
     setSetup({ kind: "idle" })
@@ -365,7 +366,11 @@ export function OnboardingFlow() {
               onChange={(event) => setInput(event.currentTarget.value)}
               placeholder={
                 isSlotCollectionActive()
-                  ? "예: 평일 9-6이고 번호는 1-2342-232예요"
+                  ? slotPlaceholder(
+                      profileDraft === undefined
+                        ? undefined
+                        : firstMissingStoreProfileField(profileDraft)
+                    )
                   : inputMode === "naverLink"
                     ? "네이버 플레이스 링크 붙여넣기"
                     : "상호명을 입력하세요"
@@ -398,21 +403,25 @@ export function OnboardingFlow() {
 
         <ExtractionPanel
           extraction={extraction}
+          onCandidateSearchAgain={handleCandidateSearchAgain}
           onCandidateSelect={handleCandidateSelect}
           profileDraft={profileDraft}
           submittedInput={submittedInput}
+        />
+        <StoreProfileFormPanel
+          confirmation={confirmation}
+          onConfirm={handleConfirmation}
+          onFieldChange={handleDraftFieldChange}
+          profileDraft={profileDraft}
         />
         <SlotCollectionPanel
           profileDraft={profileDraft}
           slotMessages={slotMessages}
           slotState={slotState}
         />
-        <ConfirmationPanel
+        <GbpHandoffPanel
           confirmation={confirmation}
-          onConfirm={handleConfirmation}
-          onFieldChange={handleDraftFieldChange}
           onSetup={handleSetup}
-          profileDraft={profileDraft}
           setup={setup}
         />
         <SetupPanel setup={setup} />

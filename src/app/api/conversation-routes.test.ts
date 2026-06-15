@@ -17,6 +17,7 @@ const tempPaths: string[] = []
 async function useTempDatabase(): Promise<void> {
   const tempPath = await mkdtemp(join(tmpdir(), "glocalx-conversation-routes-"))
   tempPaths.push(tempPath)
+  vi.stubEnv("APP_INTEGRATION_MODE", "stub")
   vi.stubEnv("GLOCALX_DB_PATH", join(tempPath, "routes.db"))
   resetDatabaseFile()
 }
@@ -54,13 +55,14 @@ describe("conversation API routes", () => {
   afterEach(async () => {
     resetDatabaseFile()
     vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
     for (const tempPath of tempPaths) {
       await rm(tempPath, { force: true, recursive: true })
     }
     tempPaths.length = 0
   })
 
-  it("extracts onboarding phone and hours from a natural-language owner reply and replays duplicates", async () => {
+  it("asks for one onboarding field at a time and replays duplicates", async () => {
     // Given
     const firstRequest = createJsonRequest(
       "http://localhost:3000/api/onboarding/conversation/slots",
@@ -68,21 +70,37 @@ describe("conversation API routes", () => {
         candidate: naverCandidate,
         clientEventId: "slot-turn-1",
         currentState: "slot_elicitation",
-        ownerMessage: "평일 9-6이고 번호는 1-2342-232예요",
+        ownerMessage: "전화번호는 1-2342-232예요",
+        requestedField: "phone",
       }
     )
 
     // When
     const firstResponse = await onboardingSlotTurn(firstRequest)
     const firstPayload = await firstResponse.json()
+    const secondResponse = await onboardingSlotTurn(
+      createJsonRequest(
+        "http://localhost:3000/api/onboarding/conversation/slots",
+        {
+          candidate: firstPayload.draft,
+          clientEventId: "slot-turn-2",
+          currentState: "slot_clarification",
+          ownerMessage: "평일 9-6이에요",
+          requestedField: "hours",
+          sessionId: firstPayload.sessionId,
+        }
+      )
+    )
+    const secondPayload = await secondResponse.json()
     const replayResponse = await onboardingSlotTurn(
       createJsonRequest(
         "http://localhost:3000/api/onboarding/conversation/slots",
         {
-          candidate: naverCandidate,
-          clientEventId: "slot-turn-1",
+          candidate: firstPayload.draft,
+          clientEventId: "slot-turn-2",
           currentState: "slot_clarification",
-          ownerMessage: "다른 번호로 바꾸려는 재전송입니다.",
+          ownerMessage: "다른 시간으로 바꾸려는 재전송입니다.",
+          requestedField: "hours",
           sessionId: firstPayload.sessionId,
         }
       )
@@ -92,13 +110,86 @@ describe("conversation API routes", () => {
     expect(firstResponse.status).toBe(200)
     expect(firstPayload).toMatchObject({
       draft: {
+        phone: "1-2342-232",
+      },
+      missingFields: ["hours"],
+      needsOwnerConfirmation: false,
+      status: "ONBOARDING_CONVERSATION_TURN",
+    })
+    expect(firstPayload.assistantMessage).toContain("영업시간")
+    expect(secondResponse.status).toBe(200)
+    expect(secondPayload).toMatchObject({
+      draft: {
         hours: "평일 09:00-18:00",
         phone: "1-2342-232",
       },
       missingFields: [],
+      needsOwnerConfirmation: true,
       status: "ONBOARDING_CONVERSATION_TURN",
     })
-    expect(await replayResponse.json()).toEqual(firstPayload)
+    expect(secondPayload.assistantMessage).toContain("양식")
+    expect(await replayResponse.json()).toEqual(secondPayload)
+  })
+
+  it("fills onboarding fields from explicit owner text when production LLM credentials are absent", async () => {
+    // Given
+    vi.stubEnv("APP_INTEGRATION_MODE", "production")
+    vi.stubEnv("OPENAI_API_KEY", "")
+    const request = createJsonRequest(
+      "http://localhost:3000/api/onboarding/conversation/slots",
+      {
+        candidate: naverCandidate,
+        clientEventId: "slot-turn-production-local-fill",
+        currentState: "slot_elicitation",
+        ownerMessage: "전화번호 01082432196",
+        requestedField: "phone",
+      }
+    )
+
+    // When
+    const response = await onboardingSlotTurn(request)
+    const payload = await response.json()
+
+    // Then
+    expect(response.status).toBe(200)
+    expect(payload).toMatchObject({
+      draft: {
+        phone: "01082432196",
+      },
+      missingFields: ["hours"],
+      status: "ONBOARDING_CONVERSATION_TURN",
+    })
+  })
+
+  it("falls back to local onboarding field extraction when production LLM slot extraction fails", async () => {
+    // Given
+    vi.stubEnv("APP_INTEGRATION_MODE", "production")
+    vi.stubEnv("OPENAI_API_KEY", "openai-key")
+    vi.stubGlobal("fetch", async () => new Response("{}", { status: 500 }))
+    const request = createJsonRequest(
+      "http://localhost:3000/api/onboarding/conversation/slots",
+      {
+        candidate: naverCandidate,
+        clientEventId: "slot-turn-production-llm-fallback",
+        currentState: "slot_elicitation",
+        ownerMessage: "영업시간은 weekdays 6 to 10pm 이에요",
+        requestedField: "hours",
+      }
+    )
+
+    // When
+    const response = await onboardingSlotTurn(request)
+    const payload = await response.json()
+
+    // Then
+    expect(response.status).toBe(200)
+    expect(payload).toMatchObject({
+      draft: {
+        hours: "평일 18:00-22:00",
+      },
+      missingFields: ["phone"],
+      status: "ONBOARDING_CONVERSATION_TURN",
+    })
   })
 
   it("routes posting revision text through the conversation decision endpoint", async () => {

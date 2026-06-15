@@ -12,6 +12,8 @@ const openAiResponseSchema = z
   })
   .passthrough()
 
+const nullJsonSchema = { type: "null" } as const
+
 export class MalformedLlmResponseError extends Error {
   readonly name = "MalformedLlmResponseError"
 
@@ -28,6 +30,110 @@ function openAiHeaders(apiKey: string): Readonly<Record<string, string>> {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isNullSchema(value: unknown): boolean {
+  return isRecord(value) && value["type"] === "null"
+}
+
+function schemaAllowsNull(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  const type = value["type"]
+  if (
+    type === "null" ||
+    (Array.isArray(type) && type.some((entry) => entry === "null"))
+  ) {
+    return true
+  }
+
+  const anyOf = value["anyOf"]
+  return Array.isArray(anyOf) && anyOf.some(isNullSchema)
+}
+
+function nullableSchema(value: unknown): unknown {
+  if (schemaAllowsNull(value)) {
+    return value
+  }
+  return { anyOf: [value, nullJsonSchema] }
+}
+
+function normalizeSchemaValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(normalizeSchemaValue)
+  }
+  if (!isRecord(value)) {
+    return value
+  }
+  return normalizeObjectSchema(value)
+}
+
+function normalizeObjectSchema(
+  schema: Readonly<Record<string, unknown>>
+): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {}
+
+  for (const [key, value] of Object.entries(schema)) {
+    if (key !== "properties" && key !== "required") {
+      normalized[key] = normalizeSchemaValue(value)
+    }
+  }
+
+  const properties = schema["properties"]
+  if (!isRecord(properties)) {
+    if (schema["required"] !== undefined) {
+      normalized["required"] = normalizeSchemaValue(schema["required"])
+    }
+    return normalized
+  }
+
+  const required = schema["required"]
+  const requiredFields = new Set(
+    Array.isArray(required)
+      ? required.filter((field) => typeof field === "string")
+      : []
+  )
+  const normalizedProperties: Record<string, unknown> = {}
+
+  for (const [field, fieldSchema] of Object.entries(properties)) {
+    const normalizedFieldSchema = normalizeSchemaValue(fieldSchema)
+    normalizedProperties[field] = requiredFields.has(field)
+      ? normalizedFieldSchema
+      : nullableSchema(normalizedFieldSchema)
+  }
+
+  normalized["properties"] = normalizedProperties
+  normalized["required"] = Object.keys(normalizedProperties)
+  return normalized
+}
+
+function toOpenAiStrictSchema(
+  schema: ConversationJsonSchema
+): ConversationJsonSchema {
+  return normalizeObjectSchema(schema)
+}
+
+function stripNullObjectFields(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stripNullObjectFields)
+  }
+  if (!isRecord(value)) {
+    return value
+  }
+
+  const stripped: Record<string, unknown> = {}
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (nestedValue !== null) {
+      stripped[key] = stripNullObjectFields(nestedValue)
+    }
+  }
+  return stripped
 }
 
 function extractOutputText(payload: unknown, contract: string): string {
@@ -68,7 +174,7 @@ function parseStructuredJson<TValue>(
 ): TValue {
   try {
     const payload: unknown = JSON.parse(outputText)
-    return schema.parse(payload)
+    return schema.parse(stripNullObjectFields(payload))
   } catch (error) {
     if (error instanceof SyntaxError || error instanceof z.ZodError) {
       throw new MalformedLlmResponseError(contract, { cause: error })
@@ -81,8 +187,11 @@ function buildResponsesBody(
   prompt: string,
   schemaName: string,
   schema: ConversationJsonSchema,
-  env: AdapterEnvironment
+  env: AdapterEnvironment,
+  modelName: string | undefined
 ): unknown {
+  const configuredModel =
+    modelName?.trim() || env["OPENAI_CONVERSATION_MODEL"]?.trim() || "gpt-5.5"
   return {
     input: [
       {
@@ -90,11 +199,11 @@ function buildResponsesBody(
         role: "user",
       },
     ],
-    model: env["OPENAI_CONVERSATION_MODEL"]?.trim() || "gpt-5.5",
+    model: configuredModel,
     text: {
       format: {
         name: schemaName,
-        schema,
+        schema: toOpenAiStrictSchema(schema),
         strict: true,
         type: "json_schema",
       },
@@ -110,6 +219,7 @@ export async function requestStructuredOutput<TValue>(options: {
   readonly schema: z.ZodType<TValue>
   readonly schemaName: string
   readonly schemaJson: ConversationJsonSchema
+  readonly modelName?: string
 }): Promise<TValue> {
   const apiKey = options.env["OPENAI_API_KEY"] ?? ""
   const response = await options.fetchImpl(responsesUrl, {
@@ -118,7 +228,8 @@ export async function requestStructuredOutput<TValue>(options: {
         options.prompt,
         options.schemaName,
         options.schemaJson,
-        options.env
+        options.env,
+        options.modelName
       )
     ),
     headers: openAiHeaders(apiKey),

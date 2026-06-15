@@ -5,13 +5,19 @@ import type { ReactNode } from "react"
 import { ChatMessage } from "@/app/_components/chat-message"
 import type { StoreProfileField } from "@/app/onboarding/onboarding-components"
 import {
-  ConfirmationPanel,
-  ExtractionPanel,
+  GbpHandoffPanel,
   SetupPanel,
+  StoreProfileFormPanel,
+} from "@/app/onboarding/onboarding-gbp-panels"
+import {
+  ExtractionPanel,
+  SlotCollectionPanel,
 } from "@/app/onboarding/onboarding-panels"
 import type {
   ConfirmationState,
   ExtractionState,
+  OnboardingChatTurn,
+  OnboardingSlotTurnState,
   SetupState,
   StoreProfileDraft,
 } from "@/app/onboarding/onboarding-model"
@@ -19,6 +25,7 @@ import type {
 type OnboardingSnapshotProps = {
   readonly confirmation: ConfirmationState
   readonly extraction: ExtractionState
+  readonly onCandidateSearchAgain: () => void
   readonly onCandidateSelect: (candidate: StoreProfileDraft) => void
   readonly onConfirm: () => void
   readonly onFieldChange: (field: StoreProfileField, value: string) => void
@@ -26,6 +33,8 @@ type OnboardingSnapshotProps = {
   readonly onSetup: () => void
   readonly profileDraft: StoreProfileDraft | undefined
   readonly setup: SetupState
+  readonly slotMessages: readonly OnboardingChatTurn[]
+  readonly slotState: OnboardingSlotTurnState
   readonly submittedInput: string
 }
 
@@ -57,6 +66,7 @@ function OnboardingChoiceButton({
 export function OnboardingSnapshot({
   confirmation,
   extraction,
+  onCandidateSearchAgain,
   onCandidateSelect,
   onConfirm,
   onFieldChange,
@@ -64,6 +74,8 @@ export function OnboardingSnapshot({
   onSetup,
   profileDraft,
   setup,
+  slotMessages,
+  slotState,
   submittedInput,
 }: OnboardingSnapshotProps) {
   return (
@@ -88,16 +100,25 @@ export function OnboardingSnapshot({
       </div>
       <ExtractionPanel
         extraction={extraction}
+        onCandidateSearchAgain={onCandidateSearchAgain}
         onCandidateSelect={onCandidateSelect}
         profileDraft={profileDraft}
         submittedInput={submittedInput}
       />
-      <ConfirmationPanel
+      <StoreProfileFormPanel
         confirmation={confirmation}
         onConfirm={onConfirm}
         onFieldChange={onFieldChange}
-        onSetup={onSetup}
         profileDraft={profileDraft}
+      />
+      <SlotCollectionPanel
+        profileDraft={profileDraft}
+        slotMessages={slotMessages}
+        slotState={slotState}
+      />
+      <GbpHandoffPanel
+        confirmation={confirmation}
+        onSetup={onSetup}
         setup={setup}
       />
       <SetupPanel setup={setup} />

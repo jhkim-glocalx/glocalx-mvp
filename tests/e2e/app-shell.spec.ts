@@ -22,11 +22,14 @@ async function completeOnboarding(page: Page): Promise<void> {
     .fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
+  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
     .fill("평일 9-6이에요")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
-  await expect(page.getByText("매장 정보 요약")).toBeVisible()
+  await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
+    "평일 09:00-18:00"
+  )
   await page.getByRole("button", { name: "매장 정보 확인" }).click()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await expect(page.getByText("인증 대기", { exact: true })).toBeVisible()
@@ -97,19 +100,37 @@ test("app onboarding quick replies drive the bottom composer", async ({
 
   await composer.press("Enter")
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
+  await expect(
+    page.getByRole("button", { exact: true, name: "매장 확인" })
+  ).toBeVisible()
+  await expect(
+    page.getByText("영업시간을 알려주세요", { exact: false })
+  ).toHaveCount(0)
   await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
     "aria-current",
     "page"
   )
+
+  await page.getByRole("button", { name: "다시 검색" }).click()
+  await expect(composer).toBeFocused()
+  await expect(composer).toHaveValue("")
+  await expect(page.getByText("다시 찾을 상호명이나 네이버 링크")).toBeVisible()
 
   await composer.fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "전송" }).click()
   await expect(
     page.getByText("네이버에서 매장 정보를 찾았습니다.")
   ).toBeVisible()
+  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
   await expect(page.getByRole("button", { name: "온보딩" })).toHaveAttribute(
     "aria-current",
     "page"
+  )
+
+  await composer.fill("평일 9-6이에요")
+  await composer.press("Enter")
+  await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
+    "평일 09:00-18:00"
   )
 
   await composer.fill("서울커피")
@@ -143,6 +164,8 @@ test("app onboarding keeps Korean composition input and exposes editable store f
   await page.getByRole("button", { name: "전송" }).click()
 
   await expect(page.getByText("우빈떡볶이", { exact: true })).toBeVisible()
+  await expect(page.getByText("먼저 전화번호를 알려주세요")).toHaveCount(0)
+  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
   const storeName = page.getByRole("textbox", { name: "상호" })
   await expect(storeName).toBeVisible()
   await expect(storeName).toHaveValue("우빈떡볶이 홍대점")
@@ -150,8 +173,19 @@ test("app onboarding keeps Korean composition input and exposes editable store f
   await storeName.fill("우빈떡볶이 신촌점")
   await expect(storeName).toHaveValue("우빈떡볶이 신촌점")
 
-  await page.getByRole("textbox", { name: "전화번호" }).fill("02-1234-5678")
-  await page.getByRole("textbox", { name: "영업시간" }).fill("평일 9-6")
+  await composer.fill("전화번호 01082432196")
+  await page.getByRole("button", { name: "전송" }).click()
+  await expect(page.getByRole("textbox", { name: "전화번호" })).toHaveValue(
+    "01082432196"
+  )
+  await expect(page.getByText("영업시간을 알려주세요")).toBeVisible()
+
+  await composer.fill("평일 12시-6시")
+  await page.getByRole("button", { name: "전송" }).click()
+  await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
+    "평일 12:00-18:00"
+  )
+
   await page.getByRole("button", { name: "매장 정보 확인" }).click()
   await expect(
     page.getByRole("button", { name: "다음: GBP 세팅 확인" })

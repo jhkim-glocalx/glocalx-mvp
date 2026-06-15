@@ -78,11 +78,14 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
     .fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
+  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
     .fill("평일 9-6이에요")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
-  await expect(page.getByText("매장 정보 요약")).toBeVisible()
+  await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
+    "평일 09:00-18:00"
+  )
   await page.getByRole("button", { name: "매장 정보 확인" }).click()
   await expect(
     page.getByRole("button", { name: "다음: GBP 세팅 확인" })

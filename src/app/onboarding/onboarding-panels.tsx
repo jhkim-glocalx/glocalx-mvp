@@ -1,22 +1,17 @@
 "use client"
 
 import { ChatMessage } from "@/app/_components/chat-message"
-import { StatusCard } from "@/app/_components/status-card"
 
 import {
   CandidatePicker,
   StatusPill,
   StoreInfoCard,
-  StoreProfileConfirmForm,
   TypingIndicator,
-  type StoreProfileField,
 } from "./onboarding-components"
 import type {
-  ConfirmationState,
   ExtractionState,
   OnboardingChatTurn,
   OnboardingSlotTurnState,
-  SetupState,
   StoreProfileDraft,
 } from "./onboarding-model"
 
@@ -92,11 +87,13 @@ export function OnboardingIntro({
 
 export function ExtractionPanel({
   extraction,
+  onCandidateSearchAgain,
   onCandidateSelect,
   profileDraft,
   submittedInput,
 }: {
   readonly extraction: ExtractionState
+  readonly onCandidateSearchAgain: () => void
   readonly onCandidateSelect: (candidate: StoreProfileDraft) => void
   readonly profileDraft: StoreProfileDraft | undefined
   readonly submittedInput: string
@@ -121,7 +118,11 @@ export function ExtractionPanel({
           <div aria-label="추출 결과 상태" className="flex flex-wrap gap-2">
             <StatusPill>후보 {extraction.candidates.length}개</StatusPill>
             <StatusPill>
-              {profileDraft === undefined ? "선택 필요" : "상호·주소 확인"}
+              {profileDraft === undefined
+                ? extraction.candidates.length === 1
+                  ? "매장 확인 필요"
+                  : "선택 필요"
+                : "상호·주소 확인"}
             </StatusPill>
             {profileDraft === undefined ? null : (
               <StatusPill>
@@ -135,6 +136,12 @@ export function ExtractionPanel({
             candidates={extraction.candidates}
             onSelect={onCandidateSelect}
             selectedCandidateId={profileDraft?.candidateId}
+          />
+          <SingleCandidateConfirmation
+            candidates={extraction.candidates}
+            onConfirm={onCandidateSelect}
+            onSearchAgain={onCandidateSearchAgain}
+            profileDraft={profileDraft}
           />
           {profileDraft === undefined ? null : (
             <StoreInfoCard draft={profileDraft} />
@@ -150,82 +157,64 @@ export function ExtractionPanel({
   )
 }
 
-export function ConfirmationPanel({
-  confirmation,
+function SingleCandidateConfirmation({
+  candidates,
   onConfirm,
-  onFieldChange,
-  onSetup,
+  onSearchAgain,
   profileDraft,
-  setup,
 }: {
-  readonly confirmation: ConfirmationState
-  readonly onConfirm: () => void
-  readonly onFieldChange: (field: StoreProfileField, value: string) => void
-  readonly onSetup: () => void
+  readonly candidates: readonly StoreProfileDraft[]
+  readonly onConfirm: (candidate: StoreProfileDraft) => void
+  readonly onSearchAgain: () => void
   readonly profileDraft: StoreProfileDraft | undefined
-  readonly setup: SetupState
 }) {
+  if (profileDraft !== undefined || candidates.length !== 1) {
+    return null
+  }
+
+  const candidate = candidates[0]
+  if (candidate === undefined) {
+    return null
+  }
+
   return (
-    <>
-      {profileDraft !== undefined ? (
-        profileDraft.source === "MANUAL" ||
-        profileDraft.missingFields.length > 0 ? (
-          <StoreProfileConfirmForm
-            disabled={confirmation.kind === "loading"}
-            draft={profileDraft}
-            onChange={onFieldChange}
-            onConfirm={onConfirm}
-          />
-        ) : (
-          <StoreSummaryConfirm
-            disabled={
-              confirmation.kind === "loading" ||
-              profileDraft.missingFields.length > 0
-            }
-            draft={profileDraft}
-            onConfirm={onConfirm}
-          />
-        )
-      ) : null}
-      {confirmation.kind === "loading" ? (
-        <TypingIndicator label="매장 정보를 확인하는 중" />
-      ) : null}
-      {confirmation.kind === "confirmed" ? (
-        <div className="grid gap-3">
-          <ChatMessage message={confirmation.message} speaker="assistant" />
-          <StatusCard label="확인 기록" value={confirmation.extractionId} />
-          <button
-            className="gx-onboarding-primary"
-            disabled={setup.kind === "loading"}
-            onClick={onSetup}
-            type="button"
-          >
-            다음: GBP 세팅 확인
-          </button>
-        </div>
-      ) : null}
-      {confirmation.kind === "error" ? (
-        <div role="alert">
-          <ChatMessage message={confirmation.message} speaker="assistant" />
-        </div>
-      ) : null}
-    </>
+    <div className="grid gap-3">
+      <StoreInfoCard draft={candidate} />
+      <ChatMessage
+        message="검색된 매장이 맞나요? 맞으면 확인하고, 아니면 다시 검색해주세요."
+        speaker="assistant"
+      />
+      <div aria-label="검색된 매장 확인" className="gx-actions-row">
+        <button
+          className="gx-choice-chip"
+          onClick={() => onConfirm(candidate)}
+          type="button"
+        >
+          매장 확인
+        </button>
+        <button
+          className="gx-choice-chip"
+          data-tone="ghost"
+          onClick={onSearchAgain}
+          type="button"
+        >
+          다시 검색
+        </button>
+      </div>
+    </div>
   )
 }
 
 function missingFieldCopy(missingFields: readonly string[]): string {
   const needsPhone = missingFields.includes("phone")
   const needsHours = missingFields.includes("hours")
-  if (needsPhone && needsHours) {
-    return "전화번호와 영업시간을 알려주세요. 예: 평일 9-6이고 번호는 1-2342-232예요."
-  }
   if (needsPhone) {
-    return "매장 전화번호를 알려주세요."
+    return "매장 정보를 찾았어요. 먼저 전화번호를 알려주세요. 예: 010-1234-5678. 위 양식에 직접 입력해도 됩니다."
   }
   if (needsHours) {
-    return "영업시간을 알려주세요. 예: 평일 9-6이에요."
+    return "영업시간을 알려주세요. 예: 평일 오후 6시부터 10시까지. 위 양식에 직접 입력해도 됩니다."
   }
-  return "등록 정보를 요약해서 확인할게요."
+  return "입력해주신 정보를 양식에 채웠어요. 틀린 곳이 있으면 고치고, 맞으면 매장 정보 확인을 눌러주세요."
 }
 
 export function SlotCollectionPanel({
@@ -243,17 +232,12 @@ export function SlotCollectionPanel({
 
   return (
     <div className="grid gap-3">
-      {profileDraft.missingFields.length > 0 ? (
+      {profileDraft.missingFields.length > 0 && slotMessages.length === 0 ? (
         <ChatMessage
           message={missingFieldCopy(profileDraft.missingFields)}
           speaker="assistant"
         />
-      ) : (
-        <ChatMessage
-          message="필요한 정보를 모두 확인했어요. 아래 요약이 맞으면 확인을 눌러주세요."
-          speaker="assistant"
-        />
-      )}
+      ) : null}
       {slotMessages.map((turn) => (
         <ChatMessage
           key={turn.id}
@@ -270,102 +254,5 @@ export function SlotCollectionPanel({
         </div>
       ) : null}
     </div>
-  )
-}
-
-function StoreSummaryConfirm({
-  disabled,
-  draft,
-  onConfirm,
-}: {
-  readonly disabled: boolean
-  readonly draft: StoreProfileDraft
-  readonly onConfirm: () => void
-}) {
-  if (draft.missingFields.length > 0) {
-    return null
-  }
-
-  return (
-    <article className="gx-onboarding-form">
-      <div className="grid gap-2">
-        <p className="text-xs font-black text-[var(--accent)]">
-          매장 정보 요약
-        </p>
-        <StoreInfoCard draft={draft} />
-        <dl className="grid gap-2 text-sm font-bold text-[var(--ink-soft)]">
-          <div className="grid gap-1">
-            <dt className="text-[11px] font-black uppercase text-[var(--muted)]">
-              전화번호
-            </dt>
-            <dd>{draft.phone}</dd>
-          </div>
-          <div className="grid gap-1">
-            <dt className="text-[11px] font-black uppercase text-[var(--muted)]">
-              영업시간
-            </dt>
-            <dd>{draft.hours || "미입력"}</dd>
-          </div>
-        </dl>
-      </div>
-      <button
-        className="gx-onboarding-primary"
-        disabled={disabled}
-        onClick={onConfirm}
-        type="button"
-      >
-        매장 정보 확인
-      </button>
-    </article>
-  )
-}
-
-export function SetupPanel({ setup }: { readonly setup: SetupState }) {
-  return (
-    <>
-      {setup.kind === "loading" ? (
-        <TypingIndicator label="GBP 세팅을 확인하는 중" />
-      ) : null}
-      {setup.kind === "claimRequired" ? (
-        <div className="grid gap-3">
-          <ChatMessage message={setup.message} speaker="assistant" />
-          <StatusCard
-            label={setup.apiStatus}
-            status="warning"
-            value={setup.requestAdminRightsUrl}
-          />
-        </div>
-      ) : null}
-      {setup.kind === "ready" ? (
-        <div className="grid gap-3">
-          <ChatMessage message={setup.message} speaker="assistant" />
-          <div aria-label="GBP 세팅 상태" className="flex flex-wrap gap-2">
-            <StatusPill>GBP 연결 확인</StatusPill>
-            <StatusPill>후속 작업 예약</StatusPill>
-          </div>
-          <form
-            action="/api/onboarding/complete"
-            className="grid gap-3"
-            method="post"
-          >
-            <StatusCard
-              label={setup.apiStatus}
-              status="warning"
-              value="인증 대기"
-            />
-            <StatusCard label="감사 기록" value={setup.auditLogId} />
-            <StatusCard label="후속 작업" value={setup.followUpJobId} />
-            <button className="gx-onboarding-primary" type="submit">
-              대시보드로 이동
-            </button>
-          </form>
-        </div>
-      ) : null}
-      {setup.kind === "error" ? (
-        <div role="alert">
-          <ChatMessage message={setup.message} speaker="assistant" />
-        </div>
-      ) : null}
-    </>
   )
 }

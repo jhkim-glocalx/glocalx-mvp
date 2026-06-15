@@ -15,6 +15,7 @@ export type OnboardingSlotExtractionInput = {
   >
   readonly missingFields: readonly MissingBusinessField[]
   readonly ownerMessage: string
+  readonly requestedField: MissingBusinessField
 }
 
 export type OnboardingNextPromptInput = {

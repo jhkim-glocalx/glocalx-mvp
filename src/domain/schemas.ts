@@ -100,6 +100,7 @@ export const onboardingSlotTurnRequestSchema = z
       "slot_clarification",
     ]),
     ownerMessage: nonEmptyStringSchema,
+    requestedField: missingBusinessFieldSchema,
     sessionId: nonEmptyStringSchema.optional(),
   })
   .strict()

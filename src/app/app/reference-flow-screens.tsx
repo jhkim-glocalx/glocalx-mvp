@@ -9,6 +9,8 @@ import type { StoreProfileField } from "@/app/onboarding/onboarding-components"
 import type {
   ConfirmationState,
   ExtractionState,
+  OnboardingChatTurn,
+  OnboardingSlotTurnState,
   SetupState,
   StoreProfileDraft,
 } from "@/app/onboarding/onboarding-model"
@@ -41,7 +43,10 @@ type ReferenceFlowScreensProps = {
   readonly onboardingExtraction: ExtractionState
   readonly onboardingProfileDraft: StoreProfileDraft | undefined
   readonly onboardingSetup: SetupState
+  readonly onboardingSlotMessages: readonly OnboardingChatTurn[]
+  readonly onboardingSlotState: OnboardingSlotTurnState
   readonly onboardingSubmittedInput: string
+  readonly onOnboardingCandidateSearchAgain: () => void
   readonly onOnboardingCandidateSelect: (candidate: StoreProfileDraft) => void
   readonly onOnboardingConfirm: () => void
   readonly onOnboardingFieldChange: (
@@ -760,7 +765,10 @@ export function ReferenceFlowScreens({
   onboardingExtraction,
   onboardingProfileDraft,
   onboardingSetup,
+  onboardingSlotMessages,
+  onboardingSlotState,
   onboardingSubmittedInput,
+  onOnboardingCandidateSearchAgain,
   onOnboardingCandidateSelect,
   onOnboardingConfirm,
   onOnboardingFieldChange,
@@ -784,6 +792,7 @@ export function ReferenceFlowScreens({
         <OnboardingSnapshot
           confirmation={onboardingConfirmation}
           extraction={onboardingExtraction}
+          onCandidateSearchAgain={onOnboardingCandidateSearchAgain}
           onCandidateSelect={onOnboardingCandidateSelect}
           onConfirm={onOnboardingConfirm}
           onFieldChange={onOnboardingFieldChange}
@@ -791,6 +800,8 @@ export function ReferenceFlowScreens({
           onSetup={onOnboardingSetup}
           profileDraft={onboardingProfileDraft}
           setup={onboardingSetup}
+          slotMessages={onboardingSlotMessages}
+          slotState={onboardingSlotState}
           submittedInput={onboardingSubmittedInput}
         />
       ) : null}

@@ -1,6 +1,5 @@
 import type {
   OnboardingConversationAdapter,
-  OnboardingSlotExtractionInput,
   PostingConversationAdapter,
   PostingOwnerReplyInput,
 } from "./conversation-contracts"
@@ -9,83 +8,7 @@ import type {
   OnboardingConversationOutput,
   PostingConversationDecision,
 } from "@/conversations/contracts"
-import type { MissingBusinessField } from "@/domain/schemas"
-
-const phonePattern = /\+?\d[\d -]{5,}\d/gu
-
-function extractPhone(ownerMessage: string): readonly string[] {
-  return Array.from(ownerMessage.matchAll(phonePattern), (match) =>
-    match[0].trim()
-  )
-}
-
-function twoDigit(value: number): string {
-  return value.toString().padStart(2, "0")
-}
-
-function normalizeHourRange(startRaw: string, endRaw: string): string {
-  const start = Number.parseInt(startRaw, 10)
-  const parsedEnd = Number.parseInt(endRaw, 10)
-  const end = parsedEnd <= start && parsedEnd <= 12 ? parsedEnd + 12 : parsedEnd
-  return `${twoDigit(start)}:00-${twoDigit(end)}:00`
-}
-
-function extractHours(ownerMessage: string): string | undefined {
-  const weekdayMatch = /평일\s*(\d{1,2})\s*[-~]\s*(\d{1,2})/u.exec(ownerMessage)
-  const start = weekdayMatch?.[1]
-  const end = weekdayMatch?.[2]
-  if (start !== undefined && end !== undefined) {
-    return `평일 ${normalizeHourRange(start, end)}`
-  }
-  return undefined
-}
-
-function remainingFields(
-  requestedFields: readonly MissingBusinessField[],
-  extractedFields: Readonly<Record<MissingBusinessField, string | undefined>>
-): MissingBusinessField[] {
-  return requestedFields.filter((field) => extractedFields[field] === undefined)
-}
-
-function extractOnboardingSlots(
-  input: OnboardingSlotExtractionInput
-): OnboardingConversationOutput {
-  const phones = extractPhone(input.ownerMessage)
-  const phone = phones.length > 0 ? phones[0] : undefined
-  const hours = extractHours(input.ownerMessage)
-  const extractedFields = {
-    ...(hours === undefined ? {} : { hours }),
-    ...(phone === undefined ? {} : { phone }),
-  }
-  const fieldConfidence = {
-    ...(hours === undefined ? {} : { hours: "high" as const }),
-    ...(phone === undefined
-      ? {}
-      : { phone: phones.length === 1 ? ("high" as const) : ("low" as const) }),
-  }
-  const missingFields = remainingFields(input.missingFields, {
-    hours,
-    phone,
-  })
-  const lowConfidence = Object.values(fieldConfidence).includes("low")
-  const nextState =
-    lowConfidence || missingFields.length > 0
-      ? "slot_clarification"
-      : "profile_summary"
-
-  return {
-    assistantMessage:
-      nextState === "profile_summary"
-        ? "전화번호와 영업시간을 확인했어요. 마지막으로 요약을 확인해주세요."
-        : "확인이 필요한 정보가 있어요. 전화번호나 영업시간을 한 번 더 알려주세요.",
-    confidence: lowConfidence ? "low" : "high",
-    extractedFields,
-    fieldConfidence,
-    missingFields,
-    needsOwnerConfirmation: nextState === "profile_summary",
-    nextState,
-  }
-}
+import { extractLocalOnboardingSlots } from "@/conversations/onboarding-slot-extraction"
 
 function classifyPostingReply(
   input: PostingOwnerReplyInput
@@ -137,8 +60,8 @@ export function createStubOnboardingConversation(): OnboardingConversationAdapte
         value: {
           assistantMessage:
             input.missingFields.length === 0
-              ? "등록할 정보를 모두 확인했어요."
-              : "전화번호와 영업시간을 알려주세요.",
+              ? "입력해주신 정보를 양식에 채웠어요. 틀린 곳이 있으면 고치고, 맞으면 매장 정보 확인을 눌러주세요."
+              : "매장 정보를 찾았어요. 필요한 정보를 하나씩 확인할게요.",
           nextState:
             input.missingFields.length === 0
               ? "profile_summary"
@@ -151,7 +74,7 @@ export function createStubOnboardingConversation(): OnboardingConversationAdapte
     ): Promise<AdapterResult<OnboardingConversationOutput>> {
       return {
         kind: "ok",
-        value: extractOnboardingSlots(input),
+        value: extractLocalOnboardingSlots(input),
       }
     },
   }
