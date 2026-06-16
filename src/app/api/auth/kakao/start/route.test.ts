@@ -166,6 +166,20 @@ describe("Kakao OAuth start route", () => {
     expect(setCookie).toContain("HttpOnly")
   })
 
+  it("redirects to an auth error when local Kakao credentials are missing outside stub mode", async () => {
+    replaceEnv({
+      APP_INTEGRATION_MODE: undefined,
+      KAKAO_REST_API_KEY: undefined,
+      KAKAO_REDIRECT_URI: undefined,
+    })
+
+    const response = await POST(createKakaoStartRequest())
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe("/?auth_error=kakao_config")
+    expect(response.headers.get("Set-Cookie")).toBeNull()
+  })
+
   it("redirects to an auth error when production Kakao credentials are missing", async () => {
     replaceEnv({
       APP_INTEGRATION_MODE: "production",

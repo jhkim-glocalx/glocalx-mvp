@@ -17,26 +17,6 @@ import {
   kakaoOAuthStateCookieOptions,
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
-import type { AdapterEnvironment } from "@/integrations/contracts"
-
-function isLoopbackHost(hostname: string): boolean {
-  return (
-    hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    hostname.toLowerCase() === "localhost"
-  )
-}
-
-function shouldUseDemoFallback(
-  request: NextRequest,
-  env: AdapterEnvironment
-): boolean {
-  return (
-    env["APP_INTEGRATION_MODE"] === "stub" ||
-    env["NODE_ENV"] !== "production" ||
-    isLoopbackHost(request.nextUrl.hostname)
-  )
-}
 
 function createDemoSessionRedirect(): NextResponse {
   ensureDemoOwnerStore()
@@ -76,10 +56,6 @@ export async function POST(request: NextRequest) {
 
   const missingEnvVars = missingKakaoOAuthEnvVars(process.env)
   if (missingEnvVars.length > 0) {
-    if (shouldUseDemoFallback(request, process.env)) {
-      return createDemoSessionRedirect()
-    }
-
     return createKakaoConfigErrorRedirect()
   }
 
