@@ -95,12 +95,23 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
 
   await expect(page).toHaveURL(/\/app/)
-  await expect(page.getByText("STEP 2 · 사진 자동 고도화")).toBeVisible()
+  await expect(
+    page.getByRole("heading", { name: "성과 대시보드" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "성과 대시보드" })
+  ).toHaveAttribute("aria-current", "page")
+  await expect(
+    page.getByRole("button", { name: "다채널 포스팅" })
+  ).not.toHaveAttribute("aria-current", "page")
 
   await page.goto("/")
   await page.getByRole("button", { name: "이메일로 시작" }).click()
 
   await expect(page).toHaveURL(/\/app/)
+  await expect(
+    page.getByRole("heading", { name: "성과 대시보드" })
+  ).toBeVisible()
 })
 
 test("auth placeholders do not create a demo session", async ({ page }) => {

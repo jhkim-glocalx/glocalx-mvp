@@ -1,4 +1,5 @@
 import type { OAuthIdentityProfile } from "./oauth-identity"
+export type { OAuthIdentityProfile }
 
 export type OAuthFetch = (
   input: string,

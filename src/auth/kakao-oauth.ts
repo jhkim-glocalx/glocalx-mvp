@@ -1,3 +1,8 @@
+import {
+  getOAuthRequestOrigin,
+  type OAuthOriginRequest,
+  resolveOAuthRedirectUri,
+} from "@/auth/oauth-redirect"
 import type { AdapterEnvironment } from "@/integrations/contracts"
 
 const kakaoOAuthEndpoint = "https://kauth.kakao.com/oauth/authorize"
@@ -48,6 +53,18 @@ export function buildKakaoOAuthAuthorizationUrl(
   authorizationUrl.searchParams.set("response_type", "code")
   authorizationUrl.searchParams.set("state", options.state)
   return authorizationUrl
+}
+
+export function getKakaoRedirectUri(
+  request: OAuthOriginRequest,
+  env: AdapterEnvironment
+): string {
+  const configuredRedirectUri = env["KAKAO_REDIRECT_URI"]?.trim()
+  return resolveOAuthRedirectUri({
+    callbackPath: "/api/auth/kakao/callback",
+    configuredRedirectUri,
+    requestOrigin: getOAuthRequestOrigin(request),
+  })
 }
 
 export function isValidKakaoOAuthCallback(

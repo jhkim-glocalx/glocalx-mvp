@@ -86,10 +86,12 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
   // When: the owner opens the app.
   await page.goto("/app")
 
-  // Then: the default photo-enhancement step is visible.
-  await expect(page.getByText("STEP 2 · 사진 자동 고도화")).toBeVisible()
+  // Then: the dashboard-first landing is visible.
   await expect(
-    page.getByRole("button", { name: "사진 고도화" })
+    page.getByRole("heading", { name: "성과 대시보드" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "성과 대시보드" })
   ).toHaveAttribute("aria-current", "page")
 
   // When: the owner opens the reference report and dashboard screens.

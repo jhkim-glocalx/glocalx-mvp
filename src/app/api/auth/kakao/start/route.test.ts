@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   buildKakaoOAuthAuthorizationUrl,
@@ -7,7 +7,8 @@ import {
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
 import { demoSessionCookieName, demoStoreCookieName } from "@/auth/session"
-import { getKakaoRedirectUri, POST } from "./route"
+import { resetDatabaseFile } from "@/server/db/sqlite"
+import { POST } from "./route"
 
 const envKeys = [
   "APP_INTEGRATION_MODE",
@@ -18,6 +19,7 @@ const envKeys = [
 const originalEnv = new Map(
   envKeys.map((key) => [key, process.env[key]] as const)
 )
+const testDatabasePath = ".glocalx/kakao-start-route.test.db"
 
 function replaceEnv(overrides: Record<string, string | undefined>): void {
   for (const key of envKeys) {
@@ -48,7 +50,13 @@ function createKakaoStartRequest(): NextRequest {
   })
 }
 
+beforeEach(() => {
+  vi.stubEnv("GLOCALX_DB_PATH", testDatabasePath)
+  resetDatabaseFile(testDatabasePath)
+})
+
 afterEach(() => {
+  resetDatabaseFile(testDatabasePath)
   vi.unstubAllEnvs()
   restoreEnv()
 })
@@ -119,17 +127,25 @@ describe("Kakao OAuth start route", () => {
     expect(setCookie).not.toContain(kakaoOAuthStateCookieName)
   })
 
-  it("uses the deployed origin when KAKAO_REDIRECT_URI still points to localhost", () => {
-    const request = new NextRequest(
-      "https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/start",
-      { method: "POST" }
-    )
+  it("uses the deployed origin when KAKAO_REDIRECT_URI still points to localhost", async () => {
+    replaceEnv({
+      KAKAO_REST_API_KEY: "test-rest-api-key",
+      KAKAO_REDIRECT_URI: "http://127.0.0.1:5174/api/auth/kakao/callback",
+    })
 
-    expect(
-      getKakaoRedirectUri(request, {
-        KAKAO_REDIRECT_URI: "http://127.0.0.1:5174/api/auth/kakao/callback",
-      })
-    ).toBe("https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/callback")
+    const response = await POST(
+      new NextRequest(
+        "https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/start",
+        { method: "POST" }
+      )
+    )
+    const location = response.headers.get("Location")
+
+    expect(response.status).toBe(303)
+    expect(location).toBeTruthy()
+    expect(new URL(location ?? "").searchParams.get("redirect_uri")).toBe(
+      "https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/callback"
+    )
   })
 
   it("falls back to demo login when local Kakao credentials are missing", async () => {

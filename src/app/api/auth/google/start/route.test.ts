@@ -1,14 +1,22 @@
 import { NextRequest } from "next/server"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { demoSessionCookieName, demoStoreCookieName } from "@/auth/session"
+import {
+  demoSessionCookieName,
+  demoStoreCookieName,
+  demoStoreId,
+  onboardingCompleteCookieName,
+} from "@/auth/session"
 import { googleOAuthStateCookieName } from "@/gbp/oauth-callback"
 import {
-  buildGoogleOAuthAuthorizationUrl,
-  getGoogleRedirectUri,
-  missingGoogleOAuthEnvVars,
-  POST,
-} from "./route"
+  applyMigrations,
+  openDatabase,
+  resetDatabaseFile,
+  seedDemoData,
+} from "@/server/db/sqlite"
+import { POST } from "./route"
+
+type DemoStoreOnboardingStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED"
 
 const envKeys = [
   "APP_INTEGRATION_MODE",
@@ -20,6 +28,7 @@ const envKeys = [
 const originalEnv = new Map(
   envKeys.map((key) => [key, process.env[key]] as const)
 )
+const testDatabasePath = ".glocalx/google-start-route.test.db"
 
 function replaceEnv(overrides: Record<string, string | undefined>): void {
   for (const key of envKeys) {
@@ -44,46 +53,49 @@ function restoreEnv(): void {
   }
 }
 
-function createGoogleStartRequest(): NextRequest {
+function createGoogleStartRequest(cookieHeader?: string): NextRequest {
+  if (cookieHeader === undefined) {
+    return new NextRequest("http://localhost:3000/api/auth/google/start", {
+      method: "POST",
+    })
+  }
+
   return new NextRequest("http://localhost:3000/api/auth/google/start", {
+    headers: {
+      Cookie: cookieHeader,
+    },
     method: "POST",
   })
 }
 
+function setDemoStoreOnboardingStatus(
+  onboardingStatus: DemoStoreOnboardingStatus
+): void {
+  resetDatabaseFile()
+  const database = openDatabase()
+  try {
+    applyMigrations(database)
+    seedDemoData(database)
+    database
+      .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
+      .run(onboardingStatus, demoStoreId)
+  } finally {
+    database.close()
+  }
+}
+
+beforeEach(() => {
+  vi.stubEnv("GLOCALX_DB_PATH", testDatabasePath)
+  resetDatabaseFile(testDatabasePath)
+})
+
 afterEach(() => {
+  resetDatabaseFile(testDatabasePath)
+  vi.unstubAllEnvs()
   restoreEnv()
 })
 
 describe("Google OAuth start route", () => {
-  it("builds the Google authorization URL with sign-in and GBP scopes", () => {
-    const authorizationUrl = buildGoogleOAuthAuthorizationUrl({
-      clientId: "test-client-id",
-      redirectUri: "http://localhost:3000/api/auth/google/callback",
-      state: "test-oauth-state",
-    })
-
-    expect(authorizationUrl.origin).toBe("https://accounts.google.com")
-    expect(authorizationUrl.pathname).toBe("/o/oauth2/v2/auth")
-    expect(authorizationUrl.searchParams.get("client_id")).toBe(
-      "test-client-id"
-    )
-    expect(authorizationUrl.searchParams.get("redirect_uri")).toBe(
-      "http://localhost:3000/api/auth/google/callback"
-    )
-    expect(authorizationUrl.searchParams.get("response_type")).toBe("code")
-    expect(authorizationUrl.searchParams.get("state")).toBe("test-oauth-state")
-    expect(authorizationUrl.searchParams.get("access_type")).toBe("offline")
-    expect(authorizationUrl.searchParams.get("prompt")).toBe("consent")
-    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual(
-      expect.arrayContaining([
-        "openid",
-        "email",
-        "profile",
-        "https://www.googleapis.com/auth/business.manage",
-      ])
-    )
-  })
-
   it("redirects to Google when OAuth credentials are configured", async () => {
     replaceEnv({
       GOOGLE_CLIENT_ID: "test-client-id",
@@ -100,49 +112,117 @@ describe("Google OAuth start route", () => {
 
     const authorizationUrl = new URL(location ?? "")
     expect(authorizationUrl.origin).toBe("https://accounts.google.com")
+    expect(authorizationUrl.pathname).toBe("/o/oauth2/v2/auth")
     expect(authorizationUrl.searchParams.get("client_id")).toBe(
       "test-client-id"
     )
     expect(authorizationUrl.searchParams.get("redirect_uri")).toBe(
       "http://localhost:3000/api/auth/google/callback"
     )
+    expect(authorizationUrl.searchParams.get("response_type")).toBe("code")
     expect(authorizationUrl.searchParams.get("state")).toBeTruthy()
+    expect(authorizationUrl.searchParams.get("access_type")).toBe("offline")
+    expect(authorizationUrl.searchParams.get("prompt")).toBe("consent")
+    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual(
+      expect.arrayContaining([
+        "openid",
+        "email",
+        "profile",
+        "https://www.googleapis.com/auth/business.manage",
+      ])
+    )
     expect(setCookie).toContain(
       `${googleOAuthStateCookieName}=${authorizationUrl.searchParams.get("state")}`
     )
     expect(setCookie).toContain("HttpOnly")
+    expect(setCookie).not.toContain(demoSessionCookieName)
+    expect(setCookie).not.toContain(demoStoreCookieName)
   })
 
-  it("uses demo login in stub mode even when Google credentials are configured", async () => {
+  it("routes a not-started demo store to onboarding in stub mode", async () => {
     replaceEnv({
       APP_INTEGRATION_MODE: "stub",
       GOOGLE_CLIENT_ID: "test-client-id",
       GOOGLE_CLIENT_SECRET: "test-client-secret",
       GOOGLE_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
     })
+    setDemoStoreOnboardingStatus("NOT_STARTED")
 
     const response = await POST(createGoogleStartRequest())
     const location = response.headers.get("Location")
     const setCookie = response.headers.get("Set-Cookie")
 
     expect(response.status).toBe(303)
-    expect(location).toMatch(/^\/(?:app|onboarding)$/)
+    expect(location).toBe("/onboarding")
     expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
     expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
     expect(setCookie).not.toContain(googleOAuthStateCookieName)
   })
 
-  it("uses the deployed origin when GOOGLE_REDIRECT_URI still points to localhost", () => {
-    const request = new NextRequest(
-      "https://glocalx-mvp-tawny.vercel.app/api/auth/google/start",
-      { method: "POST" }
-    )
+  it("routes an in-progress demo store to onboarding in stub mode despite a stale completion cookie", async () => {
+    replaceEnv({
+      APP_INTEGRATION_MODE: "stub",
+      GOOGLE_CLIENT_ID: "test-client-id",
+      GOOGLE_CLIENT_SECRET: "test-client-secret",
+      GOOGLE_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
+    })
+    setDemoStoreOnboardingStatus("IN_PROGRESS")
 
-    expect(
-      getGoogleRedirectUri(request, {
-        GOOGLE_REDIRECT_URI: "http://127.0.0.1:5174/api/auth/google/callback",
-      })
-    ).toBe("https://glocalx-mvp-tawny.vercel.app/api/auth/google/callback")
+    const response = await POST(
+      createGoogleStartRequest(`${onboardingCompleteCookieName}=true`)
+    )
+    const location = response.headers.get("Location")
+    const setCookie = response.headers.get("Set-Cookie")
+
+    expect(response.status).toBe(303)
+    expect(location).toBe("/onboarding")
+    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
+    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
+    expect(setCookie).not.toContain(googleOAuthStateCookieName)
+  })
+
+  it("routes a completed demo store to app in stub mode", async () => {
+    replaceEnv({
+      APP_INTEGRATION_MODE: "stub",
+      GOOGLE_CLIENT_ID: "test-client-id",
+      GOOGLE_CLIENT_SECRET: "test-client-secret",
+      GOOGLE_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
+    })
+    setDemoStoreOnboardingStatus("COMPLETED")
+
+    const response = await POST(createGoogleStartRequest())
+    const location = response.headers.get("Location")
+    const setCookie = response.headers.get("Set-Cookie")
+
+    expect(response.status).toBe(303)
+    expect(location).toBe("/app")
+    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
+    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
+    expect(setCookie).not.toContain(googleOAuthStateCookieName)
+  })
+
+  it("uses the deployed origin when GOOGLE_REDIRECT_URI still points to localhost", async () => {
+    replaceEnv({
+      GOOGLE_CLIENT_ID: "test-client-id",
+      GOOGLE_CLIENT_SECRET: "test-client-secret",
+      GOOGLE_REDIRECT_URI: "http://127.0.0.1:5174/api/auth/google/callback",
+    })
+
+    const response = await POST(
+      new NextRequest(
+        "https://glocalx-mvp-tawny.vercel.app/api/auth/google/start",
+        { method: "POST" }
+      )
+    )
+    const location = response.headers.get("Location")
+
+    expect(response.status).toBe(303)
+    expect(location).toBeTruthy()
+
+    const authorizationUrl = new URL(location ?? "")
+    expect(authorizationUrl.searchParams.get("redirect_uri")).toBe(
+      "https://glocalx-mvp-tawny.vercel.app/api/auth/google/callback"
+    )
   })
 
   it("reports missing credentials in production mode", async () => {
@@ -154,10 +234,7 @@ describe("Google OAuth start route", () => {
     })
 
     const response = await POST(createGoogleStartRequest())
-    const body = (await response.json()) as {
-      readonly code: string
-      readonly missingEnvVars: readonly string[]
-    }
+    const body: unknown = await response.json()
 
     expect(response.status).toBe(500)
     expect(body).toEqual({
@@ -167,12 +244,22 @@ describe("Google OAuth start route", () => {
     })
   })
 
-  it("treats template placeholders as missing credentials", () => {
-    expect(
-      missingGoogleOAuthEnvVars({
-        GOOGLE_CLIENT_ID: "replace-with-google-client-id",
-        GOOGLE_CLIENT_SECRET: "replace-with-google-client-secret",
-      })
-    ).toEqual(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"])
+  it("treats template placeholders as missing credentials", async () => {
+    replaceEnv({
+      APP_INTEGRATION_MODE: "production",
+      GOOGLE_CLIENT_ID: "replace-with-google-client-id",
+      GOOGLE_CLIENT_SECRET: "replace-with-google-client-secret",
+      GOOGLE_REDIRECT_URI: undefined,
+    })
+
+    const response = await POST(createGoogleStartRequest())
+    const body: unknown = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({
+      code: "BLOCKED_BY_CREDENTIALS",
+      missingEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+      message: "Google OAuth credentials are not configured.",
+    })
   })
 })

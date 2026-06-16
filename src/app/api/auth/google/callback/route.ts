@@ -5,18 +5,20 @@ import {
   demoSessionCookieName,
   demoStoreCookieName,
   ensureDemoOwnerStore,
-  onboardingCompleteCookieName,
   sessionCookieOptions,
 } from "@/auth/session"
 import { upsertOAuthIdentity } from "@/auth/oauth-identity"
 import { fetchGoogleOAuthProfile } from "@/auth/oauth-providers"
+import {
+  getGoogleRedirectUri,
+  missingGoogleOAuthEnvVars,
+} from "@/auth/google-oauth"
 import {
   expiredGoogleOAuthStateCookieOptions,
   googleOAuthStateCookieName,
   isValidGoogleOAuthCallback,
 } from "@/gbp/oauth-callback"
 import { openDatabase } from "@/server/db/sqlite"
-import { getGoogleRedirectUri, missingGoogleOAuthEnvVars } from "../start/route"
 
 function redirectToLandingClearingState(reason: string): NextResponse {
   const response = new NextResponse(null, {
@@ -67,12 +69,9 @@ export async function GET(request: NextRequest) {
     } finally {
       database.close()
     }
-    const onboardingComplete =
-      request.cookies.get(onboardingCompleteCookieName)?.value === "true" ||
-      storeOnboardingComplete
     const response = new NextResponse(null, {
       headers: {
-        Location: onboardingComplete ? "/app" : "/onboarding",
+        Location: storeOnboardingComplete ? "/app" : "/onboarding",
       },
       status: 303,
     })

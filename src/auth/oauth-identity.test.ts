@@ -20,6 +20,17 @@ const authIdentityRowSchema = z.object({
   user_id: z.string(),
 })
 
+const storeProfileRowSchema = z.object({
+  address: z.string(),
+  category: z.string(),
+  hours: z.string().nullable(),
+  id: z.string(),
+  name: z.string(),
+  onboarding_status: z.string(),
+  owner_user_id: z.string(),
+  phone: z.string().nullable(),
+})
+
 describe("OAuth identity persistence", () => {
   const tempPaths: string[] = []
 
@@ -76,6 +87,12 @@ describe("OAuth identity persistence", () => {
       database.prepare("SELECT COUNT(*) AS count FROM auth_identities").get()
     )
     expect(countRow.count).toBe(1)
+    const storeCountRow = authIdentityCountSchema.parse(
+      database
+        .prepare("SELECT COUNT(*) AS count FROM stores WHERE owner_user_id = ?")
+        .get(firstSession.userId)
+    )
+    expect(storeCountRow.count).toBe(1)
 
     const identityRow = authIdentityRowSchema.parse(
       database
@@ -89,6 +106,123 @@ describe("OAuth identity persistence", () => {
       encrypted_refresh_token: "encrypted:first-refresh-token",
       provider: "GOOGLE",
       user_id: firstSession.userId,
+    })
+
+    database.close()
+  })
+
+  it("reuses an existing store by email/provider and preserves its profile", async () => {
+    // Given
+    const database = await createDatabase()
+    const createdAt = "2026-06-04T00:00:00.000Z"
+    database
+      .prepare(
+        "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)"
+      )
+      .run(
+        "returning-owner",
+        "returning@example.com",
+        "Returning Owner",
+        "OWNER",
+        createdAt
+      )
+    database
+      .prepare(
+        "INSERT INTO stores (id, owner_user_id, name, address, phone, category, hours, onboarding_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      )
+      .run(
+        "returning-store",
+        "returning-owner",
+        "서울식당 강남점",
+        "서울 강남구 테헤란로 101",
+        "02-321-9876",
+        "한식",
+        "10:00 ~ 22:00",
+        "IN_PROGRESS",
+        createdAt
+      )
+
+    // When
+    const insertedSession = upsertOAuthIdentity(
+      database,
+      {
+        accessToken: "returning-access-token",
+        displayName: "Returning Owner From Google",
+        email: "RETURNING@example.com",
+        expiresAt: "2026-06-04T01:00:00.000Z",
+        provider: "GOOGLE",
+        refreshToken: "returning-refresh-token",
+        scopes: ["openid", "email", "profile"],
+        subjectId: "returning-google-subject",
+      },
+      new Date("2026-06-04T00:05:00.000Z")
+    )
+    database
+      .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
+      .run("COMPLETED", "returning-store")
+    const updatedSession = upsertOAuthIdentity(
+      database,
+      {
+        accessToken: "updated-returning-access-token",
+        displayName: "Returning Owner Updated",
+        email: "returning@example.com",
+        expiresAt: "2026-06-04T02:00:00.000Z",
+        provider: "GOOGLE",
+        scopes: ["openid", "email"],
+        subjectId: "returning-google-subject",
+      },
+      new Date("2026-06-04T00:10:00.000Z")
+    )
+
+    // Then
+    expect(insertedSession).toEqual({
+      onboardingComplete: false,
+      storeId: "returning-store",
+      userId: "returning-owner",
+    })
+    expect(updatedSession).toEqual({
+      onboardingComplete: true,
+      storeId: "returning-store",
+      userId: "returning-owner",
+    })
+
+    const storeCountRow = authIdentityCountSchema.parse(
+      database
+        .prepare("SELECT COUNT(*) AS count FROM stores WHERE owner_user_id = ?")
+        .get("returning-owner")
+    )
+    expect(storeCountRow.count).toBe(1)
+
+    const storeRow = storeProfileRowSchema.parse(
+      database
+        .prepare(
+          "SELECT id, owner_user_id, name, address, phone, category, hours, onboarding_status FROM stores WHERE id = ?"
+        )
+        .get("returning-store")
+    )
+    expect(storeRow).toEqual({
+      address: "서울 강남구 테헤란로 101",
+      category: "한식",
+      hours: "10:00 ~ 22:00",
+      id: "returning-store",
+      name: "서울식당 강남점",
+      onboarding_status: "COMPLETED",
+      owner_user_id: "returning-owner",
+      phone: "02-321-9876",
+    })
+
+    const identityRow = authIdentityRowSchema.parse(
+      database
+        .prepare(
+          "SELECT provider, user_id, encrypted_access_token, encrypted_refresh_token FROM auth_identities WHERE provider = ? AND provider_subject_id = ?"
+        )
+        .get("GOOGLE", "returning-google-subject")
+    )
+    expect(identityRow).toEqual({
+      encrypted_access_token: "encrypted:updated-returning-access-token",
+      encrypted_refresh_token: "encrypted:returning-refresh-token",
+      provider: "GOOGLE",
+      user_id: "returning-owner",
     })
 
     database.close()

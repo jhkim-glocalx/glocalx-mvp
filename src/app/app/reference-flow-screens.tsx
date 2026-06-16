@@ -782,7 +782,12 @@ export function ReferenceFlowScreens({
   publish,
 }: ReferenceFlowScreensProps) {
   if (activeNavId === "dashboard") {
-    return <DashboardScreen onBack={() => onSelect("report")} />
+    return (
+      <section className="gx-chat-stage" aria-label="글로컬엑스 작업 흐름">
+        <FlowNav activeNavId={activeNavId} onSelect={onSelect} />
+        <DashboardScreen onBack={() => onSelect("report")} />
+      </section>
+    )
   }
 
   return (

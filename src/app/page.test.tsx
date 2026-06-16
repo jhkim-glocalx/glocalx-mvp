@@ -1,11 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { authErrorMessageFor, HomeView } from "./page"
+import Home from "./page"
 
 describe("login landing page", () => {
-  it("renders the Korean login choices with form actions", () => {
-    const html = renderToStaticMarkup(<HomeView />)
+  it("renders the Korean login choices with form actions", async () => {
+    const view = await Home({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({}),
+    })
+    const html = renderToStaticMarkup(view)
 
     expect(html).toContain("혼자서도")
     expect(html).toContain("전 세계에 팝니다.")
@@ -24,11 +28,29 @@ describe("login landing page", () => {
     expect(html).not.toContain("prototype frame")
   })
 
-  it("maps Kakao client secret errors to a specific login message", () => {
-    const message = authErrorMessageFor("kakao_client_secret")
-    const html = renderToStaticMarkup(<HomeView authErrorMessage={message} />)
+  it("maps Kakao client secret errors to a specific login message", async () => {
+    const view = await Home({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({
+        auth_error: "kakao_client_secret",
+      }),
+    })
+    const html = renderToStaticMarkup(view)
 
     expect(html).toContain("카카오 Client Secret이 필요합니다.")
+    expect(html).toContain('role="alert"')
+  })
+
+  it("maps Google state errors to a visible login message", async () => {
+    const view = await Home({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({
+        auth_error: "google_state",
+      }),
+    })
+    const html = renderToStaticMarkup(view)
+
+    expect(html).toContain("구글 로그인 세션이 만료되었습니다.")
     expect(html).toContain('role="alert"')
   })
 })

@@ -35,7 +35,7 @@ function isAppNavId(navId: string): navId is AppNavId {
 }
 
 export function AppWorkspace({ storeId }: AppWorkspaceProps) {
-  const [activeNavId, setActiveNavId] = useState<AppNavId>("photo")
+  const [activeNavId, setActiveNavId] = useState<AppNavId>("dashboard")
   const [composerFocusKey, setComposerFocusKey] = useState(0)
   const [composerMessage, setComposerMessage] = useState("")
   const screenRef = useRef<HTMLDivElement>(null)

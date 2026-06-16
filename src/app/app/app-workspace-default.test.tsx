@@ -1,0 +1,167 @@
+// @vitest-environment jsdom
+
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { AppWorkspace } from "./app-workspace"
+
+const draftResponse = {
+  draftId: "draft-original",
+  preview: {
+    koreanCopy: "이번 주말 브런치 신메뉴를 만나보세요.",
+    platformPreviews: [
+      {
+        copy: "이번 주말 브런치 신메뉴를 만나보세요.",
+        platform: "GBP",
+      },
+    ],
+    suggestion: {
+      id: "suggestion-1",
+      message: "일본 관광객 타겟 문구를 더해보세요.",
+      rationale: "최근 방문 비중이 높습니다.",
+      revisedIntent: "일본 관광객에게 브런치 신메뉴 홍보",
+      title: "타겟 문구 강화",
+    },
+  },
+  status: "DRAFT_READY",
+} as const
+
+const revisedDraftResponse = {
+  draftId: "draft-revised",
+  preview: {
+    koreanCopy: "일본 관광객에게 이번 주말 브런치 신메뉴를 소개합니다.",
+    platformPreviews: [
+      {
+        copy: "일본 관광객에게 이번 주말 브런치 신메뉴를 소개합니다.",
+        platform: "GBP",
+      },
+    ],
+    suggestion: null,
+  },
+  status: "DRAFT_READY",
+} as const
+
+const postingDecisionResponse = {
+  assistantMessage: "제안을 반영해 게시물 초안을 다시 만들었어요.",
+  decision: "accepted",
+  draft: revisedDraftResponse,
+  revisedIntent: "일본 관광객에게 브런치 신메뉴 홍보",
+  sessionId: "posting-session-1",
+  status: "POSTING_CONVERSATION_TURN",
+} as const
+
+function pathFromRequest(input: RequestInfo | URL): string {
+  if (typeof input === "string") {
+    return input
+  }
+
+  if (input instanceof URL) {
+    return input.pathname
+  }
+
+  return input.url
+}
+
+function installPostingFetch(): void {
+  const fetchMock: typeof fetch = async (input) => {
+    const path = pathFromRequest(input)
+    if (path === "/api/posts/drafts") {
+      return Response.json(draftResponse)
+    }
+
+    if (path === "/api/posts/conversation/decision") {
+      return Response.json(postingDecisionResponse)
+    }
+
+    return Response.json(
+      { message: `Unexpected request: ${path}`, status: "UNEXPECTED_REQUEST" },
+      { status: 500 }
+    )
+  }
+
+  vi.stubGlobal("fetch", fetchMock)
+  vi.spyOn(window.crypto, "randomUUID").mockReturnValue("client-event-1")
+}
+
+function fileInputFrom(container: HTMLElement): HTMLInputElement {
+  const input = container.querySelector('input[type="file"]')
+  if (!(input instanceof HTMLInputElement)) {
+    throw new Error("Expected a file input in the photo workflow.")
+  }
+
+  return input
+}
+
+describe("app workspace default landing", () => {
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it("renders the completed app landing on the dashboard first", () => {
+    // Given: a completed owner session renders the app workspace.
+    render(<AppWorkspace storeId="demo-store" />)
+
+    // When: the workspace loads with its initial active section.
+    const dashboardTab = screen.getByRole("button", {
+      name: "성과 대시보드",
+    })
+
+    // Then: the dashboard is active and posting is available but inactive.
+    expect(
+      screen.getByRole("heading", { name: "성과 대시보드" })
+    ).toBeVisible()
+    expect(dashboardTab).toHaveAttribute("aria-current", "page")
+    expect(
+      screen.getByRole("button", { name: "다채널 포스팅" })
+    ).not.toHaveAttribute("aria-current")
+    expect(
+      screen.queryByRole("textbox", { name: "메시지 입력" })
+    ).not.toBeInTheDocument()
+  })
+
+  it("opens the posting workflow when the posting nav is clicked", () => {
+    // Given: the completed workspace starts on the dashboard.
+    render(<AppWorkspace storeId="demo-store" />)
+
+    // When: the owner explicitly selects posting.
+    fireEvent.click(screen.getByRole("button", { name: "다채널 포스팅" }))
+
+    // Then: posting is active and the posting placeholder is visible.
+    expect(
+      screen.getByRole("button", { name: "다채널 포스팅" })
+    ).toHaveAttribute("aria-current", "page")
+    expect(
+      screen.getByText(/이미지와 홍보 의도를 먼저 분석하면/)
+    ).toBeVisible()
+  })
+
+  it("switches to posting when a revised draft is returned", async () => {
+    // Given: the owner has generated a draft with an actionable suggestion.
+    installPostingFetch()
+    const { container } = render(<AppWorkspace storeId="demo-store" />)
+    fireEvent.click(screen.getByRole("button", { name: "사진 고도화" }))
+    fireEvent.change(fileInputFrom(container), {
+      target: {
+        files: [new File(["image"], "brunch.png", { type: "image/png" })],
+      },
+    })
+    await screen.findByText("brunch.png")
+    fireEvent.click(
+      screen.getByRole("button", { name: "AI 분석 및 이미지 개선" })
+    )
+    await screen.findByText("스마트 제안")
+
+    // When: the suggestion response returns a revised draft.
+    fireEvent.click(screen.getByRole("button", { name: "제안 반영" }))
+
+    // Then: the workspace intentionally moves to posting for review.
+    expect(
+      await screen.findByText("완성된 게시물을 확인해주세요")
+    ).toBeVisible()
+    expect(
+      screen.getByRole("button", { name: "다채널 포스팅" })
+    ).toHaveAttribute("aria-current", "page")
+  })
+})

@@ -15,7 +15,9 @@ const confirmedRowsSchema = z.object({
   extractionSourceInput: z.string(),
   storeAddress: z.string(),
   storeCategory: z.string(),
+  storeHours: z.string(),
   storeName: z.string(),
+  storeOnboardingStatus: z.string(),
   storePhone: z.string(),
 })
 
@@ -70,7 +72,7 @@ describe("confirmStoreProfile", () => {
     const row = confirmedRowsSchema.parse(
       database
         .prepare(
-          "SELECT stores.name AS storeName, stores.address AS storeAddress, stores.phone AS storePhone, stores.category AS storeCategory, business_profile_extractions.status AS extractionStatus, business_profile_extractions.source_input AS extractionSourceInput FROM stores JOIN business_profile_extractions ON business_profile_extractions.store_id = stores.id WHERE stores.id = ? AND business_profile_extractions.id = ?"
+          "SELECT stores.name AS storeName, stores.address AS storeAddress, stores.phone AS storePhone, stores.category AS storeCategory, stores.hours AS storeHours, stores.onboarding_status AS storeOnboardingStatus, business_profile_extractions.status AS extractionStatus, business_profile_extractions.source_input AS extractionSourceInput FROM stores JOIN business_profile_extractions ON business_profile_extractions.store_id = stores.id WHERE stores.id = ? AND business_profile_extractions.id = ?"
         )
         .get("demo-store", "confirmed-extraction-demo-store")
     )
@@ -79,7 +81,9 @@ describe("confirmStoreProfile", () => {
       extractionSourceInput: "https://naver.me/ramenhouse",
       storeAddress: "서울 마포구 양화로 19",
       storeCategory: "라멘",
+      storeHours: "11:00 ~ 22:00",
       storeName: "라멘하우스 합정점",
+      storeOnboardingStatus: "IN_PROGRESS",
       storePhone: "02-987-6543",
     })
     database.close()

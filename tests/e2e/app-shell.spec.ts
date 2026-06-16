@@ -16,6 +16,15 @@ function resetFirstTimeE2eDatabase(): void {
   }
 }
 
+async function expectDashboardLanding(page: Page): Promise<void> {
+  await expect(
+    page.getByRole("heading", { name: "성과 대시보드" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "성과 대시보드" })
+  ).toHaveAttribute("aria-current", "page")
+}
+
 async function completeOnboarding(page: Page): Promise<void> {
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
@@ -35,7 +44,7 @@ async function completeOnboarding(page: Page): Promise<void> {
   await expect(page.getByText("인증 대기", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: "대시보드로 이동" }).click()
   await expect(page).toHaveURL(/\/app/)
-  await expect(page.getByText("STEP 2 · 사진 자동 고도화")).toBeVisible()
+  await expectDashboardLanding(page)
 }
 
 test.beforeEach(({ page }, testInfo) => {
@@ -50,10 +59,10 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
   await page.getByRole("button", { name: "이메일로 시작" }).click()
   await completeOnboarding(page)
 
-  const photoTab = page.getByRole("button", { name: "사진 고도화" })
+  const dashboardTab = page.getByRole("button", { name: "성과 대시보드" })
   const postingTab = page.getByRole("button", { name: "다채널 포스팅" })
 
-  await expect(photoTab).toHaveAttribute("aria-current", "page")
+  await expect(dashboardTab).toHaveAttribute("aria-current", "page")
   await postingTab.click()
   await expect(postingTab).toHaveAttribute("aria-current", "page")
   await expect(
@@ -72,6 +81,10 @@ test("bottom chat composer accepts typed text", async ({ page }) => {
   await page.getByRole("button", { name: "이메일로 시작" }).click()
   await completeOnboarding(page)
 
+  await page.getByRole("button", { name: "다채널 포스팅" }).click()
+  await expect(
+    page.getByRole("button", { name: "다채널 포스팅" })
+  ).toHaveAttribute("aria-current", "page")
   const composer = page.getByRole("textbox", { name: "메시지 입력" })
   await composer.fill("이번 주말 신메뉴를 홍보하고 싶어요")
 
@@ -206,7 +219,7 @@ test("responsive browser shell keeps controls visible on mobile", async ({
     page.locator(".gx-device-island, .gx-statusbar, .gx-phone-screen")
   ).toHaveCount(0)
   await expect(
-    page.getByRole("button", { name: "사진 고도화" })
+    page.getByRole("button", { name: "성과 대시보드" })
   ).toHaveAttribute("aria-current", "page")
 
   const metrics = await page.evaluate(() => ({
