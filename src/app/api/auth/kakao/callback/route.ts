@@ -19,6 +19,7 @@ import {
   kakaoOAuthStateCookieName,
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
+import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
 import { openDatabase } from "@/server/db/sqlite"
 
 function redirectToLandingClearingState(reason: string): NextResponse {
@@ -51,6 +52,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (missingKakaoOAuthEnvVars(process.env).length > 0) {
+    return redirectToLandingClearingState("kakao_config")
+  }
+
+  if (missingTokenEncryptionEnvVars(process.env).length > 0) {
     return redirectToLandingClearingState("kakao_config")
   }
 

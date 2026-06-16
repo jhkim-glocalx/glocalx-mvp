@@ -2,11 +2,15 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto"
 
 const tokenEncryptionPrefix = "v1"
 const legacyPlaceholderPrefix = "encrypted:"
+const tokenEncryptionKeyEnvVar = "TOKEN_ENCRYPTION_KEY"
+const missingTokenEncryptionKeyEnvVars = [tokenEncryptionKeyEnvVar] as const
+const base64Pattern =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
 
-function readConfiguredKey(
+function readConfiguredKeyValue(
   env: Readonly<Record<string, string | undefined>>
-): Buffer | undefined {
-  const configuredValue = env["TOKEN_ENCRYPTION_KEY"]?.trim()
+): string | undefined {
+  const configuredValue = env[tokenEncryptionKeyEnvVar]?.trim()
   if (
     configuredValue === undefined ||
     configuredValue === "" ||
@@ -15,11 +19,48 @@ function readConfiguredKey(
     return undefined
   }
 
+  return configuredValue
+}
+
+function decodeConfiguredKey(configuredValue: string): Buffer | undefined {
+  if (!base64Pattern.test(configuredValue)) {
+    return undefined
+  }
+
   const key = Buffer.from(configuredValue, "base64")
-  if (key.length !== 32) {
+  return key.length === 32 ? key : undefined
+}
+
+function readConfiguredKey(
+  env: Readonly<Record<string, string | undefined>>
+): Buffer | undefined {
+  const configuredValue = readConfiguredKeyValue(env)
+  if (configuredValue === undefined) {
+    return undefined
+  }
+
+  const key = decodeConfiguredKey(configuredValue)
+  if (key === undefined) {
     throw new Error("TOKEN_ENCRYPTION_KEY must be a 32-byte base64 value.")
   }
   return key
+}
+
+export function missingTokenEncryptionEnvVars(
+  env: Readonly<Record<string, string | undefined>> = process.env
+): readonly string[] {
+  if (env["NODE_ENV"] !== "production") {
+    return []
+  }
+
+  const configuredValue = readConfiguredKeyValue(env)
+  if (configuredValue === undefined) {
+    return missingTokenEncryptionKeyEnvVars
+  }
+
+  return decodeConfiguredKey(configuredValue) === undefined
+    ? missingTokenEncryptionKeyEnvVars
+    : []
 }
 
 export function encryptToken(

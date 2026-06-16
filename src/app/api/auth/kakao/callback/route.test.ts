@@ -4,6 +4,7 @@ import { join } from "node:path"
 
 import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 import { kakaoOAuthStateCookieName } from "@/auth/kakao-oauth"
 import {
@@ -37,6 +38,44 @@ const kakaoProfile: OAuthIdentityProfile = {
 
 const mockedFetchKakaoOAuthProfile = vi.mocked(fetchKakaoOAuthProfile)
 const tempPaths: string[] = []
+const routeEnvKeys = ["TOKEN_ENCRYPTION_KEY"] as const
+type RouteEnvKey = (typeof routeEnvKeys)[number]
+const originalRouteEnv = new Map(
+  routeEnvKeys.map((key) => [key, process.env[key]] as const)
+)
+const countRowSchema = z.object({ count: z.number() })
+const guardedTableCountQueries = {
+  authIdentities: "SELECT COUNT(*) AS count FROM auth_identities",
+  users: "SELECT COUNT(*) AS count FROM users",
+} as const
+const unusableProductionTokenEncryptionKeys = [
+  { name: "missing", tokenEncryptionKey: undefined },
+  { name: "blank", tokenEncryptionKey: " \t\n " },
+  {
+    name: "replace-with placeholder",
+    tokenEncryptionKey: "replace-with-32-byte-base64-key",
+  },
+  {
+    name: "invalid-length base64",
+    tokenEncryptionKey: Buffer.alloc(31, 7).toString("base64"),
+  },
+  { name: "invalid base64", tokenEncryptionKey: "not-base64!!" },
+] as const
+
+function setRouteEnvValue(key: RouteEnvKey, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[key]
+    return
+  }
+
+  process.env[key] = value
+}
+
+function restoreRouteEnv(): void {
+  for (const key of routeEnvKeys) {
+    setRouteEnvValue(key, originalRouteEnv.get(key))
+  }
+}
 
 async function createDatabasePath(): Promise<string> {
   const tempPath = await mkdtemp(join(tmpdir(), "glocalx-kakao-callback-"))
@@ -51,7 +90,17 @@ async function createDatabasePath(): Promise<string> {
 function configureEnv(databasePath: string): void {
   vi.stubEnv("GLOCALX_DB_PATH", databasePath)
   vi.stubEnv("KAKAO_REST_API_KEY", "test-rest-api-key")
-  vi.stubEnv("KAKAO_REDIRECT_URI", "http://localhost:3000/api/auth/kakao/callback")
+  vi.stubEnv(
+    "KAKAO_REDIRECT_URI",
+    "http://localhost:3000/api/auth/kakao/callback"
+  )
+}
+
+function configureProductionTokenEncryptionKey(
+  tokenEncryptionKey: string | undefined
+): void {
+  vi.stubEnv("NODE_ENV", "production")
+  setRouteEnvValue("TOKEN_ENCRYPTION_KEY", tokenEncryptionKey)
 }
 
 function createCookieHeader(cookies: Readonly<Record<string, string>>): string {
@@ -99,9 +148,30 @@ function completeExistingStore(
   }
 }
 
+function countRows(
+  databasePath: string,
+  tableName: keyof typeof guardedTableCountQueries
+): number {
+  const database = openDatabase(databasePath)
+  try {
+    return countRowSchema.parse(
+      database.prepare(guardedTableCountQueries[tableName]).get()
+    ).count
+  } finally {
+    database.close()
+  }
+}
+
+function expectKakaoStateCookieCleared(response: Response): void {
+  const setCookie = response.headers.get("Set-Cookie")
+  expect(setCookie).toContain(`${kakaoOAuthStateCookieName}=`)
+  expect(setCookie).toContain("Max-Age=0")
+}
+
 afterEach(async () => {
   vi.resetAllMocks()
   vi.unstubAllEnvs()
+  restoreRouteEnv()
 
   for (const tempPath of tempPaths) {
     await rm(tempPath, { force: true, recursive: true })
@@ -150,6 +220,35 @@ describe("Kakao OAuth callback route", () => {
     expect(response.status).toBe(303)
     expect(response.headers.get("Location")).toBe("/app")
   })
+
+  it.each(unusableProductionTokenEncryptionKeys)(
+    "redirects production callbacks to Kakao config before provider calls when TOKEN_ENCRYPTION_KEY is $name",
+    async ({ tokenEncryptionKey }) => {
+      const databasePath = await createDatabasePath()
+      configureEnv(databasePath)
+      configureProductionTokenEncryptionKey(tokenEncryptionKey)
+      mockedFetchKakaoOAuthProfile.mockResolvedValue(kakaoProfile)
+
+      const response = await GET(
+        createKakaoCallbackRequest({
+          code: "test-code",
+          cookies: {
+            [kakaoOAuthStateCookieName]: "valid-kakao-state",
+          },
+          state: "valid-kakao-state",
+        })
+      )
+
+      expect.soft(response.status).toBe(303)
+      expect
+        .soft(response.headers.get("Location"))
+        .toBe("/?auth_error=kakao_config")
+      expectKakaoStateCookieCleared(response)
+      expect.soft(mockedFetchKakaoOAuthProfile).not.toHaveBeenCalled()
+      expect.soft(countRows(databasePath, "users")).toBe(0)
+      expect.soft(countRows(databasePath, "authIdentities")).toBe(0)
+    }
+  )
 
   it("redirects missing state to the Kakao auth error without provider calls", async () => {
     const databasePath = await createDatabasePath()
