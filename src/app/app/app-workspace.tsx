@@ -19,6 +19,7 @@ import {
 } from "./app-workspace-model"
 import { AppWorkspaceTopBar } from "./app-workspace-topbar"
 import { readAppJsonResponse } from "./app-workspace-response"
+import { imageAssetRequestPayloads } from "./image-asset-request-payloads"
 import { ReferenceFlowScreens } from "./reference-flow-screens"
 import { useAppOnboarding } from "./use-app-onboarding"
 import { useImageAssets } from "./use-image-assets"
@@ -119,7 +120,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
           ...(options.acceptedSuggestionId === undefined
             ? {}
             : { acceptedSuggestionId: options.acceptedSuggestionId }),
-          imageAssets,
+          imageAssets: imageAssetRequestPayloads(imageAssets),
           ownerIntent,
           storeId,
           suggestionMode: options.suggestionMode,
@@ -176,7 +177,7 @@ export function AppWorkspace({ storeId }: AppWorkspaceProps) {
           clientEventId,
           draftId: draft.draftId,
           draftSummary: draft.koreanCopy,
-          imageAssets,
+          imageAssets: imageAssetRequestPayloads(imageAssets),
           ownerIntent: intent,
           ownerMessage,
           ...(postingSessionId === undefined

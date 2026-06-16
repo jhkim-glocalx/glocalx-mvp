@@ -46,6 +46,8 @@ export type MarketingImageAsset = {
   readonly id: string
   readonly mimeType: "image/jpeg" | "image/png" | "image/webp"
   readonly name: string
+  readonly requestDataUrl?: string
+  readonly requestMimeType?: "image/jpeg"
   readonly sizeBytes: number
 }
 

@@ -1,5 +1,11 @@
 import { z } from "zod"
 
+import {
+  postImageMaxBytes,
+  postImageMaxCount,
+  postImageRequestDataUrlMaxChars,
+} from "./post-image-limits"
+
 const nonEmptyStringSchema = z.string().trim().min(1)
 
 export const onboardingExtractionRequestSchema = z
@@ -63,19 +69,22 @@ export const postImageAssetSchema = z
     dataUrl: z
       .string()
       .regex(/^data:image\/(png|jpe?g|webp);base64,/)
-      .max(1_700_000)
+      .max(postImageRequestDataUrlMaxChars)
       .optional(),
     id: nonEmptyStringSchema,
     mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
     name: nonEmptyStringSchema,
-    sizeBytes: z.number().int().nonnegative().max(1_200_000),
+    sizeBytes: z.number().int().nonnegative().max(postImageMaxBytes),
   })
   .strict()
 
 export const postDraftRequestSchema = z
   .object({
     acceptedSuggestionId: nonEmptyStringSchema.optional(),
-    imageAssets: z.array(postImageAssetSchema).max(4).optional(),
+    imageAssets: z
+      .array(postImageAssetSchema)
+      .max(postImageMaxCount)
+      .optional(),
     storeId: nonEmptyStringSchema,
     suggestionMode: marketingSuggestionModeSchema.optional(),
     ownerIntent: nonEmptyStringSchema,
@@ -111,7 +120,10 @@ export const postingDecisionRequestSchema = z
     clientEventId: nonEmptyStringSchema.max(120),
     draftId: nonEmptyStringSchema,
     draftSummary: nonEmptyStringSchema,
-    imageAssets: z.array(postImageAssetSchema).max(4).optional(),
+    imageAssets: z
+      .array(postImageAssetSchema)
+      .max(postImageMaxCount)
+      .optional(),
     ownerIntent: nonEmptyStringSchema,
     ownerMessage: nonEmptyStringSchema,
     sessionId: nonEmptyStringSchema.optional(),
