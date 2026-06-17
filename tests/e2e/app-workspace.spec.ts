@@ -41,7 +41,10 @@ async function completeOnboarding(page: Page): Promise<void> {
   await page.getByRole("button", { name: "예, 맞아요" }).click()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
-  await expect(page).toHaveURL(/\/app/)
+  await expect(page).toHaveURL(/\/app\?nav=photo/)
+  await expect(
+    page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
+  ).toHaveAttribute("aria-current", "page")
 }
 
 async function expectDashboardLanding(page: Page): Promise<void> {
@@ -58,7 +61,6 @@ async function expectDashboardLanding(page: Page): Promise<void> {
 
 test("app posting preview matches the reference flow", async ({ page }) => {
   await completeOnboarding(page)
-  await expectDashboardLanding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
   await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
@@ -97,7 +99,6 @@ test("app posting preview matches the reference flow", async ({ page }) => {
 
 test("app publish blocked when location unverified", async ({ page }) => {
   await completeOnboarding(page)
-  await expectDashboardLanding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
   await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
@@ -123,6 +124,7 @@ test("app report and dashboard screens render reference metrics", async ({
   page,
 }) => {
   await completeOnboarding(page)
+  await page.getByRole("button", { name: "홍보 실적 자세히 보기" }).click()
   await expectDashboardLanding(page)
 
   await page.getByRole("button", { name: "주간 홍보 실적" }).click()

@@ -80,7 +80,13 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   })
 
   await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
-  await expect(page).toHaveURL(/\/app/)
+  await expect(page).toHaveURL(/\/app\?nav=photo/)
+  await expect(
+    page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
+  ).toHaveAttribute("aria-current", "page")
+  await expect(
+    page.getByText("홍보를 하기위해 최소한의 사진")
+  ).toBeVisible()
 })
 
 test("onboarding quick actions and composer submit search the store", async ({
@@ -97,8 +103,7 @@ test("onboarding quick actions and composer submit search the store", async ({
 
   await page.getByRole("button", { name: "상호명으로 검색" }).click()
   await expect(storeInput).toBeFocused()
-  await expect(storeInput).toHaveValue("")
-  await storeInput.fill("브런치모먼트")
+  await expect(storeInput).toHaveValue("브런치모먼트")
   await storeInput.press("Enter")
 
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
@@ -173,7 +178,7 @@ test("onboarding link attach button focuses the composer", async ({ page }) => {
   await page.getByRole("button", { name: "네이버 링크 첨부" }).click()
 
   await expect(storeInput).toBeFocused()
-  await expect(storeInput).toHaveValue("")
+  await expect(storeInput).toHaveValue("https://naver.me/mybrunchcafe")
 })
 
 test("onboarding no result manual fallback", async ({ page }) => {

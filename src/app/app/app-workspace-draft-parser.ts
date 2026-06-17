@@ -2,6 +2,7 @@ import { isRecord, readString } from "@/app/_components/json-value"
 
 import {
   fallbackPlatformPreviews,
+  platformPreviewKey,
   parseDraftSuggestion,
   parseGenerationStatus,
   parseIntentAnalysis,
@@ -79,6 +80,14 @@ export function parseDraftState(payload: unknown): DraftState {
         : fallbackPlatformPreviews(koreanCopy, englishCopy),
     suggestion: parseDraftSuggestion(preview["suggestion"]),
   }
+}
+
+export function previewKeyForDraft(draft: DraftState): string {
+  if (draft.kind !== "ready") {
+    return "GBP"
+  }
+  const firstPreview = draft.platformPreviews[0]
+  return firstPreview === undefined ? "GBP" : platformPreviewKey(firstPreview)
 }
 
 export function parsePostingDecisionTurnState(

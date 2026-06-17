@@ -6,6 +6,7 @@ import {
 
 export {
   platformPreviewKey,
+  previewKeyForDraft,
   parseDraftState,
   parsePostingDecisionTurnState,
 } from "./app-workspace-draft-parser"
@@ -35,6 +36,16 @@ export const appNavItems = [
 ] as const
 
 export type AppNavId = (typeof appNavItems)[number]["id"]
+
+export function isAppNavId(navId: string): navId is AppNavId {
+  return appNavItems.some((item) => item.id === navId)
+}
+
+export function appNavIdFromSearchParam(
+  navId: string | string[] | undefined
+): AppNavId {
+  return typeof navId === "string" && isAppNavId(navId) ? navId : "dashboard"
+}
 
 export type PublishState =
   | { readonly kind: "idle" }

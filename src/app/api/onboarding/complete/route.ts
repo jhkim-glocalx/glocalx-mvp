@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   const response = new NextResponse(null, {
     headers: {
-      Location: "/app",
+      Location: "/app?nav=photo",
     },
     status: 303,
   })

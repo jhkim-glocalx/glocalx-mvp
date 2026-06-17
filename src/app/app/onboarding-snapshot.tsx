@@ -5,6 +5,10 @@ import type { ReactNode } from "react"
 import { ChatMessage } from "@/app/_components/chat-message"
 import type { StoreProfileField } from "@/app/onboarding/onboarding-components"
 import {
+  dummyNaverPlaceUrl,
+  dummyStoreName,
+} from "@/app/onboarding/onboarding-dummy-inputs"
+import {
   GbpHandoffPanel,
   SetupPanel,
   StoreProfileFormPanel,
@@ -86,11 +90,13 @@ export function OnboardingSnapshot({
         speaker="assistant"
       />
       <div className="gx-actions-row">
-        <OnboardingChoiceButton onClick={() => onComposerPreset("")}>
+        <OnboardingChoiceButton
+          onClick={() => onComposerPreset(dummyNaverPlaceUrl)}
+        >
           네이버플레이스 링크 붙여넣기
         </OnboardingChoiceButton>
         <OnboardingChoiceButton
-          onClick={() => onComposerPreset("브런치모먼트")}
+          onClick={() => onComposerPreset(dummyStoreName)}
           tone="ghost"
         >
           상호명으로 검색

@@ -25,6 +25,14 @@ async function expectDashboardLanding(page: Page): Promise<void> {
   ).toHaveAttribute("aria-current", "page")
 }
 
+async function expectMarketingLanding(page: Page): Promise<void> {
+  await expect(page).toHaveURL(/\/app\?nav=photo/)
+  await expect(
+    page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
+  ).toHaveAttribute("aria-current", "page")
+  await expect(page.getByText("홍보를 하기위해 최소한의 사진")).toBeVisible()
+}
+
 async function completeOnboarding(page: Page): Promise<void> {
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
@@ -43,8 +51,7 @@ async function completeOnboarding(page: Page): Promise<void> {
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await expect(page.getByText("인증 대기", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
-  await expect(page).toHaveURL(/\/app/)
-  await expectDashboardLanding(page)
+  await expectMarketingLanding(page)
 }
 
 test.beforeEach(({ page }, testInfo) => {
@@ -64,6 +71,7 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
     name: "홍보 실적 자세히 보기",
   })
 
+  await dashboardTab.click()
   await expect(dashboardTab).toHaveAttribute("aria-current", "page")
   await postingTab.click()
   await expect(postingTab).toHaveAttribute("aria-current", "page")
@@ -108,7 +116,7 @@ test("app onboarding quick replies drive the bottom composer", async ({
     .getByRole("button", { name: "네이버플레이스 링크 붙여넣기" })
     .click()
   await expect(composer).toBeFocused()
-  await expect(composer).toHaveValue("")
+  await expect(composer).toHaveValue("https://naver.me/mybrunchcafe")
 
   await page.getByRole("button", { name: "상호명으로 검색" }).click()
   await expect(composer).toHaveValue("브런치모먼트")
@@ -218,6 +226,7 @@ test("responsive browser shell keeps controls visible on mobile", async ({
   await expect(
     page.locator(".gx-device-island, .gx-statusbar, .gx-phone-screen")
   ).toHaveCount(0)
+  await page.getByRole("button", { name: "홍보 실적 자세히 보기" }).click()
   await expect(
     page.getByRole("button", { name: "홍보 실적 자세히 보기" })
   ).toHaveAttribute("aria-current", "page")

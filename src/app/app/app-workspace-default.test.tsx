@@ -54,6 +54,20 @@ describe("app workspace default landing", () => {
     ).toBeVisible()
   })
 
+  it("can open directly on the marketing content workflow", () => {
+    // Given: onboarding hands the owner to marketing material creation.
+    render(<AppWorkspace initialNavId="photo" storeId="demo-store" />)
+
+    // When: the workspace loads from the requested app section.
+    const photoTab = screen.getByRole("button", {
+      name: "홍보 콘텐츠 넣기",
+    })
+
+    // Then: the marketing content section is active immediately.
+    expect(photoTab).toHaveAttribute("aria-current", "page")
+    expect(screen.getByText(/홍보를 하기위해 최소한의 사진/)).toBeVisible()
+  })
+
   it("switches to posting when a revised draft is returned", async () => {
     // Given: the owner has generated a draft with an actionable suggestion.
     installPostingFetch()
