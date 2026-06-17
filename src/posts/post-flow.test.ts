@@ -13,6 +13,18 @@ import { createPostDraft, publishPostDraft, revisePostDraft } from "./post-flow"
 const countRowSchema = z.object({
   count: z.number(),
 })
+const storedMarketingPreviewSchema = z.object({
+  platformPreviews: z.array(
+    z.object({
+      platform: z.enum(["GBP", "INSTAGRAM"]),
+      translations: z.array(
+        z.object({
+          copy: z.string(),
+        })
+      ),
+    })
+  ),
+})
 
 describe("post-flow", () => {
   const tempPaths: string[] = []
@@ -54,8 +66,7 @@ describe("post-flow", () => {
         canPublish: true,
         koreanCopy:
           "브런치모먼트 홍대점에서 주말 브런치 신메뉴 홍보 소식을 전해드립니다.",
-        englishCopy:
-          "Sharing this update: 주말 브런치 신메뉴 홍보 Visit 브런치모먼트 홍대점 in 서울 마포구 와우산로 123.",
+        englishCopy: "Sharing a fresh local-store update for this weekend.",
       },
     })
     database.close()
@@ -100,6 +111,21 @@ describe("post-flow", () => {
     expect(result.preview.platformPreviews?.[0]).toMatchObject({
       platform: "GBP",
       imageAssetId: "asset-menu",
+      translations: [
+        {
+          copy: "Weekend brunch news from Brunch Moment Hongdae. Visit us in Mapo-gu, Seoul for warm brunch and coffee this weekend.",
+          label: "English",
+          locale: "en",
+        },
+        {
+          label: "Japanese",
+          locale: "ja",
+        },
+        {
+          label: "Chinese",
+          locale: "zh",
+        },
+      ],
     })
 
     const row = database
@@ -110,9 +136,21 @@ describe("post-flow", () => {
       | { revision_of_draft_id: string | null; marketing_preview_json: string }
       | undefined
     expect(row?.revision_of_draft_id).toBeNull()
-    expect(JSON.parse(row?.marketing_preview_json ?? "{}")).toMatchObject({
+    const marketingPreview = storedMarketingPreviewSchema.parse(
+      JSON.parse(row?.marketing_preview_json ?? "{}")
+    )
+    expect(marketingPreview).toMatchObject({
       platformPreviews: [{ platform: "GBP" }, { platform: "INSTAGRAM" }],
     })
+    const firstStoredPreview = marketingPreview.platformPreviews[0]
+    expect(firstStoredPreview).toBeDefined()
+    if (firstStoredPreview !== undefined) {
+      const firstStoredTranslation = firstStoredPreview.translations[0]
+      expect(firstStoredTranslation).toBeDefined()
+      if (firstStoredTranslation !== undefined) {
+        expect(firstStoredTranslation.copy).not.toMatch(/\p{Script=Hangul}/u)
+      }
+    }
     database.close()
   })
 

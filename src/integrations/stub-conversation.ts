@@ -60,7 +60,7 @@ export function createStubOnboardingConversation(): OnboardingConversationAdapte
         value: {
           assistantMessage:
             input.missingFields.length === 0
-              ? "입력해주신 정보를 양식에 채웠어요. 틀린 곳이 있으면 고치고, 맞으면 매장 정보 확인을 눌러주세요."
+              ? "필요한 매장 정보를 확인했어요. 정보가 맞으면 ‘예’ 또는 ‘맞아요’라고 답해주세요."
               : "매장 정보를 찾았어요. 필요한 정보를 하나씩 확인할게요.",
           nextState:
             input.missingFields.length === 0

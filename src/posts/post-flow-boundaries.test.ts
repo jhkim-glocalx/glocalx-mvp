@@ -119,7 +119,25 @@ describe("post-flow marketing boundaries", () => {
                   hashtags: ["#브런치"],
                   imageAssetId: "asset-menu",
                   label: "Google 비즈니스 프로필",
+                  locale: "ko",
                   platform: "GBP",
+                  translations: [
+                    {
+                      copy: "Visit Brunch Moment Hongdae for the new menu.",
+                      label: "English",
+                      locale: "en",
+                    },
+                    {
+                      copy: "ブランチモーメント弘大店の新メニューをお楽しみください。",
+                      label: "Japanese",
+                      locale: "ja",
+                    },
+                    {
+                      copy: "欢迎品尝弘大 Brunch Moment 的新菜单。",
+                      label: "Chinese",
+                      locale: "zh",
+                    },
+                  ],
                   uploadNotes: ["매장명 포함"],
                 },
               ],

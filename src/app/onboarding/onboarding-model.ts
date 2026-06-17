@@ -153,7 +153,7 @@ export function toExtractionState(
       kind: "searchQueryRequired",
       message:
         message ??
-        "네이버 링크에서 가게 이름을 읽지 못했습니다. 가게 이름을 입력해주세요.",
+        "네이버 링크에서 상호명을 읽지 못했습니다. 상호명을 입력해주세요.",
     }
   }
 

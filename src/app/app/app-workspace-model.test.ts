@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { parseDraftState } from "./app-workspace-model"
+import { parseDraftState, platformPreviewKey } from "./app-workspace-model"
 
 describe("app workspace draft parser", () => {
   it("parses a text-only ready draft without image-led preview fields", () => {
@@ -27,10 +27,88 @@ describe("app workspace draft parser", () => {
       platformPreviews: [
         {
           copy: "브런치모먼트 홍대점에서 주말 브런치 소식을 전합니다.",
+          locale: "ko",
           platform: "GBP",
+          translations: [
+            {
+              copy: "Sharing the weekend brunch update.",
+              label: "English",
+              locale: "en",
+            },
+            {
+              label: "Japanese",
+              locale: "ja",
+            },
+            {
+              label: "Chinese",
+              locale: "zh",
+            },
+          ],
         },
       ],
     })
+  })
+
+  it("collapses legacy language previews into translation buttons", () => {
+    // Given
+    const payload = {
+      status: "DRAFT_READY",
+      draftId: "draft-legacy-language-preview",
+      preview: {
+        canPublish: true,
+        englishCopy: "Sharing the weekend brunch update.",
+        koreanCopy: "브런치모먼트 홍대점에서 주말 브런치 소식을 전합니다.",
+        platformPreviews: [
+          {
+            copy: "브런치모먼트 홍대점에서 주말 브런치 소식을 전합니다.",
+            locale: "ko",
+            platform: "GBP",
+            translations: [
+              {
+                copy: "週末ブランチのお知らせです。",
+                label: "Weekend brunch Japanese",
+                locale: "ja",
+              },
+            ],
+          },
+          {
+            copy: "Weekend brunch news from Brunch Moment.",
+            label: "Legacy English",
+            locale: "en",
+            platform: "GBP",
+          },
+        ],
+      },
+    }
+
+    // When
+    const state = parseDraftState(payload)
+
+    // Then
+    expect(state.kind).toBe("ready")
+    if (state.kind === "ready") {
+      expect(state.platformPreviews).toHaveLength(1)
+      const firstPreview = state.platformPreviews[0]
+      if (firstPreview !== undefined) {
+        expect(firstPreview).toMatchObject({
+          copy: "브런치모먼트 홍대점에서 주말 브런치 소식을 전합니다.",
+          locale: "ko",
+          platform: "GBP",
+        })
+        expect(firstPreview.translations).toHaveLength(3)
+        expect(firstPreview.translations[0]).toMatchObject({
+          copy: "Weekend brunch news from Brunch Moment.",
+          label: "English",
+          locale: "en",
+        })
+        expect(firstPreview.translations[1]).toMatchObject({
+          copy: "週末ブランチのお知らせです。",
+          label: "Japanese",
+          locale: "ja",
+        })
+        expect(platformPreviewKey(firstPreview)).toBe("GBP")
+      }
+    }
   })
 
   it("returns an error when a ready draft payload is missing draftId", () => {

@@ -193,7 +193,7 @@ export function StoreProfileConfirmForm({
         disabled={disabled}
         type="submit"
       >
-        매장 정보 확인
+        예, 맞아요
       </button>
     </form>
   )

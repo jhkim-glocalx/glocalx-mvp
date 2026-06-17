@@ -39,6 +39,7 @@ export type {
   MarketingGenerationAdapter,
   MarketingGenerationInput,
   MarketingGenerationResult,
+  MarketingCaptionTranslation,
   MarketingImageAssetInput,
   MarketingImageOutput,
   MarketingIntentAnalysis,
@@ -46,6 +47,7 @@ export type {
   MarketingPlatformPreview,
   MarketingSuggestion,
   MarketingSuggestionMode,
+  MarketingTranslationLocale,
 } from "./marketing-contracts"
 export type {
   OnboardingConversationAdapter,

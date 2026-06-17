@@ -119,9 +119,9 @@ function fieldConfidenceForField(
 function promptForMissingField(field: MissingBusinessField): string {
   switch (field) {
     case "phone":
-      return "전화번호를 알려주세요. 예: 010-1234-5678. 위 양식에 직접 입력해도 됩니다."
+      return "전화번호를 메시지로 알려주세요. 예: 010-1234-5678"
     case "hours":
-      return "영업시간을 알려주세요. 예: 평일 오후 6시부터 10시까지. 위 양식에 직접 입력해도 됩니다."
+      return "영업시간을 메시지로 알려주세요. 예: 평일 오후 6시부터 10시까지"
     default:
       return assertNeverMissingField(field)
   }
@@ -141,9 +141,9 @@ function retryPromptForField(field: MissingBusinessField): string {
 function formReviewPromptForField(field: MissingBusinessField): string {
   switch (field) {
     case "phone":
-      return "전화번호를 양식에 채웠어요. 틀린 곳이 있으면 고치고, 맞으면 매장 정보 확인을 눌러주세요."
+      return "전화번호를 확인했어요. 정보가 맞으면 ‘예’ 또는 ‘맞아요’라고 답해주세요."
     case "hours":
-      return "영업시간까지 양식에 채웠어요. 틀린 곳이 있으면 고치고, 맞으면 매장 정보 확인을 눌러주세요."
+      return "영업시간까지 확인했어요. 정보가 맞으면 ‘예’ 또는 ‘맞아요’라고 답해주세요."
     default:
       return assertNeverMissingField(field)
   }

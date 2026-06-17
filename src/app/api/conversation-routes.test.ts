@@ -127,7 +127,7 @@ describe("conversation API routes", () => {
       needsOwnerConfirmation: true,
       status: "ONBOARDING_CONVERSATION_TURN",
     })
-    expect(secondPayload.assistantMessage).toContain("양식")
+    expect(secondPayload.assistantMessage).toContain("정보가 맞으면")
     expect(await replayResponse.json()).toEqual(secondPayload)
   })
 

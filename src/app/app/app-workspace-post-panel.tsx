@@ -118,7 +118,7 @@ export function PostPanel({
     <section className="flex min-h-full flex-col gap-4">
       <div className="grid gap-2">
         <p className="text-xs font-black text-[var(--accent)]">
-          GBP 포스팅 채팅
+          여러 SNS 자동홍보 채팅
         </p>
         <h1 className="text-xl font-black leading-7 text-[var(--ink)]">
           포스팅 작업실
@@ -133,7 +133,7 @@ export function PostPanel({
         className="grid flex-1 content-start gap-3"
       >
         <ChatMessage
-          message="브런치모먼트 홍대점의 Google 비즈니스 프로필에 올릴 글을 준비할게요. 홍보 의도를 남기면 초안과 게시 상태를 여기서 바로 확인할 수 있습니다."
+          message="브런치모먼트 홍대점의 Google 비즈니스 프로필에 올릴 글을 준비할게요. 알리고 싶은 말이나 단어를 남기면 초안과 게시 상태를 여기서 바로 확인할 수 있습니다."
           speaker="assistant"
         />
         {submittedIntent ? (
@@ -180,7 +180,7 @@ export function PostPanel({
         onSubmit={onDraft}
       >
         <label className="grid gap-2 text-sm font-black text-[var(--ink)]">
-          홍보 의도
+          알리고 싶은 말이나 단어
           <textarea
             className="min-h-24 resize-none rounded-2xl border border-[var(--line)] bg-[var(--phone-bg)] px-4 py-3 text-sm font-bold leading-6 outline-none focus:border-[var(--accent)]"
             onChange={(event) => onIntentChange(event.currentTarget.value)}
@@ -190,13 +190,13 @@ export function PostPanel({
         <div className="grid grid-cols-[1fr_auto] items-center gap-3">
           <div className="min-w-0 text-[11px] font-bold leading-4 text-[var(--muted)]">
             <p className="truncate">채널 GBP · 매장 브런치모먼트 홍대점</p>
-            <p className="truncate">AI 마케팅 매니저가 초안을 작성합니다</p>
+            <p className="truncate">AI 마케팅 매니저가 문구를 작성합니다</p>
           </div>
           <div className="w-36">
             <ActionChip
               buttonType="submit"
               disabled={draft.kind === "loading" || publish.kind === "loading"}
-              label="GBP 초안 만들기"
+              label="문구 초안 만들기"
             />
           </div>
         </div>

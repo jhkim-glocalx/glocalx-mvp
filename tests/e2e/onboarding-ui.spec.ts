@@ -37,9 +37,9 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
     page.getByText("검색된 매장이 맞나요?", { exact: false })
   ).toBeVisible()
   await expect(
-    page.getByText("영업시간을 알려주세요", { exact: false })
+    page.getByText("영업시간을 메시지로 알려주세요", { exact: false })
   ).toHaveCount(0)
-  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
+  await page.getByRole("button", { exact: true, name: "예, 맞아요" }).click()
   await expect(page.getByText("영업시간 필요")).toBeVisible()
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
@@ -49,11 +49,11 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
     "평일 09:00-18:00"
   )
   await expect(
-    page.getByRole("button", { name: "매장 정보 확인" })
+    page.getByRole("button", { name: "예, 맞아요" })
   ).toBeVisible()
-  await page.getByRole("button", { name: "매장 정보 확인" }).click()
+  await page.getByRole("button", { name: "예, 맞아요" }).click()
 
-  const slotCompletionMessage = page.getByText("영업시간까지 양식에 채웠어요", {
+  const slotCompletionMessage = page.getByText("영업시간까지 확인했어요", {
     exact: false,
   })
   const gbpSetupButton = page.getByRole("button", {
@@ -72,14 +72,14 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await expect(page.getByText("VERIFICATION_PENDING")).toBeVisible()
   await expect(page.getByText("setup-gbp-audit")).toBeVisible()
   await expect(
-    page.getByRole("button", { name: "대시보드로 이동" })
+    page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" })
   ).toBeVisible()
   await page.screenshot({
     fullPage: true,
     path: ".omo/evidence/task-5-onboarding-success.png",
   })
 
-  await page.getByRole("button", { name: "대시보드로 이동" }).click()
+  await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
   await expect(page).toHaveURL(/\/app/)
 })
 
@@ -103,7 +103,7 @@ test("onboarding quick actions and composer submit search the store", async ({
 
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
   await expect(
-    page.getByRole("button", { exact: true, name: "매장 확인" })
+    page.getByRole("button", { exact: true, name: "예, 맞아요" })
   ).toBeVisible()
   await page.getByRole("button", { name: "다시 검색" }).click()
   await expect(page.getByText("다시 찾을 상호명이나 네이버 링크")).toBeVisible()
@@ -134,27 +134,20 @@ test("onboarding fills missing form fields from natural-language owner text", as
 
   await expect(page.getByText("새가게 홍대점")).toBeVisible()
   await expect(
-    page.getByRole("button", { exact: true, name: "매장 확인" })
+    page.getByRole("button", { exact: true, name: "예, 맞아요" })
   ).toBeVisible()
-  await expect(page.getByText("먼저 전화번호를 알려주세요")).toHaveCount(0)
-  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
+  await expect(page.getByText("먼저 전화번호를 메시지로")).toHaveCount(0)
+  await page.getByRole("button", { exact: true, name: "예, 맞아요" }).click()
   const phoneField = page.getByRole("textbox", { name: "전화번호" })
-  const prompt = page.getByText("먼저 전화번호를 알려주세요")
-  await expect(phoneField).toBeVisible()
+  const prompt = page.getByText("먼저 전화번호를 메시지로")
+  await expect(phoneField).toHaveCount(0)
   await expect(prompt).toBeVisible()
-
-  const phoneBox = await phoneField.boundingBox()
-  const promptBox = await prompt.boundingBox()
-  if (phoneBox === null || promptBox === null) {
-    throw new Error("Expected the form field and slot prompt to be visible.")
-  }
-  expect(phoneBox.y).toBeLessThan(promptBox.y)
 
   await storeInput.fill("전화번호 1234")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
 
-  await expect(phoneField).toHaveValue("1234")
-  await expect(page.getByText("영업시간을 알려주세요")).toBeVisible()
+  await expect(phoneField).toHaveCount(0)
+  await expect(page.getByText("영업시간을 메시지로 알려주세요")).toBeVisible()
 
   await storeInput.fill("평일 9-6")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
@@ -162,7 +155,8 @@ test("onboarding fills missing form fields from natural-language owner text", as
   await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
     "평일 09:00-18:00"
   )
-  await expect(page.getByText("양식에 채웠어요")).toBeVisible()
+  await expect(phoneField).toHaveValue("1234")
+  await expect(page.getByText("영업시간까지 확인했어요")).toBeVisible()
 })
 
 test("onboarding link attach button focuses the composer", async ({ page }) => {
@@ -179,7 +173,7 @@ test("onboarding link attach button focuses the composer", async ({ page }) => {
   await page.getByRole("button", { name: "네이버 링크 첨부" }).click()
 
   await expect(storeInput).toBeFocused()
-  await expect(storeInput).toHaveValue("https://naver.me/mybrunchcafe")
+  await expect(storeInput).toHaveValue("")
 })
 
 test("onboarding no result manual fallback", async ({ page }) => {

@@ -88,23 +88,24 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
 
   // Then: the dashboard-first landing is visible.
   await expect(
-    page.getByRole("heading", { name: "성과 대시보드" })
+    page.getByRole("heading", { name: "홍보 실적 자세히 보기" })
   ).toBeVisible()
   await expect(
-    page.getByRole("button", { name: "성과 대시보드" })
+    page.getByRole("button", { name: "홍보 실적 자세히 보기" })
   ).toHaveAttribute("aria-current", "page")
 
   // When: the owner opens the reference report and dashboard screens.
-  await page.getByRole("button", { name: "성과 리포트" }).click()
+  await page.getByRole("button", { name: "주간 홍보 실적" }).click()
 
   // Then: the report card is visible.
-  await expect(page.getByText("주간 성과 리포트 · 5/26~6/1")).toBeVisible()
+  await expect(page.getByText("주간 홍보 실적 · 5/26~6/1")).toBeVisible()
   await expect(page.getByText("12,480")).toBeVisible()
   await page
-    .getByRole("button", { name: "📊 성과 대시보드 자세히 보기" })
+    .getByLabel("화면 단계")
+    .getByRole("button", { name: "홍보 실적 자세히 보기" })
     .click()
   await expect(
-    page.getByRole("heading", { name: "성과 대시보드" })
+    page.getByRole("heading", { name: "홍보 실적 자세히 보기" })
   ).toBeVisible()
   await expect(page.getByText("채널별 노출 비중")).toBeVisible()
   const dashboardMetrics = await readOverflowMetrics(page)
@@ -121,11 +122,11 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
 
   // When: the owner switches back to posting.
   await page.getByRole("button", { name: "뒤로" }).click()
-  await page.getByRole("button", { name: "다채널 포스팅" }).click()
+  await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
 
   // Then: the posting flow remains available.
   await expect(
-    page.getByText("이미지와 홍보 의도를 먼저 분석하면")
+    page.getByText("사진과 알리고 싶은 말이나 단어를 먼저 분석하면")
   ).toBeVisible()
   const metrics = await readOverflowMetrics(page)
   expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.innerWidth)

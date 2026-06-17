@@ -6,7 +6,10 @@ import { MobileShell } from "@/app/_components/mobile-shell"
 
 import type { StoreProfileField } from "./onboarding-components"
 import { toConversationCandidate } from "./onboarding-conversation-candidate"
-import { storeSearchAgainPrompt } from "./onboarding-copy"
+import {
+  isStoreProfileConfirmationMessage,
+  storeSearchAgainPrompt,
+} from "./onboarding-copy"
 import {
   firstMissingStoreProfileField,
   updateStoreProfileDraftField,
@@ -58,7 +61,7 @@ export function OnboardingFlow() {
   const [confirmation, setConfirmation] = useState<ConfirmationState>({
     kind: "idle",
   })
-  const [input, setInput] = useState("https://naver.me/mybrunchcafe")
+  const [input, setInput] = useState("")
   const [inputMode, setInputMode] = useState<"naverLink" | "storeName">(
     "naverLink"
   )
@@ -105,21 +108,11 @@ export function OnboardingFlow() {
 
   function handleNaverLinkAttach(): void {
     setInputMode("naverLink")
-    setInput((currentInput) =>
-      currentInput.trim() === ""
-        ? "https://naver.me/mybrunchcafe"
-        : currentInput
-    )
     focusStoreInput()
   }
 
   function handleStoreNameSearch(): void {
     setInputMode("storeName")
-    setInput((currentInput) =>
-      currentInput.trim() === "https://naver.me/mybrunchcafe"
-        ? ""
-        : currentInput
-    )
     focusStoreInput()
   }
 
@@ -262,6 +255,14 @@ export function OnboardingFlow() {
     }
 
     setInput("")
+    if (
+      profileDraft?.missingFields.length === 0 &&
+      isStoreProfileConfirmationMessage(nextInput)
+    ) {
+      await handleConfirmation()
+      return
+    }
+
     if (isSlotCollectionActive()) {
       await handleSlotTurn(nextInput)
       return
@@ -372,8 +373,8 @@ export function OnboardingFlow() {
                         : firstMissingStoreProfileField(profileDraft)
                     )
                   : inputMode === "naverLink"
-                    ? "네이버 플레이스 링크 붙여넣기"
-                    : "상호명을 입력하세요"
+                    ? "네이버플레이스 링크 붙여넣기"
+                    : "네이버플레이스 링크나 상호명"
               }
               ref={inputRef}
               type="text"

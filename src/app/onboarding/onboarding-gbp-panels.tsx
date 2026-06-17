@@ -30,11 +30,16 @@ export function StoreProfileFormPanel({
     return null
   }
 
+  if (
+    profileDraft.source !== "MANUAL" &&
+    profileDraft.missingFields.length > 0
+  ) {
+    return null
+  }
+
   return (
     <StoreProfileConfirmForm
-      disabled={
-        confirmation.kind === "loading" || profileDraft.missingFields.length > 0
-      }
+      disabled={confirmation.kind === "loading"}
       draft={profileDraft}
       onChange={onFieldChange}
       onConfirm={onConfirm}
@@ -115,7 +120,7 @@ export function SetupPanel({ setup }: { readonly setup: SetupState }) {
             <StatusCard label="감사 기록" value={setup.auditLogId} />
             <StatusCard label="후속 작업" value={setup.followUpJobId} />
             <button className="gx-onboarding-primary" type="submit">
-              대시보드로 이동
+              매장 홍보 처음 시키러 가기
             </button>
           </form>
         </div>

@@ -1,5 +1,39 @@
 import { getStore } from "./post-repository"
 import type { CreatePostDraftOptions, PostPreview } from "./post-types"
+import type { MarketingCaptionTranslation } from "@/integrations/contracts"
+
+function hasHangul(value: string): boolean {
+  return /\p{Script=Hangul}/u.test(value)
+}
+
+function safeEnglishCopy(englishCopy: string): string {
+  if (englishCopy.trim() !== "" && !hasHangul(englishCopy)) {
+    return englishCopy
+  }
+  return "Fresh local-store update: visit us in Seoul this week."
+}
+
+function fallbackTranslations(
+  englishCopy: string
+): readonly MarketingCaptionTranslation[] {
+  return [
+    {
+      copy: safeEnglishCopy(englishCopy),
+      label: "English",
+      locale: "en",
+    },
+    {
+      copy: "今週のおすすめ情報です。ソウルであたたかい時間をお楽しみください。",
+      label: "Japanese",
+      locale: "ja",
+    },
+    {
+      copy: "本周新消息已经准备好。欢迎来到首尔享受温暖的用餐时光。",
+      label: "Chinese",
+      locale: "zh",
+    },
+  ]
+}
 
 function buildPreview(
   options: CreatePostDraftOptions,
@@ -14,13 +48,13 @@ function buildPreview(
       ? generated.value
       : {
           korean: `${options.ownerIntent} 소식을 전해드립니다.`,
-          english: `Sharing this update: ${options.ownerIntent}`,
+          english: "Fresh local-store update for this week.",
         }
 
   return {
     canPublish,
     koreanCopy: `${store.name}에서 ${copy.korean}`,
-    englishCopy: `${copy.english} Visit ${store.name} in ${store.address}.`,
+    englishCopy: safeEnglishCopy(copy.english),
   }
 }
 
@@ -58,7 +92,8 @@ function buildFallbackMarketingPreview(
     intentAnalysis: {
       audience: "이번 주말 매장 방문을 고민하는 잠재 고객",
       keywords: keywords.length > 0 ? keywords : ["브런치", "주말", "신메뉴"],
-      objective: "업로드된 이미지와 홍보 의도를 바탕으로 방문을 유도",
+      objective:
+        "업로드된 이미지와 알리고 싶은 말이나 단어를 바탕으로 방문을 유도",
       promotionWindow: "이번 주말",
       tone: "밝고 친근한 로컬 매장 톤",
     },
@@ -70,7 +105,9 @@ function buildFallbackMarketingPreview(
         hashtags: ["#홍대브런치", "#주말브런치", "#신메뉴"],
         imageAssetId: primaryAssetId,
         label: "Google 비즈니스 프로필",
+        locale: "ko",
         platform: "GBP",
+        translations: fallbackTranslations(basePreview.englishCopy),
         uploadNotes: ["매장명 포함", "짧은 본문", "대표 이미지 우선"],
       },
       {
@@ -80,7 +117,9 @@ function buildFallbackMarketingPreview(
         hashtags: ["#홍대브런치", "#주말브런치", "#hongdaecafe"],
         imageAssetId: primaryAssetId,
         label: "Instagram 피드",
+        locale: "ko",
         platform: "INSTAGRAM",
+        translations: fallbackTranslations(basePreview.englishCopy),
         uploadNotes: ["1:1 크롭", "해시태그 포함", "첫 장 메뉴컷"],
       },
     ],

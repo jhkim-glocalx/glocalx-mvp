@@ -5,6 +5,7 @@ import {
 } from "@/app/_components/json-value"
 
 export {
+  platformPreviewKey,
   parseDraftState,
   parsePostingDecisionTurnState,
 } from "./app-workspace-draft-parser"
@@ -13,21 +14,24 @@ export type {
   DraftIntentAnalysis,
   DraftState,
   DraftSuggestion,
+  MarketingCaptionTranslation,
   MarketingImageAsset,
+  MarketingLocale,
   MarketingPlatform,
+  MarketingTranslationLocale,
   PlatformPostPreview,
   PostingChatTurn,
   PostingDecisionTurnState,
 } from "./app-workspace-draft-parser"
 
 export const appNavItems = [
-  { id: "onboarding", label: "온보딩" },
-  { id: "photo", label: "사진 고도화" },
-  { id: "posting", label: "다채널 포스팅" },
-  { id: "reviews", label: "리뷰 관리" },
-  { id: "targets", label: "타겟 국가" },
-  { id: "report", label: "성과 리포트" },
-  { id: "dashboard", label: "성과 대시보드" },
+  { id: "onboarding", label: "가게 인증 및 등록" },
+  { id: "photo", label: "홍보 콘텐츠 넣기" },
+  { id: "posting", label: "여러 SNS 자동홍보" },
+  { id: "reviews", label: "리뷰 AI 관리" },
+  { id: "targets", label: "홍보할 국가" },
+  { id: "report", label: "주간 홍보 실적" },
+  { id: "dashboard", label: "홍보 실적 자세히 보기" },
 ] as const
 
 export type AppNavId = (typeof appNavItems)[number]["id"]

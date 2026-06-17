@@ -26,7 +26,7 @@ test("First-time demo login routes to onboarding", async ({ page }) => {
   await page.getByRole("button", { name: "이메일로 시작" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
+  await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
 })
 
 test("Kakao login routes to onboarding in local demo mode", async ({
@@ -38,7 +38,7 @@ test("Kakao login routes to onboarding in local demo mode", async ({
   await page.getByRole("button", { name: "카카오로 3초 시작" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
+  await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(
@@ -58,7 +58,7 @@ test("Google login routes to onboarding in local demo mode", async ({
   await page.getByRole("button", { name: "구글로 시작" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("네이버 플레이스 링크나 가게 이름")).toBeVisible()
+  await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(
@@ -78,7 +78,7 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
     .fill("https://naver.me/mybrunchcafe")
   await page.getByRole("button", { name: "네이버 정보 제출" }).click()
   await expect(page.getByText("브런치모먼트 홍대점")).toBeVisible()
-  await page.getByRole("button", { exact: true, name: "매장 확인" }).click()
+  await page.getByRole("button", { exact: true, name: "예, 맞아요" }).click()
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
     .fill("평일 9-6이에요")
@@ -86,23 +86,23 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
     "평일 09:00-18:00"
   )
-  await page.getByRole("button", { name: "매장 정보 확인" }).click()
+  await page.getByRole("button", { name: "예, 맞아요" }).click()
   await expect(
     page.getByRole("button", { name: "다음: GBP 세팅 확인" })
   ).toBeVisible()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await expect(page.getByText("인증 대기", { exact: true })).toBeVisible()
-  await page.getByRole("button", { name: "대시보드로 이동" }).click()
+  await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
 
   await expect(page).toHaveURL(/\/app/)
   await expect(
-    page.getByRole("heading", { name: "성과 대시보드" })
+    page.getByRole("heading", { name: "홍보 실적 자세히 보기" })
   ).toBeVisible()
   await expect(
-    page.getByRole("button", { name: "성과 대시보드" })
+    page.getByRole("button", { name: "홍보 실적 자세히 보기" })
   ).toHaveAttribute("aria-current", "page")
   await expect(
-    page.getByRole("button", { name: "다채널 포스팅" })
+    page.getByRole("button", { name: "여러 SNS 자동홍보" })
   ).not.toHaveAttribute("aria-current", "page")
 
   await page.goto("/")
@@ -110,7 +110,7 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/app/)
   await expect(
-    page.getByRole("heading", { name: "성과 대시보드" })
+    page.getByRole("heading", { name: "홍보 실적 자세히 보기" })
   ).toBeVisible()
 })
 

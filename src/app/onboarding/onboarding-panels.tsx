@@ -70,12 +70,12 @@ export function OnboardingIntro({
         STEP 1 · 온보딩 / 구글비즈니스프로필 세팅
       </div>
       <ChatMessage
-        message="안녕하세요 사장님! 👋 저는 가게의 글로벌 마케팅을 도와드릴 글로컬엑스예요. 먼저 가게를 등록할게요. 네이버 플레이스 링크나 가게 이름을 알려주시겠어요?"
+        message="저는 우리 매장을 외국인들에게 알릴 AI 홍보 직원이에요, 먼저 매장의 정보를 등록할께요. 네이버플레이스 링크나 상호명을 알려주세요"
         speaker="assistant"
       />
       <div aria-label="온보딩 빠른 답변" className="gx-chip-row">
         <QuickReplyButton onClick={onNaverLinkAttach}>
-          네이버 플레이스 링크 붙여넣기
+          네이버플레이스 링크 붙여넣기
         </QuickReplyButton>
         <QuickReplyButton onClick={onStoreNameSearch}>
           상호명으로 검색
@@ -181,7 +181,7 @@ function SingleCandidateConfirmation({
     <div className="grid gap-3">
       <StoreInfoCard draft={candidate} />
       <ChatMessage
-        message="검색된 매장이 맞나요? 맞으면 확인하고, 아니면 다시 검색해주세요."
+        message="검색된 매장이 맞나요? 맞으면 ‘예, 맞아요’를 눌러주세요. 아니면 다시 검색할게요."
         speaker="assistant"
       />
       <div aria-label="검색된 매장 확인" className="gx-actions-row">
@@ -190,7 +190,7 @@ function SingleCandidateConfirmation({
           onClick={() => onConfirm(candidate)}
           type="button"
         >
-          매장 확인
+          예, 맞아요
         </button>
         <button
           className="gx-choice-chip"
@@ -209,12 +209,12 @@ function missingFieldCopy(missingFields: readonly string[]): string {
   const needsPhone = missingFields.includes("phone")
   const needsHours = missingFields.includes("hours")
   if (needsPhone) {
-    return "매장 정보를 찾았어요. 먼저 전화번호를 알려주세요. 예: 010-1234-5678. 위 양식에 직접 입력해도 됩니다."
+    return "매장 정보를 찾았어요. 먼저 전화번호를 메시지로 알려주세요. 예: 010-1234-5678"
   }
   if (needsHours) {
-    return "영업시간을 알려주세요. 예: 평일 오후 6시부터 10시까지. 위 양식에 직접 입력해도 됩니다."
+    return "영업시간을 메시지로 알려주세요. 예: 평일 오후 6시부터 10시까지"
   }
-  return "입력해주신 정보를 양식에 채웠어요. 틀린 곳이 있으면 고치고, 맞으면 매장 정보 확인을 눌러주세요."
+  return "필요한 매장 정보를 확인했어요. 정보가 맞으면 ‘예’ 또는 ‘맞아요’라고 답해주세요."
 }
 
 export function SlotCollectionPanel({

@@ -15,8 +15,12 @@ export async function uploadMarketingImageAndGenerateDraft(
     name: "menu.png",
   })
   await expect(page.getByText("menu.png")).toBeVisible()
-  await page.getByRole("textbox", { name: "홍보 의도" }).fill(intent)
-  await page.getByRole("button", { name: "AI 분석 및 이미지 개선" }).click()
-  await expect(page.getByText("의도 분석 결과")).toBeVisible()
+  await page
+    .getByRole("textbox", { name: "알리고 싶은 말이나 단어" })
+    .fill(intent)
+  await page
+    .getByRole("button", { name: "홍보 문구 분석 및 사진 보정" })
+    .click()
+  await expect(page.getByText("알리고 싶은 말 분석 결과")).toBeVisible()
   await expect(page.getByText("이미지 개선 결과")).toBeVisible()
 }

@@ -336,7 +336,25 @@ describe("production request specs", () => {
           hashtags: ["#홍대브런치"],
           imageAssetId: "asset-menu",
           label: "Google 비즈니스 프로필",
+          locale: "ko",
           platform: "GBP",
+          translations: [
+            {
+              copy: "Visit Brunch Moment Hongdae for the weekend menu.",
+              label: "English",
+              locale: "en",
+            },
+            {
+              copy: "ブランチモーメント弘大店で週末メニューをお楽しみください。",
+              label: "Japanese",
+              locale: "ja",
+            },
+            {
+              copy: "欢迎来到弘大 Brunch Moment 品尝周末菜单。",
+              label: "Chinese",
+              locale: "zh",
+            },
+          ],
           uploadNotes: ["매장명 포함"],
         },
       ],

@@ -1712,6 +1712,46 @@ body {
   line-height: 1.65;
 }
 
+.gx-post-caption-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.gx-post-copy-translation {
+  border-left: 3px solid var(--blue);
+  padding-left: 10px;
+}
+
+.gx-post-copy-translation span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.gx-translation-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gx-translation-toggle button {
+  min-height: 30px;
+  border: 1px solid rgba(65, 97, 255, 0.18);
+  border-radius: 999px;
+  background: #f7f8ff;
+  color: var(--blue);
+  cursor: pointer;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.gx-translation-toggle button[aria-pressed="true"] {
+  background: var(--blue);
+  color: #ffffff;
+}
+
 .gx-hashtag-row {
   display: flex;
   flex-wrap: wrap;
