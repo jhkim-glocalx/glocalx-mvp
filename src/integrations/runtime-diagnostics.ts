@@ -33,6 +33,7 @@ function safeEnvValueDiagnostics(
   env: AdapterEnvironment,
   name: string
 ): SafeEnvValueDiagnostics {
+  // Diagnostics expose only shape metadata so credential branch debugging never writes secrets into logs or evidence.
   const trimmedValue = env[name]?.trim() ?? ""
   return {
     configured: trimmedValue !== "",
@@ -71,6 +72,7 @@ export function getIntegrationRuntimeDiagnostics(
     env["APP_INTEGRATION_MODE"] === "production" ? "production" : "stub"
   const missingNaverEnvVars = missingEnvVars(env, naverEnvVars)
   const previewNaverStub = shouldUsePreviewNaverStub(env)
+  // Keep this selection mirror aligned with createIntegrationAdapters so previews explain why Naver used a stub without leaking credentials.
   const selectedNaverSearch =
     adapterMode !== "production"
       ? "stub-mode"

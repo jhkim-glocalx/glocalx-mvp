@@ -1,3 +1,5 @@
+// Public facade for conversation persistence; keep callers on commands/types
+// while codecs, storage helpers, and support views stay behind this boundary.
 export {
   appendAssistantMessage,
   appendOwnerMessage,

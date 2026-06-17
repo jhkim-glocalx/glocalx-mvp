@@ -98,9 +98,7 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
   ).toHaveAttribute("aria-current", "page")
-  await expect(
-    page.getByText("홍보를 하기위해 최소한의 사진")
-  ).toBeVisible()
+  await expect(page.getByText("홍보를 하기위해 최소한의 사진")).toBeVisible()
 
   await page.goto("/")
   await page.getByRole("button", { name: "이메일로 시작" }).click()

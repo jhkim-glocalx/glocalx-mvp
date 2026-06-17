@@ -29,6 +29,7 @@ function redirectToLandingClearingState(reason: string): NextResponse {
     },
     status: 303,
   })
+  // Every callback exit clears state so stale browser retries fail closed.
   response.cookies.set(
     kakaoOAuthStateCookieName,
     "",
@@ -55,6 +56,7 @@ export async function GET(request: NextRequest) {
     return redirectToLandingClearingState("kakao_config")
   }
 
+  // Kakao tokens are stored, so production callbacks require encryption first.
   if (missingTokenEncryptionEnvVars(process.env).length > 0) {
     return redirectToLandingClearingState("kakao_config")
   }
@@ -83,6 +85,7 @@ export async function GET(request: NextRequest) {
 
     const response = new NextResponse(null, {
       headers: {
+        // First login routes through onboarding until the owned store is complete.
         Location: storeOnboardingComplete ? "/app" : "/onboarding",
       },
       status: 303,
@@ -102,6 +105,7 @@ export async function GET(request: NextRequest) {
       error.status === 401 &&
       !hasConfiguredKakaoClientSecret()
     ) {
+      // Kakao apps may require a client secret; surface that config fix directly.
       return redirectToLandingClearingState("kakao_client_secret")
     }
 

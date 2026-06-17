@@ -130,6 +130,7 @@ async function editImage(
     method: "POST",
   })
 
+  // Image edits are opportunistic: a non-OK edit response leaves the original generated image metadata intact instead of failing the draft.
   if (!response.ok) {
     return undefined
   }
@@ -187,6 +188,7 @@ export function createProductionMarketingGeneration(
     ): Promise<AdapterResult<MarketingGenerationResult>> {
       const missing = missingEnvVars(env, openAiEnvVars)
       if (missing.length > 0) {
+        // Missing OpenAI credentials are a recoverable adapter state, so callers can show setup guidance without attempting a live request.
         return blockedByCredentials(missing)
       }
 
@@ -206,6 +208,7 @@ export function createProductionMarketingGeneration(
       const parsed = marketingGenerationResultSchema.parse(
         JSON.parse(outputText)
       )
+      // Text generation is authoritative; edited images are merged afterward so edit fallback cannot alter the structured draft contract.
       return {
         kind: "ok",
         value: await addEditedImages(apiKey, env, fetchImpl, input, parsed),

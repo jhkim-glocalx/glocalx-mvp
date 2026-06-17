@@ -130,6 +130,7 @@ export function parseGbpPerformanceState(payload: unknown): PerformanceState {
   }
 
   const metrics = readMetricArray(payload["metrics"])
+  // Dashboard labels have fallbacks, but an empty metric set leaves nothing meaningful to render.
   if (metrics.length === 0) {
     return {
       kind: "error",
@@ -158,6 +159,7 @@ export function parsePublishState(payload: unknown): PublishState {
     return { kind: "blocked", message: "게시 응답을 읽지 못했습니다." }
   }
 
+  // Only the route's PUBLISHED contract becomes success; every other status stays retry/block UI.
   const status = readString(payload["status"])
   if (status === "PUBLISHED") {
     return { kind: "published", message: "게시 완료" }

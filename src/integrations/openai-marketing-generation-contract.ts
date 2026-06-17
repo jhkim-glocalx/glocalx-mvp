@@ -95,6 +95,7 @@ function toTranslationJsonSchema(): Record<string, unknown> {
 }
 
 export function toMarketingJsonSchema(): Record<string, unknown> {
+  // Keep this explicit so request-spec tests can pin the strict JSON contract sent to OpenAI.
   const stringSchema = { type: "string" }
   return {
     type: "object",

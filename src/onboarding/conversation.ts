@@ -73,6 +73,7 @@ function updateCandidate(
 function slotInputs(
   output: OnboardingConversationOutput
 ): readonly ConversationSlotInput[] {
+  // Persist only accepted owner-provided slots so replayed turns rebuild the same public response.
   return [
     ...(output.extractedFields.hours === undefined
       ? []
@@ -104,6 +105,7 @@ function readOrCreateSession(
   now: Date
 ) {
   if (request.sessionId !== undefined) {
+    // Existing session ids must belong to this store; missing sessions become a typed not-found response.
     return resumeConversationSession(database, {
       kind: "onboarding",
       sessionId: request.sessionId,
@@ -144,6 +146,7 @@ export async function processOnboardingSlotTurn(
     storeId: options.storeId,
   })
   if (replay !== undefined) {
+    // clientEventId is the idempotency key for double submits and browser retries.
     return replay
   }
 

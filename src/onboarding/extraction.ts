@@ -20,6 +20,7 @@ const manualForm = {
   promptedFields: ["phone", "hours"],
 } as const
 
+// Owner prompts are limited to optional fields so manual fallback can reuse the same form contract.
 const promptedFields = ["phone", "hours"] as const
 
 type ManualForm = typeof manualForm
@@ -82,6 +83,7 @@ function candidateMissingFields(
 ): MissingBusinessField[] {
   const fieldSet = new Set<MissingBusinessField>(candidate.missingFields)
 
+  // Normalize adapter omissions into the prompted-field order expected by the slot conversation.
   if (candidate.phone === undefined) {
     fieldSet.add("phone")
   }
@@ -130,6 +132,7 @@ function manualResult(
 }
 
 function stableExtractionId(storeId: string, normalizedQuery: string): string {
+  // Manual fallbacks are upserted by store/query so retries do not create duplicate extraction rows.
   const encoded = Buffer.from(`${storeId}:${normalizedQuery}`)
     .toString("base64url")
     .slice(0, 32)
@@ -146,6 +149,7 @@ function persistManualInputRequired(
     return
   }
 
+  // Persist no-result/manual states for reviewers and resumable onboarding, even without candidates.
   database
     .prepare(
       "INSERT OR REPLACE INTO business_profile_extractions (id, store_id, source, source_input, status, candidate_json, missing_fields_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -191,6 +195,7 @@ export async function extractBusinessProfile(
     }
 
     if (!isNaverSearchResult(adapterResult.value)) {
+      // In request-spec mode we surface the redacted Naver request instead of changing extraction state.
       return {
         status: "NAVER_REQUEST_READY",
         normalizedQuery: normalized.query,
@@ -206,6 +211,7 @@ export async function extractBusinessProfile(
         normalized.query,
         "네이버에서 매장을 찾지 못했습니다. 직접 입력으로 계속할 수 있습니다."
       )
+      // Empty search results intentionally fall through to the same durable manual fallback.
       persistManualInputRequired(
         options.database,
         options,
@@ -234,6 +240,7 @@ export async function extractBusinessProfile(
         normalized.query,
         "네이버 검색 응답이 지연되고 있습니다. 직접 입력으로 계속할 수 있습니다."
       )
+      // Temporary Naver failures keep owner onboarding moving without marking credentials as broken.
       persistManualInputRequired(
         options.database,
         options,

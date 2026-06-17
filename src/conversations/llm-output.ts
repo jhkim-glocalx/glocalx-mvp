@@ -41,6 +41,7 @@ export const onboardingConversationOutputSchema = z
   })
   .strict()
   .superRefine((output, context) => {
+    // Extracted fields require per-field confidence before they can become slots.
     for (const field of missingBusinessFieldSchema.options) {
       if (
         output.extractedFields[field] !== undefined &&
@@ -121,6 +122,7 @@ export const postingConversationDecisionSchema = z
   })
   .strict()
   .superRefine((decision, context) => {
+    // Each decision branch must include the downstream field that makes it actionable.
     switch (decision.decision) {
       case "accepted":
         requireDecisionField(context, decision.acceptedSuggestionId, [

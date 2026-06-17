@@ -10,6 +10,7 @@ import type {
 export function requestedFieldForTurn(
   request: OnboardingSlotTurnRequest
 ): MissingBusinessField {
+  // Prefer the requested field only while it is still missing, otherwise continue the stored queue.
   const requestedMissingField = request.candidate.missingFields.find(
     (field) => field === request.requestedField
   )
@@ -27,6 +28,7 @@ export function normalizeGuidedOutput(
 ): OnboardingConversationOutput {
   const value = extractedValueForField(output, requestedField)
   const confidence = confidenceForField(output, requestedField)
+  // Low-confidence extraction asks again instead of mutating the draft with uncertain owner input.
   const accepted =
     value !== undefined && confidence !== undefined && confidence !== "low"
   const missingFields = remainingMissingFields(
@@ -155,6 +157,7 @@ function remainingMissingFields(
   accepted: boolean
 ): readonly MissingBusinessField[] {
   if (!accepted) {
+    // Rejections preserve the missing-field list so the next turn retries the same slot.
     return request.candidate.missingFields
   }
   return request.candidate.missingFields.filter(

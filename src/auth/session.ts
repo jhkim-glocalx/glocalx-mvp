@@ -21,6 +21,7 @@ export type SessionCookieValues = {
 }
 
 export const sessionCookieOptions = {
+  // Session identifiers stay server-owned while remaining usable on local HTTP.
   httpOnly: true,
   maxAge: 60 * 60 * 24 * 7,
   path: "/",
@@ -68,6 +69,7 @@ export function isStoredSessionValid(
   userId: string,
   storeId: string
 ): boolean {
+  // Cookie pairs are only trusted after the store ownership row matches.
   const row = database
     .prepare(
       "SELECT COUNT(*) AS count FROM stores WHERE id = ? AND owner_user_id = ?"
@@ -98,6 +100,7 @@ export function getStoredSessionFromCookieValues(
   ensureDemoOwnerStore()
   const database = openDatabase()
   try {
+    // The database, not the completion cookie, is the onboarding source of truth.
     if (!isStoredSessionValid(database, userId, storeId)) {
       return undefined
     }
@@ -124,6 +127,7 @@ export function completeStoredSessionOnboarding(
   ensureDemoOwnerStore()
   const database = openDatabase()
   try {
+    // Completion writes use the same owner/store check as session reads.
     if (!isStoredSessionValid(database, userId, storeId)) {
       return false
     }

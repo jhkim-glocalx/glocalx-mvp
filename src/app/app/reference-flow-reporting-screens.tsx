@@ -191,9 +191,9 @@ export function DashboardScreen({ onBack }: { readonly onBack: () => void }) {
       </FlowCard>
       <FlowCard title="AI 인사이트">
         <p className="gx-card-note">
-          일본 타겟 현지화가 적중했어요. 음식 클로즈업 + 9:16 영상 포맷이
-          노출의 34%를 만들어냈어요. 다음 주는 같은 포맷으로 대만 타겟 콘텐츠를
-          늘리는 걸 추천드려요.
+          일본 타겟 현지화가 적중했어요. 음식 클로즈업 + 9:16 영상 포맷이 노출의
+          34%를 만들어냈어요. 다음 주는 같은 포맷으로 대만 타겟 콘텐츠를 늘리는
+          걸 추천드려요.
         </p>
       </FlowCard>
     </section>

@@ -6,13 +6,8 @@ import {
   isStoreProfileConfirmationMessage,
   storeSearchAgainPrompt,
 } from "./onboarding-copy"
-import {
-  dummyNaverPlaceUrl,
-  dummyStoreName,
-} from "./onboarding-dummy-inputs"
-import {
-  updateStoreProfileDraftField,
-} from "./onboarding-draft-fields"
+import { dummyNaverPlaceUrl, dummyStoreName } from "./onboarding-dummy-inputs"
+import { updateStoreProfileDraftField } from "./onboarding-draft-fields"
 import type {
   ConfirmationState,
   ExtractionState,
@@ -35,8 +30,7 @@ export function useOnboardingFlow() {
     kind: "idle",
   })
   const [input, setInput] = useState("")
-  const [inputMode, setInputMode] =
-    useState<OnboardingInputMode>("naverLink")
+  const [inputMode, setInputMode] = useState<OnboardingInputMode>("naverLink")
   const inputRef = useRef<HTMLInputElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const [profileDraft, setProfileDraft] = useState<
@@ -62,6 +56,7 @@ export function useOnboardingFlow() {
       return
     }
 
+    // Standalone onboarding scrolls only after result states change so the initial screen stays stable.
     const frame = window.requestAnimationFrame(() => {
       const screen = screenRef.current
       screen?.scrollTo({ behavior: "smooth", top: screen.scrollHeight })
@@ -123,6 +118,7 @@ export function useOnboardingFlow() {
     setSetup({ kind: "idle" })
     setProfileDraft(undefined)
     setSubmittedInput(nextInput)
+    // A new extraction owns the downstream flow, so prior slot answers cannot hydrate this draft.
     slotTurn.reset()
 
     try {
@@ -212,6 +208,7 @@ export function useOnboardingFlow() {
     field: StoreProfileField,
     value: string
   ): void {
+    // Owner edits invalidate confirmation/setup evidence until the updated profile is confirmed again.
     setProfileDraft((currentDraft) =>
       currentDraft === undefined
         ? currentDraft

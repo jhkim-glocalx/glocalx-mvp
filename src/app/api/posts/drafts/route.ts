@@ -49,6 +49,7 @@ function generationFailureResponse(error: unknown): Response {
 }
 
 export async function POST(request: NextRequest) {
+  // Post generation starts from the session so drafts cannot be created anonymously.
   const session = getStoredSessionFromCookieValues({
     onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
       ?.value,
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Decode malformed JSON separately so Zod only handles well-formed payloads.
   const payload = await readJsonPayload(request)
   if (payload.kind === "invalid_json") {
     return Response.json(
@@ -87,6 +89,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // The client store ID must match the session store before generation starts.
   if (parsed.value.storeId !== session.storeId) {
     return Response.json(
       {

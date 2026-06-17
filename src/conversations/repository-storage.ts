@@ -81,6 +81,7 @@ export function insertMessage(
   now: Date
 ): ConversationMessage {
   const id = randomUUID()
+  // Store raw and redacted text together so support reads never need to redact later.
   database
     .prepare(
       "INSERT INTO conversation_messages (id, session_id, role, client_event_id, content, redacted_content, sequence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -112,6 +113,7 @@ export function upsertSlotsForSession(
 ): void {
   for (const slot of slots) {
     assertValidSlot(slot)
+    // Deterministic session/key IDs keep slot records stable across repeated upserts.
     database
       .prepare(
         "INSERT INTO conversation_slot_values (id, session_id, slot_key, value, source, confidence, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(session_id, slot_key) DO UPDATE SET value = excluded.value, source = excluded.source, confidence = excluded.confidence, updated_at = excluded.updated_at"
@@ -176,6 +178,7 @@ function nextMessageSequence(
   database: SqliteDatabase,
   sessionId: string
 ): number {
+  // Sequence numbers are session-local and allocated from persisted rows at insert time.
   return sequenceRowSchema.parse(
     database
       .prepare(
@@ -186,6 +189,7 @@ function nextMessageSequence(
 }
 
 function stableId(prefix: string, value: string): string {
+  // Hashing keeps stable IDs deterministic without exposing the raw session/key tuple.
   const digest = createHash("sha256").update(value).digest("base64url")
   return `${prefix}-${digest.slice(0, 32)}`
 }

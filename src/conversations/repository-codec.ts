@@ -13,6 +13,7 @@ const conversationStatusSchema = z.enum(["active", "completed"])
 const messageRoleSchema = z.enum(["owner", "assistant"])
 const publicResponseSchema = z.record(z.string(), z.unknown())
 
+// SQLite rows are decoded here before any caller sees domain-shaped objects.
 export const sessionRowSchema = z.object({
   id: z.string(),
   store_id: z.string(),
@@ -64,10 +65,12 @@ export const replayRowSchema = z.object({
   public_response_json: z.string(),
 })
 
+// Replay responses stay JSON-shaped but still cross this parsed boundary.
 export function parsePublicResponse(value: string): PublicConversationResponse {
   return publicResponseSchema.parse(parseJson(value))
 }
 
+// Row-to-domain conversion is intentionally mechanical: snake_case in, API shape out.
 export function toSession(
   row: z.infer<typeof sessionRowSchema>
 ): ConversationSession {

@@ -19,6 +19,7 @@ const requestImageMimeType = "image/jpeg"
 const requestImageMaxDimension = 1600
 const requestImageDimensions = [1600, 1200, 900, 720, 480] as const
 const requestImageQualities = [0.82, 0.68, 0.54, 0.42] as const
+// The ladder favors larger previews first, then shrinks until the API payload cap is met.
 
 function readBlobAsDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -111,6 +112,7 @@ async function compressImageForRequest(
 ): Promise<
   Pick<MarketingImageAsset, "requestDataUrl" | "requestMimeType"> | undefined
 > {
+  // Canvas support is optional; callers fall back to original asset data when compression is unavailable.
   if (typeof document === "undefined" || typeof Image === "undefined") {
     return undefined
   }
@@ -150,6 +152,7 @@ async function compressImageForRequest(
 
     for (const quality of requestImageQualities) {
       const dataUrl = await canvasToDataUrl(canvas, quality)
+      // Data URLs count against the JSON request body, so the first capped variant wins.
       if (dataUrl.length <= postImageRequestDataUrlMaxChars) {
         return {
           requestDataUrl: dataUrl,
@@ -176,6 +179,7 @@ export function useImageAssets({
     }
 
     const selectedFiles = Array.from(files).slice(0, postImageMaxCount)
+    // Validate before FileReader so unsupported media never enters preview or request state.
     const unsupportedFile = selectedFiles.find(
       (file) => !isSupportedImageType(file.type)
     )

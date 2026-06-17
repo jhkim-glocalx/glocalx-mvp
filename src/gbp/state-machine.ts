@@ -14,6 +14,7 @@ export type LiveGbpActionResult =
 export function canUseLiveGbpActions(
   status: LocationStatus
 ): LiveGbpActionResult {
+  // Live posts and review replies wait for VERIFIED because Google can reject actions during claim or verification.
   if (status === "VERIFIED") {
     return { kind: "allowed" }
   }
@@ -28,6 +29,7 @@ export function canUseLiveGbpActions(
 }
 
 export function shouldScheduleGbpFollowUp(status: LocationStatus): boolean {
+  // Follow-ups are limited to states where an owner or verifier still has a concrete next step.
   return (
     status === "CLAIM_REQUIRED" ||
     status === "VERIFICATION_PENDING" ||

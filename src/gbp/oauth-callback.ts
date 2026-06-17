@@ -3,6 +3,7 @@ import type { SqliteDatabase } from "@/server/db/sqlite"
 import { encryptToken } from "@/auth/token-encryption"
 
 export const googleOAuthStateCookieName = "glocalx_google_oauth_state"
+// Route handlers set and expire this short-lived cookie to bind the callback to the owner who started OAuth.
 export const googleOAuthStateCookieOptions = {
   httpOnly: true,
   maxAge: 60 * 10,
@@ -18,6 +19,7 @@ export const googleOAuthScopes = [
   "openid",
   "email",
   "profile",
+  // business.manage is required later for listing setup and performance reads on the same connection.
   googleBusinessManageScope,
 ] as const
 
@@ -43,6 +45,7 @@ export type GoogleOAuthCallbackResult =
 export function handleGoogleOAuthCallback(
   options: GoogleOAuthCallbackOptions
 ): GoogleOAuthCallbackResult {
+  // Validate state and code before writing even placeholder encrypted tokens for the production callback shape.
   if (!isValidGoogleOAuthCallback(options)) {
     return {
       status: "INVALID_OAUTH_STATE",

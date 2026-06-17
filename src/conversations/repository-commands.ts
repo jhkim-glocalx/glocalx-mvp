@@ -149,6 +149,7 @@ export function readConversationReplay(
     readonly storeId: string
   }
 ): PublicConversationResponse | undefined {
+  // Client event replay is scoped to session and store to make retried turns idempotent.
   const row = database
     .prepare(
       "SELECT e.public_response_json FROM conversation_events e JOIN conversation_sessions s ON s.id = e.session_id WHERE e.session_id = ? AND e.client_event_id = ? AND s.store_id = ?"
@@ -167,6 +168,7 @@ export function recordConversationTurn(
   if (replay !== undefined) {
     return { kind: "replayed", response: replay }
   }
+  // A new turn is persisted atomically so messages, slots, state, and replay event agree.
   return database.transaction(
     (turn: RecordConversationTurnOptions): RecordConversationTurnResult => {
       const session = requireActiveSession(database, turn)
@@ -203,6 +205,7 @@ export function recordConversationTurn(
           "turn_recorded",
           assistantMessage.id,
           JSON.stringify(turn.publicResponse),
+          // Support diagnostics use the redacted payload; replay uses public_response_json above.
           JSON.stringify(redactedTurnPayload(turn)),
           turn.now.toISOString()
         )

@@ -15,11 +15,7 @@ import {
   getStoredSessionFromCookieValues,
 } from "./session"
 
-const onboardingStatuses = [
-  "NOT_STARTED",
-  "IN_PROGRESS",
-  "COMPLETED",
-] as const
+const onboardingStatuses = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"] as const
 
 type OnboardingStatus = (typeof onboardingStatuses)[number]
 

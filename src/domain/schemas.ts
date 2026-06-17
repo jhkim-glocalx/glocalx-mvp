@@ -8,6 +8,7 @@ import {
 
 const nonEmptyStringSchema = z.string().trim().min(1)
 
+// Route schemas are the single trust boundary for raw JSON payloads.
 export const onboardingExtractionRequestSchema = z
   .object({
     input: nonEmptyStringSchema,
@@ -188,6 +189,7 @@ export function parseRoutePayload<TValue>(
 
   return {
     kind: "validation_error",
+    // Keep validation responses stable and serializable across all routes.
     issues: parsed.error.issues.map((issue) => ({
       path: issue.path.flatMap((pathSegment) =>
         typeof pathSegment === "symbol" ? [] : [pathSegment]

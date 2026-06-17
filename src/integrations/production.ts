@@ -36,6 +36,7 @@ function googleHeaders(accessToken: string): Readonly<Record<string, string>> {
 function googleBlockedResult(
   env: AdapterEnvironment
 ): AdapterResult<HttpRequestSpec> {
+  // Production Google adapters block on app credentials before building owner-token request specs, keeping setup errors explicit and recoverable.
   const missing = missingEnvVars(env, googleEnvVars)
   if (missing.length > 0) {
     return blockedByCredentials(missing)
@@ -70,6 +71,7 @@ function buildGoogleRequestSpec(options: {
   readonly method: HttpMethod
   readonly url: string
 }): HttpRequestSpec {
+  // GBP integrations return executable request specs so auth/session code can supply owner tokens and tests can pin endpoints, scopes, and bodies.
   return {
     method: options.method,
     url: options.url,
@@ -139,6 +141,7 @@ export function createProductionBusinessInformation(
   env: AdapterEnvironment
 ): GbpBusinessInformationAdapter {
   return {
+    // These methods translate workflow decisions into GBP request specs; a separate boundary performs the side effect with the owner's access token.
     async searchLocations(input) {
       const blocked = googleBlockedResult(env)
       if (blocked.kind === "blocked_by_credentials") {

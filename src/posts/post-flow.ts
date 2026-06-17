@@ -49,6 +49,7 @@ export async function createPostDraft(
     options,
     eligibility.kind === "allowed"
   )
+  // Draft ids hash deterministic inputs so identical client retries reuse the same review surface.
   const draftId = stableId(
     "post-draft",
     `${options.storeId}:${options.ownerIntent}:${options.targetChannel}:${JSON.stringify(
@@ -76,6 +77,7 @@ export async function revisePostDraft(
     options,
     eligibility.kind === "allowed"
   )
+  // Revisions include the original draft id so accepted changes never collide with first drafts.
   const draftId = stableId(
     "post-draft-revision",
     `${options.originalDraftId}:${options.ownerIntent}:${JSON.stringify(
@@ -114,6 +116,7 @@ export function publishPostDraft(
   }
 
   const draft = getDraft(options.database, options.draftId)
+  // Publish retries default to one key per draft, preventing duplicate GBP posts after success.
   const idempotencyKey = options.idempotencyKey ?? `publish-${options.draftId}`
   const existingAttempt = getAttemptByIdempotencyKey(
     options.database,
@@ -134,6 +137,7 @@ export function publishPostDraft(
     }
   }
 
+  // After repeated failures, automated publish stops before another adapter call mutates state.
   if (failedAttemptCount(options.database, options.draftId) >= 3) {
     return {
       status: "MANUAL_PUBLISH_REQUIRED",
@@ -149,6 +153,7 @@ export function publishPostDraft(
     parent: "accounts/stub/locations/stub-created",
     summary: draft.koreanCopy,
   })
+  // Local adapter failures still produce stub evidence while live success bodies are schema-checked.
   const body =
     adapterResult.kind === "ok"
       ? localPostBodySchema.parse(adapterResult.value.body)

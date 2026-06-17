@@ -77,6 +77,7 @@ function normalizeSchemaValue(value: unknown): unknown {
 function normalizeObjectSchema(
   schema: Readonly<Record<string, unknown>>
 ): Record<string, unknown> {
+  // OpenAI strict schemas require every property to be listed as required; nullable wrappers preserve this app's optional-field contract.
   const normalized: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(schema)) {
@@ -128,6 +129,7 @@ function stripNullObjectFields(value: unknown): unknown {
   }
 
   const stripped: Record<string, unknown> = {}
+  // Nulls are transport placeholders for fields that were optional before strict-schema normalization; remove them before Zod domain parsing.
   for (const [key, nestedValue] of Object.entries(value)) {
     if (nestedValue !== null) {
       stripped[key] = stripNullObjectFields(nestedValue)
@@ -222,6 +224,7 @@ export async function requestStructuredOutput<TValue>(options: {
   readonly modelName?: string
 }): Promise<TValue> {
   const apiKey = options.env["OPENAI_API_KEY"] ?? ""
+  // This is the Responses API boundary: callers provide the contract schema, and this function owns strict formatting plus output parsing.
   const response = await options.fetchImpl(responsesUrl, {
     body: JSON.stringify(
       buildResponsesBody(

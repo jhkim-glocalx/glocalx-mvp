@@ -35,6 +35,7 @@ export function getConfirmedGbpStoreProfile(
   database: SqliteDatabase,
   storeId: string
 ): ConfirmedGbpStoreProfileResult {
+  // GBP setup only trusts owner-confirmed profiles with a phone number, not raw extraction guesses.
   const row = database
     .prepare(
       "SELECT id, name, address, phone, category, hours FROM stores WHERE id = ? AND phone IS NOT NULL AND EXISTS (SELECT 1 FROM business_profile_extractions WHERE store_id = stores.id AND status = 'CONFIRMED')"
@@ -62,6 +63,7 @@ export function getConfirmedGbpStoreProfile(
 export function buildGoogleLocationBody(
   profile: ConfirmedGbpStoreProfile
 ): Readonly<Record<string, unknown>> {
+  // Google receives the confirmed store fields verbatim; storeCode ties retries back to this local store.
   return {
     title: profile.name,
     storeCode: profile.storeId,
@@ -83,6 +85,7 @@ export function buildGoogleLocationBody(
 export function stableGbpSetupRequestId(
   profile: ConfirmedGbpStoreProfile
 ): string {
+  // Identical confirmed profile data gets the same request id so Google validate/create retries stay idempotent.
   const encoded = Buffer.from(
     `${profile.storeId}:${profile.name}:${profile.address}:${profile.phone}`
   )

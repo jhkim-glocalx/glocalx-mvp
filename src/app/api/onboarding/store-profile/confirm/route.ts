@@ -40,6 +40,7 @@ async function readJsonPayload(
 }
 
 export async function POST(request: NextRequest) {
+  // Decode malformed JSON separately so Zod only handles well-formed payloads.
   const payload = await readJsonPayload(request)
   if (payload.kind === "invalid_json") {
     return Response.json(
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Confirmation writes to the session store, not a client-selected store ID.
   const session = getStoredSessionFromCookieValues({
     onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
       ?.value,

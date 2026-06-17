@@ -4,11 +4,7 @@ import { useState } from "react"
 
 import { ChatMessage } from "@/app/_components/chat-message"
 
-import {
-  ChatDivider,
-  ChoiceButton,
-  FlowCard,
-} from "./reference-flow-shared"
+import { ChatDivider, ChoiceButton, FlowCard } from "./reference-flow-shared"
 
 type ReviewReplyTone = "friendly" | "polite" | "witty"
 
@@ -82,15 +78,14 @@ export function ReviewsScreen() {
           <div className="gx-suggestion-card" role="status">
             <strong>{replyDraft.label}</strong>
             <p>{replyDraft.copy}</p>
-            <small>자동 번역 후 등록할 수 있도록 준비된 mocked 답글입니다.</small>
+            <small>
+              자동 번역 후 등록할 수 있도록 준비된 mocked 답글입니다.
+            </small>
           </div>
         )}
       </FlowCard>
       <div className="gx-actions-row">
-        <ChoiceButton
-          onClick={() => setShowRiskGuide(true)}
-          tone="ghost"
-        >
+        <ChoiceButton onClick={() => setShowRiskGuide(true)} tone="ghost">
           악성 리뷰가 들어오면?
         </ChoiceButton>
       </div>

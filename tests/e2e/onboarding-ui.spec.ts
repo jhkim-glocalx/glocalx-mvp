@@ -48,9 +48,7 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await expect(page.getByRole("textbox", { name: "영업시간" })).toHaveValue(
     "평일 09:00-18:00"
   )
-  await expect(
-    page.getByRole("button", { name: "예, 맞아요" })
-  ).toBeVisible()
+  await expect(page.getByRole("button", { name: "예, 맞아요" })).toBeVisible()
   await page.getByRole("button", { name: "예, 맞아요" }).click()
 
   const slotCompletionMessage = page.getByText("영업시간까지 확인했어요", {
@@ -84,9 +82,7 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "홍보 콘텐츠 넣기" })
   ).toHaveAttribute("aria-current", "page")
-  await expect(
-    page.getByText("홍보를 하기위해 최소한의 사진")
-  ).toBeVisible()
+  await expect(page.getByText("홍보를 하기위해 최소한의 사진")).toBeVisible()
 })
 
 test("onboarding quick actions and composer submit search the store", async ({

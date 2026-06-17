@@ -22,6 +22,7 @@ type JsonPayloadResult =
     }
 
 type PublishRouteContext = {
+  // Next canary provides dynamic route params as a promise in route handlers.
   readonly params: Promise<{
     readonly draftId: string
   }>
@@ -44,6 +45,7 @@ async function readJsonPayload(
 }
 
 export async function POST(request: NextRequest, context: PublishRouteContext) {
+  // Publish requires a session before the draft ID or payload can affect state.
   const session = getStoredSessionFromCookieValues({
     onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
       ?.value,
@@ -60,6 +62,7 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
     )
   }
 
+  // Decode malformed JSON separately so Zod only handles well-formed payloads.
   const payload = await readJsonPayload(request)
   if (payload.kind === "invalid_json") {
     return Response.json(
@@ -82,6 +85,7 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
     )
   }
 
+  // The publish request must target the same store as the authenticated session.
   if (parsed.value.storeId !== session.storeId) {
     return Response.json(
       {
@@ -94,6 +98,7 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
 
   ensureDemoOwnerStore()
   const database = openDatabase()
+  // Await after auth/validation so Next's promise params are consumed at the route boundary.
   const { draftId } = await context.params
 
   try {

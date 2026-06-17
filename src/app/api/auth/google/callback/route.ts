@@ -27,6 +27,7 @@ function redirectToLandingClearingState(reason: string): NextResponse {
     },
     status: 303,
   })
+  // Failures expire the one-time OAuth state so it cannot be replayed.
   response.cookies.set(
     googleOAuthStateCookieName,
     "",
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
     return redirectToLandingClearingState("google_state")
   }
 
+  // A valid state is not enough if provider credentials drifted after start.
   if (missingGoogleOAuthEnvVars(process.env).length > 0) {
     return redirectToLandingClearingState("google_config")
   }
@@ -71,6 +73,7 @@ export async function GET(request: NextRequest) {
     }
     const response = new NextResponse(null, {
       headers: {
+        // New OAuth identities enter onboarding until their store is completed.
         Location: storeOnboardingComplete ? "/app" : "/onboarding",
       },
       status: 303,

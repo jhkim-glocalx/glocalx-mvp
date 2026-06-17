@@ -70,6 +70,7 @@ function getCount(
 }
 
 function buildFollowUps(locationStatus: string): readonly string[] {
+  // Copy mirrors the location state: verified can proceed, claim-required needs owner action, others await verification.
   if (locationStatus === "VERIFIED") {
     return [
       "GBP 인증이 완료되어 라이브 게시와 리뷰 작업을 계속 진행할 수 있습니다.",
@@ -160,6 +161,7 @@ export type GbpPerformanceFetch = (
 ) => Promise<Response>
 
 export type GbpPerformanceDashboardResult =
+  // BLOCKED is a local prerequisite gap; ERROR is a Google/upstream failure after prerequisites passed.
   | {
       readonly locationName: string
       readonly metrics: readonly PerformanceMetricSummary[]
@@ -238,6 +240,7 @@ async function executePerformanceSpec(
   spec: HttpRequestSpec,
   fetchImpl: GbpPerformanceFetch
 ): Promise<GbpPerformanceApiResponse | GbpPerformanceDashboardResult> {
+  // Production request specs resolve here so timeout, auth, quota, and malformed-payload mapping stay centralized.
   let response: Response
   try {
     response = await fetchImpl(spec.url, {
@@ -289,6 +292,7 @@ async function resolvePerformancePayload(
   result: AdapterResult<GbpPerformanceApiResponse | HttpRequestSpec>,
   fetchImpl: GbpPerformanceFetch
 ): Promise<GbpPerformanceApiResponse | GbpPerformanceDashboardResult> {
+  // Stub payloads and production request specs both normalize to the same parsed performance contract.
   if (result.kind === "blocked_by_credentials") {
     return blocked(
       "GOOGLE_CREDENTIALS_MISSING",
@@ -308,6 +312,7 @@ export async function getGbpPerformanceDashboard(
 ): Promise<GbpPerformanceDashboardResult> {
   const location = loadGbpPerformanceLocation(options.database, options.storeId)
   if (location.kind !== "ready") {
+    // Local location gates run before any live Google performance read.
     if (location.kind === "missing_gbp_location") {
       return blocked(
         "MISSING_GBP_LOCATION",
@@ -352,6 +357,7 @@ export async function getGbpPerformanceDashboard(
   const now = options.now ?? new Date()
   const ranges = buildGbpPerformanceRanges(now)
   const fetchImpl = options.fetchImpl ?? fetch
+  // Resolve current first; if it fails, that actionable error should not be masked by the comparison range.
   const current = await resolvePerformancePayload(
     options.adapters.gbpPerformance.fetchMultiDailyMetricsTimeSeries({
       accessToken: connection.accessToken,
@@ -365,6 +371,7 @@ export async function getGbpPerformanceDashboard(
   if ("status" in current) {
     return current
   }
+  // Previous-period data uses the same resolver so stub and production comparisons share error handling.
   const previous = await resolvePerformancePayload(
     options.adapters.gbpPerformance.fetchMultiDailyMetricsTimeSeries({
       accessToken: connection.accessToken,
@@ -381,6 +388,7 @@ export async function getGbpPerformanceDashboard(
 
   return {
     locationName: location.locationName,
+    // The dashboard compares the current 30 complete Korea days against the immediately previous window.
     metrics: summarizePerformanceMetrics(
       current,
       previous,

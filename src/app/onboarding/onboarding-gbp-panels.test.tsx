@@ -1,10 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import {
-  SetupPanel,
-  StoreProfileFormPanel,
-} from "./onboarding-gbp-panels"
+import { SetupPanel, StoreProfileFormPanel } from "./onboarding-gbp-panels"
 import type {
   ConfirmationState,
   SetupState,

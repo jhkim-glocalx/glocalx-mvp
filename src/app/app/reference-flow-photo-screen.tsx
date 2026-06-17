@@ -9,11 +9,7 @@ import type {
   PostingDecisionTurnState,
 } from "./app-workspace-model"
 import { AssetThumbs, ImageComparison } from "./reference-flow-image-assets"
-import {
-  ChatDivider,
-  ChoiceButton,
-  FlowCard,
-} from "./reference-flow-shared"
+import { ChatDivider, ChoiceButton, FlowCard } from "./reference-flow-shared"
 import type { ReferenceFlowScreensProps } from "./reference-flow-screens"
 
 function PostingDecisionMessages({

@@ -90,6 +90,7 @@ function safelyDecodeUriComponent(value: string): string {
 }
 
 function extractNaverPlaceIdFromUrl(url: URL): string | undefined {
+  // Owners paste several Naver URL shapes; extract a stable place ID before falling back to keyword search.
   const decodedPathname = safelyDecodeUriComponent(url.pathname)
   const pathPlaceMatch = /(?:^|\/)(?:entry\/)?place\/(\d+)(?:\/|$)/u.exec(
     decodedPathname
@@ -228,6 +229,7 @@ function extractBalancedJsonObject(
   value: string,
   marker: string
 ): string | undefined {
+  // Naver embeds Apollo state in HTML; balanced scanning avoids truncating nested JSON the way a regex slice would.
   const markerIndex = value.indexOf(marker)
   if (markerIndex === -1) {
     return undefined
@@ -374,6 +376,7 @@ function detailFromRecord(
 function findPlaceDetailInJson(value: unknown): NaverPlaceDetail | undefined {
   let bestDetail: NaverPlaceDetail | undefined
 
+  // Detail pages can carry phone and hours that Local Search omits, so keep the richest matching record found in Apollo state.
   function visit(node: unknown, depth = 0): void {
     if (depth > 8) {
       return
@@ -483,6 +486,7 @@ async function fetchNaverPlaceDetailCandidate(
   input: NaverSearchInput,
   fetchImpl: ExternalFetch
 ): Promise<AdapterBusinessProfileCandidate | undefined> {
+  // Direct Naver URLs take the detail-first path; returning undefined lets searchLocal continue to Local Search when no stable detail candidate exists.
   const rawUrl = parseUrl(input.rawInput ?? input.query)
   if (rawUrl === undefined || !isNaverHost(rawUrl.hostname)) {
     return undefined
@@ -584,6 +588,7 @@ export function createProductionNaverSearch(
         if (!isRecoverableNaverPlaceLookupError(error)) {
           throw error
         }
+        // The detail lookup is advisory: transient upstream failures fall through to Local Search, while parser/programming faults still surface.
       }
 
       if (naverPlaceCandidate !== undefined) {
@@ -596,6 +601,7 @@ export function createProductionNaverSearch(
       }
 
       const request = buildNaverLocalSearchRequest(env, input)
+      // Local Search is the canonical fallback and remains request-spec-addressable for contract tests around URL and credential headers.
       let response: Response
       try {
         response = await fetchImpl(request.url, {

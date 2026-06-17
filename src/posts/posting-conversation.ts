@@ -38,6 +38,7 @@ function readOrCreateSession(
   storeId: string,
   now: Date
 ) {
+  // Suggestion chats resume only with a session id; otherwise create a store-scoped posting session.
   if (request.sessionId !== undefined) {
     return resumeConversationSession(database, {
       kind: "posting",
@@ -58,6 +59,7 @@ function readOrCreateSession(
 function sessionStateForAdapter(
   state: string
 ): "awaiting_suggestion_decision" | "question_answered" {
+  // The classifier only needs coarse context, so terminal states narrow back to the decision prompt.
   return state === "question_answered"
     ? "question_answered"
     : "awaiting_suggestion_decision"
@@ -67,6 +69,7 @@ async function draftForDecision(
   options: PostingDecisionOptions,
   decision: PostingConversationDecision
 ): Promise<PostDraftResult | undefined> {
+  // Each LLM decision maps deterministically to a draft action or no-op follow-up question.
   switch (decision.decision) {
     case "accepted":
       return createPostDraft({
@@ -177,6 +180,7 @@ export async function processPostingDecision(
     storeId: options.storeId,
   })
   if (replay !== undefined) {
+    // Client event ids make flaky retries idempotent before the LLM classifier is called.
     return replay
   }
 
@@ -190,6 +194,7 @@ export async function processPostingDecision(
     })
 
   if (classified.kind === "blocked_by_credentials") {
+    // Missing LLM config blocks this turn without recording history, so retry remains clean.
     return {
       status: "LLM_CREDENTIALS_REQUIRED",
       assistantMessage:
@@ -217,6 +222,7 @@ export async function processPostingDecision(
     status: "POSTING_CONVERSATION_TURN",
   }
 
+  // Persist response and state transition together so later retries replay exact assistant output.
   const turn = recordConversationTurn(options.database, {
     assistantMessage: response.assistantMessage,
     clientEventId: options.request.clientEventId,

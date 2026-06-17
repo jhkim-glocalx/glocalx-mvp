@@ -50,6 +50,7 @@ function createKakaoConfigErrorRedirect(): NextResponse {
 }
 
 export async function POST(request: NextRequest) {
+  // Stub mode bypasses Kakao config so local demos do not depend on credentials.
   if (process.env["APP_INTEGRATION_MODE"] === "stub") {
     return createDemoSessionRedirect()
   }
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
     },
     status: 303,
   })
+  // Provider state is separate from app session cookies and must match later.
   response.cookies.set(
     kakaoOAuthStateCookieName,
     state,

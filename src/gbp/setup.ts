@@ -67,6 +67,7 @@ export type BuildClaimRequiredResultOptions = {
 }
 
 function locationStatusFromSpecBody(body: unknown): LocationStatus {
+  // Missing or malformed Google status stays pending until verification proves a stronger state.
   const parsed = locationSpecBodySchema.safeParse(body)
   if (!parsed.success) {
     return "VERIFICATION_PENDING"
@@ -77,6 +78,7 @@ function locationStatusFromSpecBody(body: unknown): LocationStatus {
 function isSearchGoogleLocationsResult(
   value: SearchGoogleLocationsResult | HttpRequestSpec
 ): value is SearchGoogleLocationsResult {
+  // Production mode can return a request spec, so only concrete search results are narrowed for claimed matches.
   return "matches" in value
 }
 
@@ -101,6 +103,7 @@ export async function setupGoogleBusinessProfile(
     options.storeId
   )
   if (storeProfileResult.kind === "missing") {
+    // A GBP listing cannot be created until onboarding has confirmed the public store facts.
     return {
       status: "STORE_PROFILE_REQUIRED",
       message: "GBP 세팅 전에 매장 정보를 먼저 확인해주세요.",
@@ -141,6 +144,7 @@ export async function setupGoogleBusinessProfile(
         googleLocationId: claimedMatch.googleLocationId,
         requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
       })
+      // Persist before returning so owners keep the admin-rights follow-up after leaving setup.
       persistClaimRequiredRecords(options, {
         googleLocationId: claimedMatch.googleLocationId,
         requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,

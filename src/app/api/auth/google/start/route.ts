@@ -22,6 +22,7 @@ import {
 } from "@/gbp/oauth-callback"
 
 export async function POST(request: NextRequest) {
+  // Real Google OAuth is used only when env opts out of the demo branch.
   if (shouldStartGoogleOAuth(process.env)) {
     const missingEnvVars = missingGoogleOAuthEnvVars(process.env)
     if (missingEnvVars.length > 0) {
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
 
   ensureDemoOwnerStore()
 
+  // Demo login still consults stored onboarding state before first-login routing.
   const session = getStoredSessionFromCookieValues({
     onboardingComplete: undefined,
     storeId: demoStoreId,

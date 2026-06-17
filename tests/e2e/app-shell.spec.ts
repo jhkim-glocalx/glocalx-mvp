@@ -16,15 +16,6 @@ function resetFirstTimeE2eDatabase(): void {
   }
 }
 
-async function expectDashboardLanding(page: Page): Promise<void> {
-  await expect(
-    page.getByRole("heading", { name: "홍보 실적 자세히 보기" })
-  ).toBeVisible()
-  await expect(
-    page.getByRole("button", { name: "홍보 실적 자세히 보기" })
-  ).toHaveAttribute("aria-current", "page")
-}
-
 async function expectMarketingLanding(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/app\?nav=photo/)
   await expect(

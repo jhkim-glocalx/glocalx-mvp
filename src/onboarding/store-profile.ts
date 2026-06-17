@@ -19,6 +19,7 @@ export type ConfirmStoreProfileResult = {
 }
 
 export function confirmedExtractionId(storeId: string): string {
+  // One confirmed snapshot per store keeps confirmation idempotent across repeated submit attempts.
   return `confirmed-extraction-${storeId}`
 }
 
@@ -33,8 +34,10 @@ export function confirmStoreProfile(
 ): ConfirmStoreProfileResult {
   const extractionId = confirmedExtractionId(options.storeId)
   const confirmedAt = options.adapters.clock.now().toISOString()
+  // Hours may still be collected later, so confirmation records that residual onboarding work.
   const missingFields = missingFieldsForProfile(options.profile)
 
+  // The store is updated first; the extraction row below preserves the exact confirmed owner profile.
   options.database
     .prepare(
       "UPDATE stores SET name = ?, address = ?, phone = ?, category = ?, hours = ?, onboarding_status = ? WHERE id = ?"

@@ -44,8 +44,10 @@ export function createIntegrationAdapters(
   const fetchImpl = options.fetchImpl ?? globalThis.fetch
 
   if (mode === "production") {
+    // Production mode assembles real external adapters while keeping deterministic stubs for services not yet backed by live credentials or network contracts.
     return {
       mode,
+      // Preview and development deployments may run production Google/OpenAI paths before Naver credentials exist, so only Naver falls back to the stub.
       naverSearch: shouldUsePreviewNaverStub(env)
         ? createStubNaverSearch(options.database)
         : createProductionNaverSearch(env, fetchImpl),

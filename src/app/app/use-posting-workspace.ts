@@ -38,6 +38,7 @@ export function usePostingWorkspace({
   const [publish, setPublish] = useState<PublishState>({ kind: "idle" })
   const { handleImageFiles, imageAssets } = useImageAssets({
     onImagesSelected: () => {
+      // Media changes alter the draft payload hash, so posting state is reset with the selection.
       setDraft({ kind: "idle" })
       setPostingChatTurns([])
       setPostingDecision({ kind: "idle" })
@@ -112,6 +113,7 @@ export function usePostingWorkspace({
     }
 
     const clientEventId = window.crypto.randomUUID()
+    // The client event id lets the route replay retries without classifying the same reply twice.
     setPostingChatTurns((currentTurns) => [
       ...currentTurns,
       {
@@ -192,6 +194,7 @@ export function usePostingWorkspace({
 
   async function publishDraft() {
     if (draft.kind !== "ready") {
+      // The client blocks empty publishes; the route owns idempotency and retry-limit enforcement.
       setPublish({
         kind: "blocked",
         message:

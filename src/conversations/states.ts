@@ -67,6 +67,7 @@ const postingTransitionSchema = z
   })
   .strict()
 
+// Allowed pairs make every state-machine edge explicit and reviewable.
 const onboardingTransitionPairs = new Set([
   "awaiting_store_input->retrieving_store",
   "retrieving_store->slot_elicitation",
@@ -117,6 +118,7 @@ export const conversationTransitionSchema = z
     postingTransitionSchema,
   ])
   .superRefine((transition, context) => {
+    // Actor restrictions prevent LLM output from entering owner/system-only terminal states.
     switch (transition.surface) {
       case "ONBOARDING":
         validateTransitionPair(
