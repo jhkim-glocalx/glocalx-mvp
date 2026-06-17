@@ -6,7 +6,7 @@ import {
   isStoreProfileConfirmationMessage,
   storeSearchAgainPrompt,
 } from "./onboarding-copy"
-import { dummyNaverPlaceUrl, dummyStoreName } from "./onboarding-dummy-inputs"
+import { demoNaverPlaceUrl, demoStoreName } from "./onboarding-demo-inputs"
 import { updateStoreProfileDraftField } from "./onboarding-draft-fields"
 import type {
   ConfirmationState,
@@ -83,13 +83,13 @@ export function useOnboardingFlow() {
 
   function handleNaverLinkAttach(): void {
     setInputMode("naverLink")
-    setInput(dummyNaverPlaceUrl)
+    setInput(demoNaverPlaceUrl)
     focusStoreInput()
   }
 
   function handleStoreNameSearch(): void {
     setInputMode("storeName")
-    setInput(dummyStoreName)
+    setInput(demoStoreName)
     focusStoreInput()
   }
 

@@ -21,16 +21,34 @@ export function parseDraftState(payload: unknown): DraftState {
     return { kind: "error", message: "초안 응답을 읽지 못했습니다." }
   }
 
+  const status = readString(payload["status"])
+  if (status !== "DRAFT_READY") {
+    return {
+      kind: "error",
+      message:
+        readString(payload["message"]) ?? "초안 생성이 완료되지 않았습니다.",
+    }
+  }
+
+  const draftId = readString(payload["draftId"])
+  if (draftId === undefined) {
+    return { kind: "error", message: "초안 식별자가 없습니다." }
+  }
+
   const preview = payload["preview"]
   if (!isRecord(preview)) {
     return { kind: "error", message: "초안 미리보기가 없습니다." }
   }
 
+  const koreanCopy = readString(preview["koreanCopy"])
+  if (koreanCopy === undefined) {
+    return { kind: "error", message: "초안 문구가 없습니다." }
+  }
+
   return {
-    draftId: readString(payload["draftId"]) ?? "draft-id-missing",
+    draftId,
     kind: "ready",
-    koreanCopy:
-      readString(preview["koreanCopy"]) ?? "초안 문구를 다시 생성해주세요.",
+    koreanCopy,
   }
 }
 

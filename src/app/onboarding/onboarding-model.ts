@@ -53,7 +53,7 @@ export type SetupState =
   | {
       readonly apiStatus: string
       readonly auditLogId: string
-      readonly followUpJobId: string
+      readonly followUpJobId: string | undefined
       readonly kind: "ready"
       readonly message: string
     }
@@ -83,6 +83,18 @@ export type OnboardingSlotTurnState =
       readonly sessionId: string
     }
   | { readonly kind: "error"; readonly message: string }
+
+const setupReadyStatuses = [
+  "CREATE_REQUESTED",
+  "VERIFICATION_PENDING",
+  "VERIFIED",
+] as const
+
+function isSetupReadyStatus(
+  status: string
+): status is (typeof setupReadyStatuses)[number] {
+  return setupReadyStatuses.some((readyStatus) => readyStatus === status)
+}
 
 function readCandidate(payload: unknown): StoreProfileDraft | undefined {
   if (!isRecord(payload)) {
@@ -216,9 +228,16 @@ export function toConfirmationState(payload: unknown): ConfirmationState {
     }
   }
 
+  const extractionId = readString(payload["extractionId"])
+  if (extractionId === undefined) {
+    return {
+      kind: "error",
+      message: "매장 정보 확인 응답에 식별자가 없습니다.",
+    }
+  }
+
   return {
-    extractionId:
-      readString(payload["extractionId"]) ?? "extraction-id-missing",
+    extractionId,
     kind: "confirmed",
     message:
       readString(payload["message"]) ??
@@ -231,20 +250,36 @@ export function toSetupState(payload: unknown): SetupState {
     return { kind: "error", message: "GBP 세팅 응답을 읽지 못했습니다." }
   }
 
-  const status = readString(payload["status"]) ?? "UNKNOWN"
+  const status = readString(payload["status"])
+  if (status === undefined) {
+    return { kind: "error", message: "GBP 세팅 응답 형식이 올바르지 않습니다." }
+  }
+
   if (status === "CLAIM_REQUIRED") {
+    const requestAdminRightsUrl = readString(payload["requestAdminRightsUrl"])
+    if (requestAdminRightsUrl === undefined) {
+      return {
+        kind: "error",
+        message: "GBP 관리자 권한 요청 링크가 없습니다.",
+      }
+    }
+
     return {
       apiStatus: status,
       kind: "claimRequired",
       message:
         readString(payload["message"]) ??
         "이미 소유자가 있는 Google 비즈니스 프로필입니다.",
-      requestAdminRightsUrl:
-        readString(payload["requestAdminRightsUrl"]) ?? "url-missing",
+      requestAdminRightsUrl,
     }
   }
 
-  if (status === "STORE_PROFILE_REQUIRED" || status === "AUTH_REQUIRED") {
+  if (
+    status === "STORE_PROFILE_REQUIRED" ||
+    status === "AUTH_REQUIRED" ||
+    status === "BLOCKED_BY_CREDENTIALS" ||
+    status === "VALIDATION_ERROR"
+  ) {
     return {
       kind: "error",
       message:
@@ -252,10 +287,22 @@ export function toSetupState(payload: unknown): SetupState {
     }
   }
 
+  if (!isSetupReadyStatus(status)) {
+    return { kind: "error", message: "GBP 세팅 응답 형식이 올바르지 않습니다." }
+  }
+
+  const auditLogId = readString(payload["auditLogId"])
+  if (auditLogId === undefined) {
+    return {
+      kind: "error",
+      message: "GBP 세팅 응답에 감사 기록이 없습니다.",
+    }
+  }
+
   return {
     apiStatus: status,
-    auditLogId: readString(payload["auditLogId"]) ?? "audit-id-missing",
-    followUpJobId: readString(payload["followUpJobId"]) ?? "job-id-missing",
+    auditLogId,
+    followUpJobId: readString(payload["followUpJobId"]),
     kind: "ready",
     message:
       readString(payload["message"]) ??

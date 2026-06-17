@@ -105,7 +105,9 @@ export function SetupPanel({ setup }: { readonly setup: SetupState }) {
           <ChatMessage message={setup.message} speaker="assistant" />
           <div aria-label="GBP 세팅 상태" className="flex flex-wrap gap-2">
             <StatusPill>GBP 연결 확인</StatusPill>
-            <StatusPill>후속 작업 예약</StatusPill>
+            {setup.followUpJobId === undefined ? null : (
+              <StatusPill>후속 작업 예약</StatusPill>
+            )}
           </div>
           <form
             action="/api/onboarding/complete"
@@ -118,7 +120,9 @@ export function SetupPanel({ setup }: { readonly setup: SetupState }) {
               value="인증 대기"
             />
             <StatusCard label="감사 기록" value={setup.auditLogId} />
-            <StatusCard label="후속 작업" value={setup.followUpJobId} />
+            {setup.followUpJobId === undefined ? null : (
+              <StatusCard label="후속 작업" value={setup.followUpJobId} />
+            )}
             <button className="gx-onboarding-primary" type="submit">
               매장 홍보 처음 시키러 가기
             </button>
