@@ -49,7 +49,7 @@ export function createIntegrationAdapters(
       mode,
       // Preview and development deployments may run production Google/OpenAI paths before Naver credentials exist, so only Naver falls back to the stub.
       naverSearch: shouldUsePreviewNaverStub(env)
-        ? createStubNaverSearch(options.database)
+        ? createStubNaverSearch()
         : createProductionNaverSearch(env, fetchImpl),
       googleOAuth: createProductionGoogleOAuth(env),
       gbpBusinessInformation: createProductionBusinessInformation(env),
@@ -71,7 +71,7 @@ export function createIntegrationAdapters(
 
   return {
     mode,
-    naverSearch: createStubNaverSearch(options.database),
+    naverSearch: createStubNaverSearch(),
     googleOAuth: createStubGoogleOAuth(),
     gbpBusinessInformation: createStubBusinessInformation(),
     gbpLocalPosts: createStubLocalPosts(),

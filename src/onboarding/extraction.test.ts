@@ -1,9 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
-
-import { afterEach, describe, expect, it } from "vitest"
-import { z } from "zod"
+import { describe, expect, it } from "vitest"
 
 import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
 import type {
@@ -13,13 +8,8 @@ import type {
   NaverSearchResult,
 } from "@/integrations/contracts"
 import { createIntegrationAdapters } from "@/integrations"
-import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
 
 import { NaverSearchTimeoutError, extractBusinessProfile } from "./extraction"
-
-const countRowSchema = z.object({
-  count: z.number(),
-})
 
 const ambiguousCandidates = [
   {
@@ -65,28 +55,13 @@ function timeoutNaverSearch(): NaverSearchAdapter {
 }
 
 describe("extractBusinessProfile", () => {
-  const tempPaths: string[] = []
-
-  afterEach(async () => {
-    for (const tempPath of tempPaths) {
-      await rm(tempPath, { force: true, recursive: true })
-    }
-    tempPaths.length = 0
-  })
-
   it("returns normalized stub candidates when a Naver short link is provided", async () => {
     // Given
-    const tempPath = await mkdtemp(join(tmpdir(), "glocalx-naver-link-"))
-    tempPaths.push(tempPath)
-    const database = openDatabase(join(tempPath, "naver.db"))
-    applyMigrations(database)
-    seedDemoData(database)
-    const adapters = createIntegrationAdapters({ database, env: {} })
+    const adapters = createIntegrationAdapters({ env: {} })
 
     // When
     const result = await extractBusinessProfile({
       adapters,
-      database,
       input: "https://naver.me/mybrunchcafe",
       storeId: "demo-store",
     })
@@ -99,14 +74,6 @@ describe("extractBusinessProfile", () => {
       expect(result.candidates[0]?.missingFields).toEqual(["hours"])
       expect(result.requiresSelection).toBe(false)
     }
-
-    const countRow = countRowSchema.parse(
-      database
-        .prepare("SELECT COUNT(*) AS count FROM business_profile_extractions")
-        .get()
-    )
-    expect(countRow.count).toBe(2)
-    database.close()
   })
 
   it("returns deterministic stub candidates for ordinary store names", async () => {

@@ -11,6 +11,7 @@ import type { DemoSession } from "@/auth/session"
 import { parseRoutePayload } from "@/domain/schemas"
 import type { ParsedValidationIssue } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
+import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import type { DatabaseContext } from "@/server/db"
 import { openDatabaseContext } from "@/server/db"
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
@@ -44,6 +45,9 @@ export type RouteDatabaseContext = {
 
 export type QueryableRouteDatabaseContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
+  readonly oauthIdentityRepository: ReturnType<
+    typeof createDatabaseOAuthIdentityRepository
+  >
   readonly onboardingExtractionRepository: ReturnType<
     typeof createDatabaseOnboardingExtractionRepository
   >
@@ -190,6 +194,7 @@ export async function withQueryableRouteDatabase<TResponse extends Response>(
   try {
     return await handler({
       adapters: createIntegrationAdapters(),
+      oauthIdentityRepository: createDatabaseOAuthIdentityRepository(queryable),
       onboardingExtractionRepository:
         createDatabaseOnboardingExtractionRepository(queryable),
       sessionStore: createDatabaseSessionStore(queryable),

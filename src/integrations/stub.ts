@@ -16,7 +16,6 @@ import type {
 } from "./contracts"
 import { createStubMarketingDraft } from "./stub-marketing-generation"
 import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
-import type { SqliteDatabase } from "@/server/db/sqlite"
 
 const stubCandidate = {
   candidateId: "naver-local-stub-brunch-moment",
@@ -94,30 +93,6 @@ function syntheticCandidateForInput(
   }
 }
 
-function persistStubExtraction(
-  database: SqliteDatabase | undefined,
-  candidate: AdapterBusinessProfileCandidate
-): void {
-  if (database === undefined) {
-    return
-  }
-
-  database
-    .prepare(
-      "INSERT OR IGNORE INTO business_profile_extractions (id, store_id, source, source_input, status, candidate_json, missing_fields_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      `stub-extraction-${candidate.candidateId}`,
-      "demo-store",
-      "NAVER_LOCAL",
-      candidate.sourceInput,
-      "CANDIDATES_FOUND",
-      JSON.stringify(candidate),
-      JSON.stringify(candidate.missingFields),
-      "2026-06-04T00:00:00.000Z"
-    )
-}
-
 function stubCandidateForInput(
   input: Parameters<NaverSearchAdapter["searchLocal"]>[0]
 ): AdapterBusinessProfileCandidate {
@@ -131,9 +106,7 @@ function stubCandidateForInput(
   }
 }
 
-export function createStubNaverSearch(
-  database?: SqliteDatabase
-): NaverSearchAdapter {
+export function createStubNaverSearch(): NaverSearchAdapter {
   return {
     async searchLocal(input): Promise<AdapterResult<NaverSearchResult>> {
       const sourceInput = input.rawInput ?? input.query
@@ -160,7 +133,6 @@ export function createStubNaverSearch(
         }
       }
 
-      persistStubExtraction(database, candidate)
       return {
         kind: "ok",
         value: {

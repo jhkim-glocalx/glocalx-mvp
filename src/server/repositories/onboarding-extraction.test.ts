@@ -7,6 +7,7 @@ import { z } from "zod"
 
 import { openDatabaseContext } from "@/server/db"
 import type { Queryable } from "@/server/db"
+import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
 
 import { createDatabaseOnboardingExtractionRepository } from "./onboarding-extraction"
 
@@ -16,6 +17,25 @@ const manualExtractionRowSchema = z.object({
   missingFieldsJson: z.string(),
   status: z.string(),
 })
+
+const candidateExtractionRowSchema = z.object({
+  candidateJson: z.string(),
+  missingFieldsJson: z.string(),
+  sourceInput: z.string(),
+  status: z.string(),
+})
+
+const routeCandidate = {
+  address: "서울 마포구 와우산로 123",
+  candidateId: "naver-local-stub-route",
+  category: "로컬 매장",
+  missingFields: ["phone", "hours"],
+  name: "서울커피 홍대점",
+  naverPlaceUrl:
+    "https://map.naver.com/p/search/%EC%84%9C%EC%9A%B8%EC%BB%A4%ED%94%BC",
+  source: "NAVER_LOCAL",
+  sourceInput: "서울커피",
+} satisfies AdapterBusinessProfileCandidate
 
 function createTempDatabasePath(): string {
   const directory = mkdtempSync(join(tmpdir(), "glocalx-extraction-repo-"))
@@ -37,6 +57,46 @@ afterEach(() => {
 })
 
 describe("database onboarding extraction repository", () => {
+  it("persists candidate extraction rows through the queryable boundary", async () => {
+    // Given: a SQLite queryable with the extraction table.
+    vi.stubEnv("DATABASE_PROVIDER", "sqlite")
+    vi.stubEnv("GLOCALX_DB_PATH", createTempDatabasePath())
+    const context = await openDatabaseContext()
+
+    try {
+      await context.queryable.transaction(async (transaction) => {
+        await createExtractionFixture(transaction)
+        const repository =
+          createDatabaseOnboardingExtractionRepository(transaction)
+
+        // When: candidate search results are persisted for an onboarding query.
+        await repository.persistCandidatesFound({
+          candidates: [routeCandidate],
+          createdAt: new Date("2026-06-04T00:00:00.000Z"),
+          extractionId: "candidate-extraction-demo",
+          sourceInput: "서울커피",
+          storeId: "demo-store",
+        })
+        const row = candidateExtractionRowSchema.parse(
+          await transaction.queryOne(
+            "SELECT status, source_input AS sourceInput, candidate_json AS candidateJson, missing_fields_json AS missingFieldsJson FROM business_profile_extractions WHERE id = ?",
+            ["candidate-extraction-demo"]
+          )
+        )
+
+        // Then: the database row matches the candidate search result shape.
+        expect(row).toEqual({
+          candidateJson: JSON.stringify(routeCandidate),
+          missingFieldsJson: JSON.stringify(["phone", "hours"]),
+          sourceInput: "서울커피",
+          status: "CANDIDATES_FOUND",
+        })
+      })
+    } finally {
+      await context.close()
+    }
+  })
+
   it("persists manual recovery state through the queryable boundary", async () => {
     // Given: a SQLite queryable with the extraction table.
     vi.stubEnv("DATABASE_PROVIDER", "sqlite")

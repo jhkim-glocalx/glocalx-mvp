@@ -11,7 +11,6 @@ import type {
 } from "@/integrations/contracts"
 import { NaverSearchUnavailableError } from "@/integrations/contracts"
 import type { OnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
-import type { SqliteDatabase } from "@/server/db/sqlite"
 
 import type { RetrievalError } from "./input-normalization"
 import { normalizeOnboardingInput } from "./input-normalization"
@@ -60,7 +59,6 @@ export type BusinessProfileExtractionResult =
 
 export type ExtractBusinessProfileOptions = {
   readonly adapters: IntegrationAdapters
-  readonly database?: SqliteDatabase
   readonly extractionRepository?: OnboardingExtractionRepository
   readonly input: string
   readonly storeId: string
@@ -141,6 +139,31 @@ function stableExtractionId(storeId: string, normalizedQuery: string): string {
   return `manual-extraction-${encoded}`
 }
 
+function candidateExtractionId(
+  candidate: AdapterBusinessProfileCandidate
+): string {
+  return `candidate-extraction-${candidate.candidateId}`
+}
+
+async function persistCandidatesFound(
+  extractionRepository: OnboardingExtractionRepository | undefined,
+  options: ExtractBusinessProfileOptions,
+  candidates: readonly AdapterBusinessProfileCandidate[]
+): Promise<void> {
+  const firstCandidate = candidates[0]
+  if (extractionRepository === undefined || firstCandidate === undefined) {
+    return
+  }
+
+  await extractionRepository.persistCandidatesFound({
+    candidates,
+    createdAt: options.adapters.clock.now(),
+    extractionId: candidateExtractionId(firstCandidate),
+    sourceInput: firstCandidate.sourceInput,
+    storeId: options.storeId,
+  })
+}
+
 async function persistManualInputRequired(
   extractionRepository: OnboardingExtractionRepository | undefined,
   options: ExtractBusinessProfileOptions,
@@ -217,6 +240,12 @@ export async function extractBusinessProfile(
       )
       return result
     }
+
+    await persistCandidatesFound(
+      options.extractionRepository,
+      options,
+      candidates
+    )
 
     return {
       status: "CANDIDATES_FOUND",

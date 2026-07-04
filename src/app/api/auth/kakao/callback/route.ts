@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
-import { upsertOAuthIdentity } from "@/auth/oauth-identity"
 import {
   fetchKakaoOAuthProfile,
   OAuthProviderError,
@@ -9,7 +8,6 @@ import {
 import {
   demoSessionCookieName,
   demoStoreCookieName,
-  ensureDemoOwnerStore,
   sessionCookieOptions,
 } from "@/auth/session"
 import {
@@ -20,7 +18,7 @@ import {
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
 import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
-import { openDatabaseContext } from "@/server/db"
+import { withQueryableRouteDatabase } from "@/server/http"
 
 function redirectToLandingClearingState(reason: string): NextResponse {
   const response = new NextResponse(null, {
@@ -69,36 +67,36 @@ export async function GET(request: NextRequest) {
       redirectUri: getKakaoRedirectUri(request, process.env),
       ...(clientSecret === undefined ? {} : { clientSecret }),
     })
-    ensureDemoOwnerStore()
-    const databaseContext = await openDatabaseContext()
-    const database = databaseContext.legacySqliteDatabase
-    let storeOnboardingComplete = false
-    let userId = ""
-    let storeId = ""
-    try {
-      const session = upsertOAuthIdentity(database, profile)
-      storeOnboardingComplete = session.onboardingComplete
-      userId = session.userId
-      storeId = session.storeId
-    } finally {
-      await databaseContext.close()
-    }
 
-    const response = new NextResponse(null, {
-      headers: {
-        // First login routes through onboarding until the owned store is complete.
-        Location: storeOnboardingComplete ? "/app" : "/onboarding",
-      },
-      status: 303,
-    })
-    response.cookies.set(demoSessionCookieName, userId, sessionCookieOptions)
-    response.cookies.set(demoStoreCookieName, storeId, sessionCookieOptions)
-    response.cookies.set(
-      kakaoOAuthStateCookieName,
-      "",
-      expiredKakaoOAuthStateCookieOptions
+    return await withQueryableRouteDatabase(
+      async ({ oauthIdentityRepository }) => {
+        const session =
+          await oauthIdentityRepository.upsertOAuthIdentity(profile)
+        const response = new NextResponse(null, {
+          headers: {
+            // First login routes through onboarding until the owned store is complete.
+            Location: session.onboardingComplete ? "/app" : "/onboarding",
+          },
+          status: 303,
+        })
+        response.cookies.set(
+          demoSessionCookieName,
+          session.userId,
+          sessionCookieOptions
+        )
+        response.cookies.set(
+          demoStoreCookieName,
+          session.storeId,
+          sessionCookieOptions
+        )
+        response.cookies.set(
+          kakaoOAuthStateCookieName,
+          "",
+          expiredKakaoOAuthStateCookieOptions
+        )
+        return response
+      }
     )
-    return response
   } catch (error) {
     console.error("Kakao OAuth callback failed", error)
     if (
