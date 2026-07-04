@@ -12,7 +12,7 @@ import {
 } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
 import { processOnboardingSlotTurn } from "@/onboarding/conversation"
-import { openDatabase } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@/server/db"
 
 type JsonPayloadResult =
   | {
@@ -83,7 +83,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const database = openDatabase()
+  const databaseContext = await openDatabaseContext()
+  const database = databaseContext.legacySqliteDatabase
 
   try {
     const adapters = createIntegrationAdapters({ database })
@@ -96,6 +97,6 @@ export async function POST(request: NextRequest) {
     const status = result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
     return Response.json(result, { status })
   } finally {
-    database.close()
+    await databaseContext.close()
   }
 }

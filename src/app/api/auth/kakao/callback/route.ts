@@ -20,7 +20,7 @@ import {
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
 import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
-import { openDatabase } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@/server/db"
 
 function redirectToLandingClearingState(reason: string): NextResponse {
   const response = new NextResponse(null, {
@@ -70,7 +70,8 @@ export async function GET(request: NextRequest) {
       ...(clientSecret === undefined ? {} : { clientSecret }),
     })
     ensureDemoOwnerStore()
-    const database = openDatabase()
+    const databaseContext = await openDatabaseContext()
+    const database = databaseContext.legacySqliteDatabase
     let storeOnboardingComplete = false
     let userId = ""
     let storeId = ""
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
       userId = session.userId
       storeId = session.storeId
     } finally {
-      database.close()
+      await databaseContext.close()
     }
 
     const response = new NextResponse(null, {

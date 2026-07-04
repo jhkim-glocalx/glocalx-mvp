@@ -10,7 +10,7 @@ import {
 import { parseRoutePayload, postPublishRequestSchema } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
 import { publishPostDraft } from "@/posts/post-flow"
-import { openDatabase } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@/server/db"
 
 type JsonPayloadResult =
   | {
@@ -97,7 +97,8 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
   }
 
   ensureDemoOwnerStore()
-  const database = openDatabase()
+  const databaseContext = await openDatabaseContext()
+  const database = databaseContext.legacySqliteDatabase
   // Await after auth/validation so Next's promise params are consumed at the route boundary.
   const { draftId } = await context.params
 
@@ -124,6 +125,6 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
         : 200
     return Response.json(result, { status })
   } finally {
-    database.close()
+    await databaseContext.close()
   }
 }

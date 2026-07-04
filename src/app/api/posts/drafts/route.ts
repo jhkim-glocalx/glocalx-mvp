@@ -10,7 +10,7 @@ import {
 import { parseRoutePayload, postDraftRequestSchema } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
 import { createPostDraft } from "@/posts/post-flow"
-import { openDatabase } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@/server/db"
 
 type JsonPayloadResult =
   | {
@@ -101,7 +101,8 @@ export async function POST(request: NextRequest) {
   }
 
   ensureDemoOwnerStore()
-  const database = openDatabase()
+  const databaseContext = await openDatabaseContext()
+  const database = databaseContext.legacySqliteDatabase
 
   try {
     const adapters = createIntegrationAdapters({ database })
@@ -121,6 +122,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return generationFailureResponse(error)
   } finally {
-    database.close()
+    await databaseContext.close()
   }
 }

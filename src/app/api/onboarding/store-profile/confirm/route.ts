@@ -12,7 +12,7 @@ import {
 } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
 import { confirmStoreProfile } from "@/onboarding/store-profile"
-import { openDatabase } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@/server/db"
 
 type JsonPayloadResult =
   | {
@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const database = openDatabase()
+  const databaseContext = await openDatabaseContext()
+  const database = databaseContext.legacySqliteDatabase
   try {
     const adapters = createIntegrationAdapters({ database })
     return Response.json(
@@ -92,6 +93,6 @@ export async function POST(request: NextRequest) {
       })
     )
   } finally {
-    database.close()
+    await databaseContext.close()
   }
 }

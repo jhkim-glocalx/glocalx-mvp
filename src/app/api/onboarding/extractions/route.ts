@@ -13,7 +13,7 @@ import {
 import type { BusinessProfileExtractionResult } from "@/onboarding/extraction"
 import { extractBusinessProfile } from "@/onboarding/extraction"
 import { createIntegrationAdapters } from "@/integrations"
-import { openDatabase } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@/server/db"
 
 type JsonPayloadResult =
   | {
@@ -118,7 +118,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const database = openDatabase()
+  const databaseContext = await openDatabaseContext()
+  const database = databaseContext.legacySqliteDatabase
 
   try {
     const adapters = createIntegrationAdapters({ database })
@@ -131,6 +132,6 @@ export async function POST(request: NextRequest) {
 
     return Response.json(toPublicResult(result))
   } finally {
-    database.close()
+    await databaseContext.close()
   }
 }

@@ -7,7 +7,7 @@ import {
   type GbpPerformanceSummary,
 } from "@/gbp/performance"
 import { createIntegrationAdapters } from "@/integrations"
-import { openDatabase } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@/server/db"
 
 const fallbackMetricKeys = [
   "impressions",
@@ -107,7 +107,8 @@ async function handlePerformanceRequest() {
     )
   }
 
-  const database = openDatabase()
+  const databaseContext = await openDatabaseContext()
+  const database = databaseContext.legacySqliteDatabase
   try {
     const adapters = createIntegrationAdapters({ database })
     const result = await getGbpPerformanceDashboard({
@@ -128,7 +129,7 @@ async function handlePerformanceRequest() {
           : 502
     return Response.json(responseResult, { status })
   } finally {
-    database.close()
+    await databaseContext.close()
   }
 }
 
