@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test"
 
-import { resetE2eDatabase } from "./global-setup"
+import { resetE2eDatabase } from "./db-harness"
 
 test.describe.configure({ mode: "serial" })
 
-test.beforeEach(() => {
-  resetE2eDatabase()
+test.beforeEach(async () => {
+  await resetE2eDatabase()
 })
 
 const demoCookieHeader =

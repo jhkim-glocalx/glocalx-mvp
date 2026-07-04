@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test"
 
-import { resetE2eDatabase } from "./global-setup"
+import { resetE2eDatabase } from "./db-harness"
 
 const demoCookieHeader =
   "glocalx_demo_session=demo-owner; glocalx_demo_store=demo-store"
 
-test.beforeEach(() => {
-  resetE2eDatabase()
+test.beforeEach(async () => {
+  await resetE2eDatabase()
 })
 
 test("Stub GBP setup reaches verification pending and records an audit log", async ({

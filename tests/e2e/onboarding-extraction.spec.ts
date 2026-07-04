@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test"
 
-import { resetE2eDatabase } from "./global-setup"
+import { resetE2eDatabase } from "./db-harness"
 
 async function createDemoSession(request: APIRequestContext): Promise<void> {
   const response = await request.post("/api/auth/demo-login", {
@@ -11,7 +11,7 @@ async function createDemoSession(request: APIRequestContext): Promise<void> {
 }
 
 test.beforeEach(async ({ request }) => {
-  resetE2eDatabase()
+  await resetE2eDatabase()
   await createDemoSession(request)
 })
 

@@ -1,8 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 import { writeFileSync } from "node:fs"
 
-import { openDatabase } from "../../src/server/db/sqlite"
-import { resetE2eDatabase } from "./global-setup"
+import { resetFirstTimeE2eDatabase } from "./db-harness"
 import { uploadMarketingImageAndGenerateDraft } from "./marketing-helpers"
 
 const prototypeChromePatterns = [
@@ -14,21 +13,9 @@ const prototypeChromePatterns = [
   /단계\s*레일/,
 ]
 
-test.beforeEach(() => {
-  resetFirstTimeE2eDatabase()
+test.beforeEach(async () => {
+  await resetFirstTimeE2eDatabase()
 })
-
-function resetFirstTimeE2eDatabase(): void {
-  resetE2eDatabase()
-  const database = openDatabase()
-  try {
-    database
-      .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
-      .run("NOT_STARTED", "demo-store")
-  } finally {
-    database.close()
-  }
-}
 
 async function expectNoPrototypeChrome(page: Page): Promise<void> {
   for (const pattern of prototypeChromePatterns) {

@@ -1,20 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 import { writeFileSync } from "node:fs"
 
-import { openDatabase } from "../../src/server/db/sqlite"
-import { resetE2eDatabase } from "./global-setup"
-
-function resetFirstTimeE2eDatabase(): void {
-  resetE2eDatabase()
-  const database = openDatabase()
-  try {
-    database
-      .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
-      .run("NOT_STARTED", "demo-store")
-  } finally {
-    database.close()
-  }
-}
+import { resetFirstTimeE2eDatabase } from "./db-harness"
 
 async function expectMarketingLanding(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/app\?nav=photo/)
@@ -45,10 +32,10 @@ async function completeOnboarding(page: Page): Promise<void> {
   await expectMarketingLanding(page)
 }
 
-test.beforeEach(({ page }, testInfo) => {
+test.beforeEach(async ({ page }, testInfo) => {
   void page
   testInfo.setTimeout(60_000)
-  resetFirstTimeE2eDatabase()
+  await resetFirstTimeE2eDatabase()
 })
 
 test("flow navigation keyboard changes the active step", async ({ page }) => {

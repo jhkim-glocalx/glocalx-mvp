@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
+    "e2e:postgres": "DATABASE_PROVIDER=postgres playwright test",
     "format:check": "prettier --check ."
   },
   "dependencies": {

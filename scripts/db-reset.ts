@@ -1,13 +1,6 @@
 import {
-  applyMigrations,
-  defaultDatabasePath,
-  openDatabase,
-  resetDatabaseFile,
-} from "../src/server/db/sqlite.ts"
+  resetDatabaseForProvider,
+  runProviderAwareDatabaseCli,
+} from "../src/server/db/reset-seed.ts"
 
-resetDatabaseFile(defaultDatabasePath)
-const database = openDatabase(defaultDatabasePath)
-applyMigrations(database)
-database.close()
-
-console.log(`Reset database at ${defaultDatabasePath}`)
+await runProviderAwareDatabaseCli(resetDatabaseForProvider)

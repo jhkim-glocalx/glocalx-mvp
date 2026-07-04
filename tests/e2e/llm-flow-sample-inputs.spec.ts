@@ -1,20 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 import { readFileSync } from "node:fs"
 
-import { openDatabase } from "../../src/server/db/sqlite"
-import { resetE2eDatabase } from "./global-setup"
-
-function resetFirstTimeE2eDatabase(): void {
-  resetE2eDatabase()
-  const database = openDatabase()
-  try {
-    database
-      .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
-      .run("NOT_STARTED", "demo-store")
-  } finally {
-    database.close()
-  }
-}
+import { resetFirstTimeE2eDatabase } from "./db-harness"
 
 async function completeOnboarding(page: Page): Promise<void> {
   await page.context().clearCookies()
@@ -39,8 +26,8 @@ async function completeOnboarding(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/app/)
 }
 
-test.beforeEach(() => {
-  resetFirstTimeE2eDatabase()
+test.beforeEach(async () => {
+  await resetFirstTimeE2eDatabase()
 })
 
 test("LLM posting flow analyzes sample images and revises through chat", async ({

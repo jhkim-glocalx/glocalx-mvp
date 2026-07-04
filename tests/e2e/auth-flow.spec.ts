@@ -1,22 +1,9 @@
 import { expect, test } from "@playwright/test"
 
-import { openDatabase } from "../../src/server/db/sqlite"
-import { resetE2eDatabase } from "./global-setup"
+import { resetFirstTimeE2eDatabase } from "./db-harness"
 
-function resetFirstTimeE2eDatabase(): void {
-  resetE2eDatabase()
-  const database = openDatabase()
-  try {
-    database
-      .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
-      .run("NOT_STARTED", "demo-store")
-  } finally {
-    database.close()
-  }
-}
-
-test.beforeEach(() => {
-  resetFirstTimeE2eDatabase()
+test.beforeEach(async () => {
+  await resetFirstTimeE2eDatabase()
 })
 
 test("First-time demo login routes to onboarding", async ({ page }) => {

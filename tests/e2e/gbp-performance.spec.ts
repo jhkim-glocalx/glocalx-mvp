@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
 
-import { resetE2eDatabase } from "./global-setup"
+import { resetE2eDatabase } from "./db-harness"
 
 async function addDemoSessionCookies(page: Page): Promise<void> {
   await page.context().addCookies([
@@ -25,8 +25,8 @@ async function readOverflowMetrics(page: Page) {
   }))
 }
 
-test.beforeEach(() => {
-  resetE2eDatabase()
+test.beforeEach(async () => {
+  await resetE2eDatabase()
 })
 
 test("performance route rejects unauthenticated requests", async ({

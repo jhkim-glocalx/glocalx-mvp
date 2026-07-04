@@ -1,18 +1,7 @@
-import {
-  applyMigrations,
-  openDatabase,
-  resetDatabaseFile,
-  seedDemoData,
-} from "../../src/server/db/sqlite"
+import { resetE2eDatabase } from "./db-harness"
 
-export function resetE2eDatabase(): void {
-  resetDatabaseFile()
-  const database = openDatabase()
-  applyMigrations(database)
-  seedDemoData(database)
-  database.close()
-}
+export { resetE2eDatabase } from "./db-harness"
 
-export default function globalSetup(): void {
-  resetE2eDatabase()
+export default async function globalSetup(): Promise<void> {
+  await resetE2eDatabase()
 }
