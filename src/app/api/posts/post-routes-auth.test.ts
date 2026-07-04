@@ -37,6 +37,21 @@ function createJsonRequest(
   })
 }
 
+function createRawRequest(
+  url: string,
+  body: string,
+  cookieHeader?: string
+): NextRequest {
+  return new NextRequest(url, {
+    body,
+    headers: {
+      ...(cookieHeader === undefined ? {} : { Cookie: cookieHeader }),
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  })
+}
+
 describe("post API route authorization", () => {
   beforeEach(async () => {
     await useTempDatabase()
@@ -62,8 +77,25 @@ describe("post API route authorization", () => {
     )
 
     expect(response.status).toBe(401)
-    expect(await response.json()).toMatchObject({
+    expect(await response.json()).toEqual({
+      message: "로그인이 필요합니다.",
       status: "AUTH_REQUIRED",
+    })
+  })
+
+  it("keeps the validation JSON when creating a post draft with malformed JSON", async () => {
+    const response = await createDraft(
+      createRawRequest(
+        "http://localhost:3000/api/posts/drafts",
+        "{",
+        demoCookieHeader
+      )
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      message: "요청 JSON을 읽을 수 없습니다.",
+      status: "VALIDATION_ERROR",
     })
   })
 
@@ -181,7 +213,8 @@ describe("post API route authorization", () => {
     )
 
     expect(response.status).toBe(401)
-    expect(await response.json()).toMatchObject({
+    expect(await response.json()).toEqual({
+      message: "로그인이 필요합니다.",
       status: "AUTH_REQUIRED",
     })
   })
