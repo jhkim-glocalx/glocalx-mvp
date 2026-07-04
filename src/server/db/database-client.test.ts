@@ -4,7 +4,15 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { DatabaseConfigurationError, openDatabaseContext } from "@/server/db"
+import {
+  DatabaseConfigurationError,
+  openDatabaseContext,
+  resolveDatabaseConfig,
+} from "@/server/db"
+import {
+  buildPostgresRuntimeOptions,
+  openPostgresDatabaseContext,
+} from "@/server/db/postgres/runtime-client.ts"
 
 const tempDirectories: string[] = []
 
@@ -61,6 +69,93 @@ describe("database client boundary", () => {
     )
   })
 
+  it("resolves Postgres runtime configuration when the provider is postgres", () => {
+    // Given: runtime Postgres mode is selected with a pooled application URL.
+    vi.stubEnv("DATABASE_PROVIDER", "postgres")
+    vi.stubEnv("DATABASE_URL", "postgres://app:secret@localhost:5432/glocalx")
+    vi.stubEnv(
+      "DATABASE_URL_DIRECT",
+      "postgres://admin:secret@localhost:5432/glocalx"
+    )
+    vi.stubEnv("DATABASE_POOL_MAX", "")
+
+    // When: the environment boundary is parsed.
+    const config = resolveDatabaseConfig()
+
+    // Then: runtime mode uses the pooled DATABASE_URL and the default pool max.
+    expect(config).toEqual({
+      poolMax: 5,
+      provider: "postgres",
+      runtimeUrl: "postgres://app:secret@localhost:5432/glocalx",
+    })
+  })
+
+  it("throws DATABASE_URL_REQUIRED when Postgres runtime URL is missing", async () => {
+    // Given: Postgres mode is selected without a pooled runtime URL.
+    vi.stubEnv("DATABASE_PROVIDER", "postgres")
+    vi.stubEnv("DATABASE_URL", "")
+    vi.stubEnv(
+      "DATABASE_URL_DIRECT",
+      "postgres://admin:secret@localhost:5432/glocalx"
+    )
+
+    // When / Then: opening the context fails with a typed configuration code.
+    await expect(openDatabaseContext()).rejects.toMatchObject({
+      code: "DATABASE_URL_REQUIRED",
+      name: "DatabaseConfigurationError",
+    })
+  })
+
+  it("throws DATABASE_POOL_MAX_INVALID when Postgres pool max is not positive", async () => {
+    // Given: Postgres mode is selected with an invalid pool size.
+    vi.stubEnv("DATABASE_PROVIDER", "postgres")
+    vi.stubEnv("DATABASE_URL", "postgres://app:secret@localhost:5432/glocalx")
+    vi.stubEnv("DATABASE_POOL_MAX", "0")
+
+    // When / Then: the environment boundary rejects the malformed pool size.
+    await expect(openDatabaseContext()).rejects.toMatchObject({
+      code: "DATABASE_POOL_MAX_INVALID",
+      name: "DatabaseConfigurationError",
+    })
+  })
+
+  it("builds pooled Postgres runtime options without session prepared statements", () => {
+    // Given: a cloud-like managed database URL and an explicit pool size.
+    const runtimeUrl = "postgres://app:secret@db.example.com:5432/glocalx"
+
+    // When: runtime client options are constructed.
+    const options = buildPostgresRuntimeOptions({
+      poolMax: 7,
+      runtimeUrl,
+    })
+
+    // Then: app runtime pooling is bounded, SSL is required, and prepared mode is disabled.
+    expect(options).toMatchObject({
+      connection: {
+        statement_timeout: 30_000,
+      },
+      connect_timeout: 5,
+      idle_timeout: 30,
+      max: 7,
+      prepare: false,
+      ssl: "require",
+    })
+  })
+
+  it("keeps local Postgres runtime options usable without SSL", () => {
+    // Given: a local Docker-style runtime URL.
+    const runtimeUrl = "postgres://app:secret@127.0.0.1:5432/glocalx"
+
+    // When: runtime client options are constructed.
+    const options = buildPostgresRuntimeOptions({
+      poolMax: 5,
+      runtimeUrl,
+    })
+
+    // Then: localhost development does not require TLS.
+    expect(options.ssl).toBe(false)
+  })
+
   it("runs a transaction and releases request resources on close", async () => {
     // Given: a request-scoped SQLite context.
     vi.stubEnv("DATABASE_PROVIDER", "sqlite")
@@ -98,5 +193,50 @@ describe("database client boundary", () => {
     await expect(
       context.queryable.query("SELECT label FROM transaction_probe")
     ).rejects.toThrow()
+  })
+
+  it("runs Postgres-mode queryable checks when local Postgres env is configured", async () => {
+    // Given: live Postgres integration is intentionally gated by both URLs.
+    const missingEnvNames = ["DATABASE_URL", "DATABASE_URL_DIRECT"].filter(
+      (name) => !process.env[name]
+    )
+    if (missingEnvNames.length > 0) {
+      console.info(`BLOCKED_BY_ENV missing ${missingEnvNames.join(",")}`)
+      return
+    }
+
+    vi.stubEnv("DATABASE_PROVIDER", "postgres")
+
+    // When: the runtime Postgres queryable writes and reads through the DB boundary.
+    const config = resolveDatabaseConfig()
+    if (config.provider === "sqlite") {
+      throw new DatabaseConfigurationError({
+        code: "DATABASE_PROVIDER_UNSUPPORTED",
+        message: "Expected Postgres provider for live runtime test",
+        provider: config.provider,
+      })
+    }
+
+    const context = await openPostgresDatabaseContext(config)
+    try {
+      await context.queryable.execute(
+        "CREATE TABLE IF NOT EXISTS glocalx_runtime_client_probe (label text PRIMARY KEY)"
+      )
+      await context.queryable.transaction(async (transaction) => {
+        await transaction.execute(
+          "INSERT INTO glocalx_runtime_client_probe (label) VALUES ($1) ON CONFLICT (label) DO NOTHING",
+          ["ready"]
+        )
+      })
+      const row = await context.queryable.queryOne(
+        "SELECT label FROM glocalx_runtime_client_probe WHERE label = $1",
+        ["ready"]
+      )
+
+      // Then: the runtime Postgres adapter returns rows through the neutral queryable.
+      expect(row).toEqual({ label: "ready" })
+    } finally {
+      await context.close()
+    }
   })
 })

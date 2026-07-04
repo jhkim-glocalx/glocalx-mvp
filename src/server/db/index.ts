@@ -1,19 +1,24 @@
-import { DatabaseConfigurationError, resolveDatabaseConfig } from "./config.ts"
+import { resolveDatabaseConfig } from "./config.ts"
+import { openPostgresDatabaseContext } from "./postgres/runtime-client.ts"
 import { openSqliteDatabaseContext } from "./sqlite-client.ts"
 import type { DatabaseContext } from "./types.ts"
 
-export { DatabaseConfigurationError } from "./config.ts"
+export { DatabaseConfigurationError, resolveDatabaseConfig } from "./config.ts"
+export type {
+  DatabaseConfig,
+  DatabaseConfigurationCode,
+  DatabaseProvider,
+  PostgresDatabaseConfig,
+  SqliteDatabaseConfig,
+} from "./config.ts"
 export type {
   DatabaseContext,
   DatabaseExecutionResult,
   DatabaseRow,
+  DatabaseStatementParameter,
   DatabaseStatementParameters,
   Queryable,
 } from "./types.ts"
-
-function assertNeverProvider(provider: never): never {
-  throw new DatabaseConfigurationError(provider)
-}
 
 export async function openDatabaseContext(): Promise<DatabaseContext> {
   const config = resolveDatabaseConfig()
@@ -21,7 +26,7 @@ export async function openDatabaseContext(): Promise<DatabaseContext> {
   switch (config.provider) {
     case "sqlite":
       return openSqliteDatabaseContext()
-    default:
-      return assertNeverProvider(config.provider)
+    case "postgres":
+      return openPostgresDatabaseContext(config)
   }
 }

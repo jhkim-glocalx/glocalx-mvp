@@ -2,7 +2,15 @@ import type { SqliteDatabase } from "./sqlite.ts"
 
 export type DatabaseRow = Readonly<Record<string, unknown>>
 
-export type DatabaseStatementParameters = readonly unknown[]
+export type DatabaseStatementParameter =
+  | null
+  | boolean
+  | number
+  | string
+  | Uint8Array
+  | readonly DatabaseStatementParameter[]
+
+export type DatabaseStatementParameters = readonly DatabaseStatementParameter[]
 
 export type DatabaseExecutionResult = {
   readonly changes: number
