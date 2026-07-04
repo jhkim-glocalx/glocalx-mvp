@@ -49,6 +49,14 @@ function usesLocalPostgresHost(runtimeUrl: string): boolean {
   return localPostgresHosts.has(hostname) || !hostname.includes(".")
 }
 
+function normalizePostgresPlaceholders(sql: string): string {
+  let parameterIndex = 0
+  return sql.replace(/\?/g, () => {
+    parameterIndex += 1
+    return `$${parameterIndex}`
+  })
+}
+
 export function buildPostgresRuntimeOptions(
   config: PostgresRuntimeConnectionConfig
 ): PostgresRuntimeOptions {
@@ -75,9 +83,13 @@ class PostgresQueryable implements Queryable {
     sql: string,
     parameters: DatabaseStatementParameters = []
   ): Promise<readonly DatabaseRow[]> {
-    return this.executor.unsafe<DatabaseRow[]>(sql, [...parameters], {
-      prepare: false,
-    })
+    return this.executor.unsafe<DatabaseRow[]>(
+      normalizePostgresPlaceholders(sql),
+      [...parameters],
+      {
+        prepare: false,
+      }
+    )
   }
 
   async queryOne(
@@ -93,7 +105,7 @@ class PostgresQueryable implements Queryable {
     parameters: DatabaseStatementParameters = []
   ): Promise<DatabaseExecutionResult> {
     const result = await this.executor.unsafe<DatabaseRow[]>(
-      sql,
+      normalizePostgresPlaceholders(sql),
       [...parameters],
       { prepare: false }
     )
