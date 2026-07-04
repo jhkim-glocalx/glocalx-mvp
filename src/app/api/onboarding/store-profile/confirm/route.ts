@@ -4,9 +4,9 @@ import { confirmedStoreProfileSchema } from "@/domain/schemas"
 import { confirmStoreProfile } from "@/onboarding/store-profile"
 import {
   parseJsonRoutePayload,
-  readDemoSession,
+  readDatabaseSession,
   requiredSessionResponse,
-  withRouteDatabase,
+  withQueryableRouteDatabase,
 } from "@/server/http"
 
 export async function POST(request: NextRequest) {
@@ -18,20 +18,22 @@ export async function POST(request: NextRequest) {
     return parsed.response
   }
 
-  // Confirmation writes to the session store, not a client-selected store ID.
-  const session = readDemoSession(request)
-  if (session === undefined) {
-    return requiredSessionResponse()
-  }
+  return withQueryableRouteDatabase(
+    async ({ adapters, sessionStore, storeProfileRepository }) => {
+      // Confirmation writes to the session store, not a client-selected store ID.
+      const session = await readDatabaseSession(request, sessionStore)
+      if (session === undefined) {
+        return requiredSessionResponse()
+      }
 
-  return withRouteDatabase(({ adapters, database }) =>
-    Response.json(
-      confirmStoreProfile({
-        adapters,
-        database,
-        profile: parsed.value,
-        storeId: session.storeId,
-      })
-    )
+      return Response.json(
+        await confirmStoreProfile({
+          adapters,
+          profile: parsed.value,
+          repository: storeProfileRepository,
+          storeId: session.storeId,
+        })
+      )
+    }
   )
 }

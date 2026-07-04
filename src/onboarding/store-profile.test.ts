@@ -2,11 +2,13 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
 import { createIntegrationAdapters } from "@/integrations"
-import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@/server/db"
+import { applyMigrations, seedDemoData } from "@/server/db/sqlite"
+import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
 
 import { confirmStoreProfile } from "./store-profile"
 
@@ -25,30 +27,32 @@ describe("confirmStoreProfile", () => {
   const tempPaths: string[] = []
 
   afterEach(async () => {
+    vi.unstubAllEnvs()
     for (const tempPath of tempPaths) {
       await rm(tempPath, { force: true, recursive: true })
     }
     tempPaths.length = 0
   })
 
-  async function createDatabase() {
+  async function createDatabaseContext() {
     const tempPath = await mkdtemp(join(tmpdir(), "glocalx-store-profile-"))
     tempPaths.push(tempPath)
-    const database = openDatabase(join(tempPath, "store.db"))
-    applyMigrations(database)
-    seedDemoData(database)
-    return database
+    vi.stubEnv("GLOCALX_DB_PATH", join(tempPath, "store.db"))
+    const context = await openDatabaseContext()
+    applyMigrations(context.legacySqliteDatabase)
+    seedDemoData(context.legacySqliteDatabase)
+    return context
   }
 
   it("persists the owner-confirmed profile as the store source of truth", async () => {
     // Given
-    const database = await createDatabase()
-    const adapters = createIntegrationAdapters({ database, env: {} })
+    const context = await createDatabaseContext()
+    const adapters = createIntegrationAdapters({ env: {} })
+    const repository = createDatabaseStoreProfileRepository(context.queryable)
 
     // When
-    const result = confirmStoreProfile({
+    const result = await confirmStoreProfile({
       adapters,
-      database,
       profile: {
         source: "NAVER_LOCAL",
         sourceInput: "https://naver.me/ramenhouse",
@@ -59,6 +63,7 @@ describe("confirmStoreProfile", () => {
         hours: "11:00 ~ 22:00",
         naverPlaceUrl: "https://naver.me/ramenhouse",
       },
+      repository,
       storeId: "demo-store",
     })
 
@@ -70,7 +75,7 @@ describe("confirmStoreProfile", () => {
     })
 
     const row = confirmedRowsSchema.parse(
-      database
+      context.legacySqliteDatabase
         .prepare(
           "SELECT stores.name AS storeName, stores.address AS storeAddress, stores.phone AS storePhone, stores.category AS storeCategory, stores.hours AS storeHours, stores.onboarding_status AS storeOnboardingStatus, business_profile_extractions.status AS extractionStatus, business_profile_extractions.source_input AS extractionSourceInput FROM stores JOIN business_profile_extractions ON business_profile_extractions.store_id = stores.id WHERE stores.id = ? AND business_profile_extractions.id = ?"
         )
@@ -86,6 +91,6 @@ describe("confirmStoreProfile", () => {
       storeOnboardingStatus: "IN_PROGRESS",
       storePhone: "02-987-6543",
     })
-    database.close()
+    await context.close()
   })
 })

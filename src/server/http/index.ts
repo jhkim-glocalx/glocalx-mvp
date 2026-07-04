@@ -13,6 +13,10 @@ import type { ParsedValidationIssue } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
 import type { DatabaseContext } from "@/server/db"
 import { openDatabaseContext } from "@/server/db"
+import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
+import { createDatabaseSessionStore } from "@/server/repositories/session-store"
+import type { SessionStore } from "@/server/repositories/session-store"
+import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
 
 type JsonPayloadResult =
   | {
@@ -36,6 +40,17 @@ export type ParsedJsonRoutePayload<TValue> =
 export type RouteDatabaseContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
   readonly database: DatabaseContext["legacySqliteDatabase"]
+}
+
+export type QueryableRouteDatabaseContext = {
+  readonly adapters: ReturnType<typeof createIntegrationAdapters>
+  readonly onboardingExtractionRepository: ReturnType<
+    typeof createDatabaseOnboardingExtractionRepository
+  >
+  readonly sessionStore: SessionStore
+  readonly storeProfileRepository: ReturnType<
+    typeof createDatabaseStoreProfileRepository
+  >
 }
 
 async function readJsonBody(request: NextRequest): Promise<JsonPayloadResult> {
@@ -129,6 +144,18 @@ export function readDemoSession(request: NextRequest): DemoSession | undefined {
   })
 }
 
+export async function readDatabaseSession(
+  request: NextRequest,
+  sessionStore: SessionStore
+): Promise<DemoSession | undefined> {
+  return sessionStore.readSessionFromCookieValues({
+    onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
+      ?.value,
+    storeId: request.cookies.get(demoStoreCookieName)?.value,
+    userId: request.cookies.get(demoSessionCookieName)?.value,
+  })
+}
+
 export function requireSessionStoreAccess(
   session: DemoSession,
   storeId: string
@@ -146,6 +173,27 @@ export async function withRouteDatabase<TResponse extends Response>(
     return await handler({
       adapters: createIntegrationAdapters({ database }),
       database,
+    })
+  } finally {
+    await databaseContext.close()
+  }
+}
+
+export async function withQueryableRouteDatabase<TResponse extends Response>(
+  handler: (
+    context: QueryableRouteDatabaseContext
+  ) => Promise<TResponse> | TResponse
+): Promise<TResponse> {
+  const databaseContext = await openDatabaseContext()
+  const queryable = databaseContext.queryable
+
+  try {
+    return await handler({
+      adapters: createIntegrationAdapters(),
+      onboardingExtractionRepository:
+        createDatabaseOnboardingExtractionRepository(queryable),
+      sessionStore: createDatabaseSessionStore(queryable),
+      storeProfileRepository: createDatabaseStoreProfileRepository(queryable),
     })
   } finally {
     await databaseContext.close()

@@ -5,9 +5,9 @@ import type { BusinessProfileExtractionResult } from "@/onboarding/extraction"
 import { extractBusinessProfile } from "@/onboarding/extraction"
 import {
   parseJsonRoutePayload,
-  readDemoSession,
+  readDatabaseSession,
   requiredSessionResponse,
-  withRouteDatabase,
+  withQueryableRouteDatabase,
 } from "@/server/http"
 
 type PublicExtractionResult =
@@ -53,20 +53,22 @@ export async function POST(request: NextRequest) {
     return parsed.response
   }
 
-  // Extraction runs only for the store bound to the authenticated session.
-  const session = readDemoSession(request)
-  if (session === undefined) {
-    return requiredSessionResponse()
-  }
+  return withQueryableRouteDatabase(
+    async ({ adapters, onboardingExtractionRepository, sessionStore }) => {
+      // Extraction runs only for the store bound to the authenticated session.
+      const session = await readDatabaseSession(request, sessionStore)
+      if (session === undefined) {
+        return requiredSessionResponse()
+      }
 
-  return withRouteDatabase(async ({ adapters, database }) => {
-    const result = await extractBusinessProfile({
-      adapters,
-      database,
-      input: parsed.value.input,
-      storeId: session.storeId,
-    })
+      const result = await extractBusinessProfile({
+        adapters,
+        extractionRepository: onboardingExtractionRepository,
+        input: parsed.value.input,
+        storeId: session.storeId,
+      })
 
-    return Response.json(toPublicResult(result))
-  })
+      return Response.json(toPublicResult(result))
+    }
+  )
 }

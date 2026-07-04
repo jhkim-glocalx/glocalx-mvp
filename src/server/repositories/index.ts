@@ -10,6 +10,7 @@ export type {
   JobRunType,
   JobStore,
 } from "./job-store"
+export type { OnboardingExtractionRepository } from "./onboarding-extraction"
 export type { PostStore } from "./post-store"
 export type { SessionStore } from "./session-store"
 export type { StoreProfileRepository } from "./store-profile"

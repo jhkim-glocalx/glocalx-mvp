@@ -10,6 +10,7 @@ import type {
   NaverSearchResult,
 } from "@/integrations/contracts"
 import { NaverSearchUnavailableError } from "@/integrations/contracts"
+import type { OnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
 import type { RetrievalError } from "./input-normalization"
@@ -60,6 +61,7 @@ export type BusinessProfileExtractionResult =
 export type ExtractBusinessProfileOptions = {
   readonly adapters: IntegrationAdapters
   readonly database?: SqliteDatabase
+  readonly extractionRepository?: OnboardingExtractionRepository
   readonly input: string
   readonly storeId: string
 }
@@ -139,31 +141,26 @@ function stableExtractionId(storeId: string, normalizedQuery: string): string {
   return `manual-extraction-${encoded}`
 }
 
-function persistManualInputRequired(
-  database: SqliteDatabase | undefined,
+async function persistManualInputRequired(
+  extractionRepository: OnboardingExtractionRepository | undefined,
   options: ExtractBusinessProfileOptions,
   normalizedQuery: string,
   result: BusinessProfileExtractionResult
-): void {
-  if (database === undefined || result.status !== "MANUAL_INPUT_REQUIRED") {
+): Promise<void> {
+  if (
+    extractionRepository === undefined ||
+    result.status !== "MANUAL_INPUT_REQUIRED"
+  ) {
     return
   }
 
-  // Persist no-result/manual states for reviewers and resumable onboarding, even without candidates.
-  database
-    .prepare(
-      "INSERT OR REPLACE INTO business_profile_extractions (id, store_id, source, source_input, status, candidate_json, missing_fields_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      stableExtractionId(options.storeId, normalizedQuery),
-      options.storeId,
-      "MANUAL",
-      options.input,
-      "MANUAL_INPUT_REQUIRED",
-      JSON.stringify([]),
-      JSON.stringify(result.manualForm.promptedFields),
-      options.adapters.clock.now().toISOString()
-    )
+  await extractionRepository.persistManualInputRequired({
+    createdAt: options.adapters.clock.now(),
+    extractionId: stableExtractionId(options.storeId, normalizedQuery),
+    missingFields: result.manualForm.promptedFields,
+    sourceInput: options.input,
+    storeId: options.storeId,
+  })
 }
 
 export async function extractBusinessProfile(
@@ -212,8 +209,8 @@ export async function extractBusinessProfile(
         "네이버에서 매장을 찾지 못했습니다. 직접 입력으로 계속할 수 있습니다."
       )
       // Empty search results intentionally fall through to the same durable manual fallback.
-      persistManualInputRequired(
-        options.database,
+      await persistManualInputRequired(
+        options.extractionRepository,
         options,
         normalized.query,
         result
@@ -241,8 +238,8 @@ export async function extractBusinessProfile(
         "네이버 검색 응답이 지연되고 있습니다. 직접 입력으로 계속할 수 있습니다."
       )
       // Temporary Naver failures keep owner onboarding moving without marking credentials as broken.
-      persistManualInputRequired(
-        options.database,
+      await persistManualInputRequired(
+        options.extractionRepository,
         options,
         normalized.query,
         result

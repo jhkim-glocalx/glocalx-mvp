@@ -6,9 +6,9 @@ import { vi } from "vitest"
 
 import { createIntegrationAdapters } from "@/integrations"
 import type { IntegrationAdapters } from "@/integrations/contracts"
+import { openDatabaseContext, type Queryable } from "@/server/db"
 import {
   applyMigrations,
-  openDatabase,
   seedDemoData,
   type SqliteDatabase,
 } from "@/server/db/sqlite"
@@ -16,6 +16,7 @@ import {
 export type RepositoryTestContext = {
   readonly adapters: IntegrationAdapters
   readonly database: SqliteDatabase
+  readonly queryable: Queryable
 }
 
 export async function withRepositoryTestContext(
@@ -24,16 +25,20 @@ export async function withRepositoryTestContext(
   const tempPath = await mkdtemp(join(tmpdir(), "glocalx-repository-"))
   const databasePath = join(tempPath, "repository.db")
   vi.stubEnv("GLOCALX_DB_PATH", databasePath)
-  const database = openDatabase(databasePath)
-  applyMigrations(database)
-  seedDemoData(database)
-  const adapters = createIntegrationAdapters({ database, env: {} })
+  const databaseContext = await openDatabaseContext()
+  applyMigrations(databaseContext.legacySqliteDatabase)
+  seedDemoData(databaseContext.legacySqliteDatabase)
+  const adapters = createIntegrationAdapters({ env: {} })
 
   try {
-    await work({ adapters, database })
+    await work({
+      adapters,
+      database: databaseContext.legacySqliteDatabase,
+      queryable: databaseContext.queryable,
+    })
   } finally {
     vi.unstubAllEnvs()
-    database.close()
+    await databaseContext.close()
     await rm(tempPath, { force: true, recursive: true })
   }
 }
