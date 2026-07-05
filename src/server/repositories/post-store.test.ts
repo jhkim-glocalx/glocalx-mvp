@@ -1,15 +1,18 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
 import { demoStoreId } from "@/auth/session"
 import { openDatabaseContext, type Queryable } from "@/server/db"
-import { applyMigrations, seedDemoData } from "@/server/db/sqlite"
 
 import { createDatabasePostStore } from "./post-store"
 import { withRepositoryTestContext } from "./sqlite-characterization-support"
 
+const countSchema = z
+  .union([z.number(), z.string(), z.bigint()])
+  .transform((value) => Number(value))
+
 const postRowsSchema = z.object({
-  attempts: z.number(),
+  attempts: countSchema,
   draftStatus: z.literal("PUBLISHED"),
 })
 
@@ -72,18 +75,49 @@ async function runPostStorePersistenceScenario(context: {
   expect(row).toEqual({ attempts: 1, draftStatus: "PUBLISHED" })
 }
 
+async function createPostgresPostPersistenceFixture(
+  queryable: Queryable
+): Promise<void> {
+  await queryable.execute(
+    `CREATE TEMP TABLE post_drafts (
+      id text PRIMARY KEY,
+      store_id text NOT NULL,
+      owner_intent text NOT NULL,
+      target_channel text NOT NULL,
+      status text NOT NULL,
+      korean_copy text NOT NULL,
+      english_copy text NOT NULL,
+      revision_of_draft_id text,
+      marketing_preview_json text,
+      created_at text NOT NULL
+    )`
+  )
+  await queryable.execute(
+    `CREATE TEMP TABLE post_publish_attempts (
+      id text PRIMARY KEY,
+      draft_id text NOT NULL,
+      idempotency_key text NOT NULL UNIQUE,
+      attempt_number integer NOT NULL,
+      status text NOT NULL,
+      gbp_post_id text,
+      public_url text,
+      error_code text,
+      created_at text NOT NULL
+    )`
+  )
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
+
 describe("post store queryable boundary", () => {
   it("persists drafts and publish attempts through SQLite Queryable", async () => {
     // Given: a migrated SQLite database exposed only through Queryable.
+    vi.stubEnv("DATABASE_PROVIDER", "sqlite")
     await withRepositoryTestContext(async ({ queryable }) => {
-      const context = {
-        close: async () => undefined,
-        legacySqliteDatabase: undefined,
-        queryable,
-      }
-
       // When / Then: post persistence uses the provider-neutral boundary.
-      await runPostStorePersistenceScenario(context)
+      await runPostStorePersistenceScenario({ queryable })
     })
   })
 
@@ -101,11 +135,12 @@ describe("post store queryable boundary", () => {
     const context = await openDatabaseContext()
 
     try {
-      applyMigrations(context.legacySqliteDatabase)
-      seedDemoData(context.legacySqliteDatabase)
+      await context.queryable.transaction(async (transaction) => {
+        await createPostgresPostPersistenceFixture(transaction)
 
-      // When / Then: the same repository boundary runs on the Postgres queryable.
-      await runPostStorePersistenceScenario(context)
+        // When / Then: the same repository boundary runs on the Postgres queryable.
+        await runPostStorePersistenceScenario({ queryable: transaction })
+      })
     } finally {
       await context.close()
     }
