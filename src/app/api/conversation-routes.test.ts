@@ -2,11 +2,16 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { openDatabase, resetDatabaseFile } from "@/server/db/sqlite"
+import { resetDatabaseFile } from "@/server/db/sqlite"
 
+import {
+  createJsonRequest,
+  createOnboardingSlotRequest,
+  naverCandidate,
+  readConversationRows,
+} from "./conversation-route-test-support"
 import { POST as onboardingSlotTurn } from "./onboarding/conversation/slots/route"
 import { POST as postingDecision } from "./posts/conversation/decision/route"
 
@@ -17,7 +22,6 @@ const missingPostgresEnvNames = ["DATABASE_URL", "DATABASE_URL_DIRECT"].filter(
 const skipLivePostgresRoutes =
   process.env["DATABASE_PROVIDER"] === "postgres" &&
   missingPostgresEnvNames.length > 0
-type ConversationRows = Readonly<Record<"assistantMessages" | "events", number>>
 
 if (skipLivePostgresRoutes) {
   console.info(`BLOCKED_BY_ENV missing ${missingPostgresEnvNames.join(",")}`)
@@ -29,58 +33,6 @@ async function useTempDatabase(): Promise<void> {
   vi.stubEnv("APP_INTEGRATION_MODE", "stub")
   vi.stubEnv("GLOCALX_DB_PATH", join(tempPath, "routes.db"))
   resetDatabaseFile()
-}
-
-function createJsonRequest(
-  url: string,
-  body: Record<string, unknown>,
-  cookieHeader = "glocalx_demo_session=demo-owner; glocalx_demo_store=demo-store"
-): NextRequest {
-  return new NextRequest(url, {
-    body: JSON.stringify(body),
-    headers: {
-      Cookie: cookieHeader,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  })
-}
-
-function createOnboardingSlotRequest(
-  body: Record<string, unknown>
-): NextRequest {
-  return createJsonRequest(
-    "http://localhost:3000/api/onboarding/conversation/slots",
-    body
-  )
-}
-
-function readConversationRows(sessionId: string): ConversationRows {
-  const database = openDatabase()
-  try {
-    const rows = database
-      .prepare<
-        unknown[],
-        ConversationRows
-      >("SELECT (SELECT COUNT(*) FROM conversation_messages WHERE session_id = ? AND role = 'assistant') AS assistantMessages, (SELECT COUNT(*) FROM conversation_events WHERE session_id = ?) AS events")
-      .get(sessionId, sessionId)
-    if (rows === undefined) {
-      throw new Error("Expected conversation route rows")
-    }
-    return rows
-  } finally {
-    database.close()
-  }
-}
-
-const naverCandidate = {
-  address: "서울 마포구 와우산로 123",
-  candidateId: "naver-chat-candidate",
-  category: "브런치 카페",
-  missingFields: ["phone", "hours"],
-  name: "브런치모먼트 홍대점",
-  source: "NAVER_LOCAL",
-  sourceInput: "https://naver.me/mybrunchcafe",
 }
 
 describe.skipIf(skipLivePostgresRoutes)("conversation API routes", () => {
@@ -199,6 +151,14 @@ describe.skipIf(skipLivePostgresRoutes)("conversation API routes", () => {
     expect(readConversationRows(firstPayload.sessionId)).toEqual({
       assistantMessages: rowsBeforeDuplicate.assistantMessages + 1,
       events: rowsBeforeDuplicate.events + 1,
+      hours: "평일 09:00-18:00",
+      messages: rowsBeforeDuplicate.messages + 2,
+      slots: rowsBeforeDuplicate.slots + 1,
+      state: "profile_summary",
+    })
+    expect(firstDuplicatePayload.draft).toMatchObject({
+      hours: "평일 09:00-18:00",
+      phone: "1-2342-232",
     })
   })
 

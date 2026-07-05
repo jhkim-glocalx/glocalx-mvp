@@ -34,14 +34,12 @@ class PostingDraftPersistenceUnavailableError extends Error {
 function createPostingDraftWriter(
   options: PostingDraftWriterOptions
 ): PostingDraftWriter {
-  return async (decision: PostingConversationDecision) => {
-    const database = options.database
-    if (database === undefined) {
-      throw new PostingDraftPersistenceUnavailableError(
-        "Posting draft persistence is not available for this database provider"
-      )
-    }
+  if (options.database === undefined) {
+    return async () => undefined
+  }
+  const database = options.database
 
+  return async (decision: PostingConversationDecision) => {
     switch (decision.decision) {
       case "accepted":
         return createPostDraft({
