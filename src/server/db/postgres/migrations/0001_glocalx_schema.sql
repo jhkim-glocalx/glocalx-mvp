@@ -223,4 +223,3 @@ CREATE TABLE IF NOT EXISTS conversation_events (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_conversation_events_client_event
   ON conversation_events (session_id, client_event_id);
-
