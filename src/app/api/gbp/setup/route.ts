@@ -4,9 +4,9 @@ import { gbpSetupRequestSchema } from "@/domain/schemas"
 import { setupGoogleBusinessProfile } from "@/gbp/setup"
 import {
   parseJsonRoutePayload,
-  readDemoSession,
+  readDatabaseSession,
   requiredSessionResponse,
-  withRouteDatabase,
+  withQueryableRouteDatabase,
 } from "@/server/http"
 
 export async function POST(request: NextRequest) {
@@ -15,19 +15,21 @@ export async function POST(request: NextRequest) {
     return parsed.response
   }
 
-  // GBP setup uses the authenticated store; the payload only selects stub/production mode.
-  const session = readDemoSession(request)
-  if (session === undefined) {
-    return requiredSessionResponse()
-  }
+  return withQueryableRouteDatabase(
+    async ({ adapters, gbpStore, sessionStore, storeProfileRepository }) => {
+      const session = await readDatabaseSession(request, sessionStore)
+      if (session === undefined) {
+        return requiredSessionResponse()
+      }
 
-  return withRouteDatabase(async ({ adapters, database }) => {
-    const result = await setupGoogleBusinessProfile({
-      adapters,
-      database,
-      mode: parsed.value.mode,
-      storeId: session.storeId,
-    })
-    return Response.json(result)
-  })
+      const result = await setupGoogleBusinessProfile({
+        adapters,
+        gbpStore,
+        mode: parsed.value.mode,
+        storeId: session.storeId,
+        storeProfileRepository,
+      })
+      return Response.json(result)
+    }
+  )
 }

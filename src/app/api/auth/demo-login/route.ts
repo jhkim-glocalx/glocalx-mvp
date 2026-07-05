@@ -5,29 +5,32 @@ import {
   demoStoreCookieName,
   demoStoreId,
   demoUserId,
-  ensureDemoOwnerStore,
-  getStoredSessionFromCookieValues,
   sessionCookieOptions,
 } from "@/auth/session"
+import { withQueryableRouteDatabase } from "@/server/http"
 
 export async function POST() {
-  ensureDemoOwnerStore()
+  return withQueryableRouteDatabase(async ({ sessionStore }) => {
+    const session = await sessionStore.readSessionFromCookieValues({
+      onboardingComplete: undefined,
+      storeId: demoStoreId,
+      userId: demoUserId,
+    })
+    const onboardingComplete = session?.onboardingComplete ?? false
+    const response = new NextResponse(null, {
+      headers: {
+        Location: onboardingComplete ? "/app" : "/onboarding",
+      },
+      status: 303,
+    })
 
-  const session = getStoredSessionFromCookieValues({
-    onboardingComplete: undefined,
-    storeId: demoStoreId,
-    userId: demoUserId,
+    response.cookies.set(
+      demoSessionCookieName,
+      demoUserId,
+      sessionCookieOptions
+    )
+    response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
+
+    return response
   })
-  const onboardingComplete = session?.onboardingComplete ?? false
-  const response = new NextResponse(null, {
-    headers: {
-      Location: onboardingComplete ? "/app" : "/onboarding",
-    },
-    status: 303,
-  })
-
-  response.cookies.set(demoSessionCookieName, demoUserId, sessionCookieOptions)
-  response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
-
-  return response
 }

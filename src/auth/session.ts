@@ -29,13 +29,6 @@ export const sessionCookieOptions = {
   secure: process.env.NODE_ENV === "production",
 } as const
 
-export function ensureDemoOwnerStore(): void {
-  const database = openDatabase()
-  applyMigrations(database)
-  seedDemoData(database)
-  database.close()
-}
-
 export function createDemoSession(onboardingComplete: boolean): DemoSession {
   return createSession(demoUserId, demoStoreId, onboardingComplete)
 }
@@ -64,6 +57,25 @@ type OnboardingStatusRow = {
   readonly onboarding_status: string
 }
 
+class LegacySqliteSessionHelperError extends Error {
+  readonly name = "LegacySqliteSessionHelperError"
+}
+
+function assertLegacySqliteSessionHelperAllowed(): void {
+  const provider = process.env["DATABASE_PROVIDER"]?.trim()
+  const vercelEnv = process.env["VERCEL_ENV"]
+  const isProductionLike =
+    process.env["VERCEL"] === "1" ||
+    vercelEnv === "preview" ||
+    vercelEnv === "production"
+
+  if (provider === "postgres" || isProductionLike) {
+    throw new LegacySqliteSessionHelperError(
+      "Legacy SQLite session helpers are local SQLite/test only."
+    )
+  }
+}
+
 export function isStoredSessionValid(
   database: SqliteDatabase,
   userId: string,
@@ -88,7 +100,15 @@ function isStoreOnboardingComplete(
   return row?.onboarding_status === "COMPLETED"
 }
 
-export function getStoredSessionFromCookieValues(
+export function ensureLegacyDemoOwnerStore(): void {
+  assertLegacySqliteSessionHelperAllowed()
+  const database = openDatabase()
+  applyMigrations(database)
+  seedDemoData(database)
+  database.close()
+}
+
+export function getLegacyStoredSessionFromCookieValues(
   values: SessionCookieValues
 ): DemoSession | undefined {
   const userId = values.userId?.trim()
@@ -97,7 +117,7 @@ export function getStoredSessionFromCookieValues(
     return undefined
   }
 
-  ensureDemoOwnerStore()
+  ensureLegacyDemoOwnerStore()
   const database = openDatabase()
   try {
     // The database, not the completion cookie, is the onboarding source of truth.
@@ -115,7 +135,7 @@ export function getStoredSessionFromCookieValues(
   }
 }
 
-export function completeStoredSessionOnboarding(
+export function completeLegacyStoredSessionOnboarding(
   values: Pick<SessionCookieValues, "storeId" | "userId">
 ): boolean {
   const userId = values.userId?.trim()
@@ -124,7 +144,7 @@ export function completeStoredSessionOnboarding(
     return false
   }
 
-  ensureDemoOwnerStore()
+  ensureLegacyDemoOwnerStore()
   const database = openDatabase()
   try {
     // Completion writes use the same owner/store check as session reads.

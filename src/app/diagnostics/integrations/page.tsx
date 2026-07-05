@@ -1,11 +1,4 @@
-import { cookies } from "next/headers"
-
-import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  getStoredSessionFromCookieValues,
-  onboardingCompleteCookieName,
-} from "@/auth/session"
+import { getDemoSession } from "@/auth/server-session"
 import { getIntegrationRuntimeDiagnostics } from "@/integrations/runtime-diagnostics"
 
 function isAdminDebugEnabled(): boolean {
@@ -18,12 +11,7 @@ function payloadJson(payload: unknown): string {
 }
 
 export default async function IntegrationDiagnosticsPage() {
-  const cookieStore = await cookies()
-  const session = getStoredSessionFromCookieValues({
-    onboardingComplete: cookieStore.get(onboardingCompleteCookieName)?.value,
-    storeId: cookieStore.get(demoStoreCookieName)?.value,
-    userId: cookieStore.get(demoSessionCookieName)?.value,
-  })
+  const session = await getDemoSession()
 
   const payload = !isAdminDebugEnabled()
     ? { status: "NOT_FOUND" }

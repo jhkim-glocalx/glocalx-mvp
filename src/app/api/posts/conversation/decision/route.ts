@@ -14,7 +14,7 @@ import {
 import type { PostStore } from "@/server/repositories/post-store"
 import {
   parseJsonRoutePayload,
-  readDemoSession,
+  readDatabaseSession,
   requireSessionStoreAccess,
   requiredSessionResponse,
   withQueryableRouteDatabase,
@@ -99,31 +99,29 @@ function conversationFailureResponse(error: unknown): Response {
 }
 
 export async function POST(request: NextRequest) {
-  // Posting decisions are session-scoped before accepting any conversation payload.
-  const session = readDemoSession(request)
-  if (session === undefined) {
-    return requiredSessionResponse()
-  }
-
-  const parsed = await parseJsonRoutePayload(
-    request,
-    postingDecisionRequestSchema
-  )
-  if (parsed.kind === "response") {
-    return parsed.response
-  }
-
-  // Conversation updates are rejected if the requested store is not session-owned.
-  const forbiddenResponse = requireSessionStoreAccess(
-    session,
-    parsed.value.storeId
-  )
-  if (forbiddenResponse !== undefined) {
-    return forbiddenResponse
-  }
-
   return withQueryableRouteDatabase(
-    async ({ adapters, conversationStore, postStore }) => {
+    async ({ adapters, conversationStore, postStore, sessionStore }) => {
+      const session = await readDatabaseSession(request, sessionStore)
+      if (session === undefined) {
+        return requiredSessionResponse()
+      }
+
+      const parsed = await parseJsonRoutePayload(
+        request,
+        postingDecisionRequestSchema
+      )
+      if (parsed.kind === "response") {
+        return parsed.response
+      }
+
+      const forbiddenResponse = requireSessionStoreAccess(
+        session,
+        parsed.value.storeId
+      )
+      if (forbiddenResponse !== undefined) {
+        return forbiddenResponse
+      }
+
       const draftWriter = createPostingDraftWriter({
         adapters,
         postStore,

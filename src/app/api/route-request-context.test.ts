@@ -3,10 +3,20 @@ import { describe, expect, it } from "vitest"
 
 import {
   parseJsonRoutePayload,
-  readDemoSession,
+  readDatabaseSession,
   requiredSessionResponse,
 } from "@/server/http"
 import { postDraftRequestSchema } from "@/domain/schemas"
+import type { SessionStore } from "@/server/repositories/session-store"
+
+const unusedSessionStore: SessionStore = {
+  completeOnboarding: async () => false,
+  createSession: () => {
+    throw new Error("createSession should not be called")
+  },
+  isValidStoreOwner: async () => false,
+  readSessionFromCookieValues: async () => undefined,
+}
 
 describe("shared API route request context", () => {
   it("returns the existing validation JSON when request JSON is malformed", async () => {
@@ -38,7 +48,7 @@ describe("shared API route request context", () => {
     })
 
     // When
-    const session = readDemoSession(request)
+    const session = await readDatabaseSession(request, unusedSessionStore)
     const response = requiredSessionResponse()
 
     // Then

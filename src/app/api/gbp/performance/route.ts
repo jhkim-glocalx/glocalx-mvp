@@ -1,4 +1,5 @@
-import { getDemoSession } from "@/auth/server-session"
+import type { NextRequest } from "next/server"
+
 import {
   getGbpPerformanceDashboard,
   getGbpPerformanceSummary,
@@ -6,8 +7,7 @@ import {
   type GbpPerformanceMetric,
   type GbpPerformanceSummary,
 } from "@/gbp/performance"
-import { createIntegrationAdapters } from "@/integrations"
-import { openDatabaseContext } from "@/server/db"
+import { readDatabaseSession, withQueryableRouteDatabase } from "@/server/http"
 
 const fallbackMetricKeys = [
   "impressions",
@@ -95,48 +95,48 @@ function canUseSummaryFallback(result: GbpPerformanceDashboardResult): boolean {
   )
 }
 
-async function handlePerformanceRequest() {
-  const session = await getDemoSession()
-  if (session === undefined) {
-    return Response.json(
-      {
-        message: "로그인이 필요합니다.",
-        status: "UNAUTHENTICATED",
-      },
-      { status: 401 }
-    )
-  }
-
-  const databaseContext = await openDatabaseContext()
-  const database = databaseContext.legacySqliteDatabase
-  try {
-    const adapters = createIntegrationAdapters({ database })
-    const result = await getGbpPerformanceDashboard({
-      adapters,
-      database,
-      storeId: session.storeId,
-    })
-    const responseResult = canUseSummaryFallback(result)
-      ? summaryToDashboardResult(
-          getGbpPerformanceSummary(database, session.storeId)
+async function handlePerformanceRequest(request: NextRequest) {
+  return withQueryableRouteDatabase(
+    async ({ adapters, gbpStore, sessionStore }) => {
+      const session = await readDatabaseSession(request, sessionStore)
+      if (session === undefined) {
+        return Response.json(
+          {
+            message: "로그인이 필요합니다.",
+            status: "UNAUTHENTICATED",
+          },
+          { status: 401 }
         )
-      : result
-    const status =
-      responseResult.status === "READY"
-        ? 200
-        : responseResult.status === "BLOCKED"
-          ? 409
-          : 502
-    return Response.json(responseResult, { status })
-  } finally {
-    await databaseContext.close()
-  }
+      }
+
+      const result = await getGbpPerformanceDashboard({
+        adapters,
+        gbpStore,
+        storeId: session.storeId,
+      })
+      const responseResult = canUseSummaryFallback(result)
+        ? summaryToDashboardResult(
+            await getGbpPerformanceSummary({
+              gbpStore,
+              storeId: session.storeId,
+            })
+          )
+        : result
+      const status =
+        responseResult.status === "READY"
+          ? 200
+          : responseResult.status === "BLOCKED"
+            ? 409
+            : 502
+      return Response.json(responseResult, { status })
+    }
+  )
 }
 
-export async function GET() {
-  return handlePerformanceRequest()
+export async function GET(request: NextRequest) {
+  return handlePerformanceRequest(request)
 }
 
-export async function POST() {
-  return handlePerformanceRequest()
+export async function POST(request: NextRequest) {
+  return handlePerformanceRequest(request)
 }

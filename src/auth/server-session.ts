@@ -3,20 +3,25 @@ import { cookies } from "next/headers"
 import {
   demoSessionCookieName,
   demoStoreCookieName,
-  getStoredSessionFromCookieValues,
   onboardingCompleteCookieName,
 } from "./session"
 import type { DemoSession } from "./session"
+import { openDatabaseContext } from "@/server/db"
+import { createDatabaseSessionStore } from "@/server/repositories/session-store"
 
 export async function getDemoSession(): Promise<DemoSession | undefined> {
-  // Next exposes cookies() asynchronously; session.ts still revalidates IDs.
   const cookieStore = await cookies()
-  const sessionCookie = cookieStore.get(demoSessionCookieName)?.value
-  const storeCookie = cookieStore.get(demoStoreCookieName)?.value
+  const databaseContext = await openDatabaseContext()
 
-  return getStoredSessionFromCookieValues({
-    onboardingComplete: cookieStore.get(onboardingCompleteCookieName)?.value,
-    storeId: storeCookie,
-    userId: sessionCookie,
-  })
+  try {
+    return await createDatabaseSessionStore(
+      databaseContext.queryable
+    ).readSessionFromCookieValues({
+      onboardingComplete: cookieStore.get(onboardingCompleteCookieName)?.value,
+      storeId: cookieStore.get(demoStoreCookieName)?.value,
+      userId: cookieStore.get(demoSessionCookieName)?.value,
+    })
+  } finally {
+    await databaseContext.close()
+  }
 }

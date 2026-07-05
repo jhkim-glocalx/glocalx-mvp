@@ -9,10 +9,10 @@ import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
 import {
-  completeStoredSessionOnboarding,
+  completeLegacyStoredSessionOnboarding,
   demoStoreId,
   demoUserId,
-  getStoredSessionFromCookieValues,
+  getLegacyStoredSessionFromCookieValues,
 } from "./session"
 
 const onboardingStatuses = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"] as const
@@ -77,7 +77,7 @@ describe("stored session onboarding status", () => {
       updateDemoStoreStatus(database, statusCase.status)
 
       // When
-      const session = getStoredSessionFromCookieValues({
+      const session = getLegacyStoredSessionFromCookieValues({
         onboardingComplete: statusCase.expectedComplete ? "false" : "true",
         storeId: demoStoreId,
         userId: demoUserId,
@@ -99,13 +99,13 @@ describe("stored session onboarding status", () => {
     updateDemoStoreStatus(database, "NOT_STARTED")
 
     // When
-    const firstSession = getStoredSessionFromCookieValues({
+    const firstSession = getLegacyStoredSessionFromCookieValues({
       onboardingComplete: "true",
       storeId: demoStoreId,
       userId: demoUserId,
     })
     updateDemoStoreStatus(database, "COMPLETED")
-    const secondSession = getStoredSessionFromCookieValues({
+    const secondSession = getLegacyStoredSessionFromCookieValues({
       onboardingComplete: "false",
       storeId: demoStoreId,
       userId: demoUserId,
@@ -135,7 +135,7 @@ describe("stored session onboarding status", () => {
       )
 
     // When
-    const completed = completeStoredSessionOnboarding({
+    const completed = completeLegacyStoredSessionOnboarding({
       storeId: demoStoreId,
       userId: demoUserId,
     })
@@ -157,6 +157,22 @@ describe("stored session onboarding status", () => {
       onboarding_status: "COMPLETED",
       phone: "02-555-0142",
     })
+    database.close()
+  })
+
+  it("rejects legacy SQLite session helpers in Postgres mode", async () => {
+    // Given
+    const database = await createDatabase()
+    vi.stubEnv("DATABASE_PROVIDER", "postgres")
+
+    // When / Then
+    expect(() =>
+      getLegacyStoredSessionFromCookieValues({
+        onboardingComplete: "true",
+        storeId: demoStoreId,
+        userId: demoUserId,
+      })
+    ).toThrow("Legacy SQLite session helpers are local SQLite/test only.")
     database.close()
   })
 })

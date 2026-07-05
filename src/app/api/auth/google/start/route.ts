@@ -6,8 +6,6 @@ import {
   demoStoreCookieName,
   demoStoreId,
   demoUserId,
-  ensureDemoOwnerStore,
-  getStoredSessionFromCookieValues,
   sessionCookieOptions,
 } from "@/auth/session"
 import {
@@ -20,6 +18,7 @@ import {
   googleOAuthStateCookieName,
   googleOAuthStateCookieOptions,
 } from "@/gbp/oauth-callback"
+import { withQueryableRouteDatabase } from "@/server/http"
 
 export async function POST(request: NextRequest) {
   // Real Google OAuth is used only when env opts out of the demo branch.
@@ -57,24 +56,27 @@ export async function POST(request: NextRequest) {
     return response
   }
 
-  ensureDemoOwnerStore()
+  return withQueryableRouteDatabase(async ({ sessionStore }) => {
+    const session = await sessionStore.readSessionFromCookieValues({
+      onboardingComplete: undefined,
+      storeId: demoStoreId,
+      userId: demoUserId,
+    })
+    const onboardingComplete = session?.onboardingComplete ?? false
+    const response = new NextResponse(null, {
+      headers: {
+        Location: onboardingComplete ? "/app" : "/onboarding",
+      },
+      status: 303,
+    })
 
-  // Demo login still consults stored onboarding state before first-login routing.
-  const session = getStoredSessionFromCookieValues({
-    onboardingComplete: undefined,
-    storeId: demoStoreId,
-    userId: demoUserId,
+    response.cookies.set(
+      demoSessionCookieName,
+      demoUserId,
+      sessionCookieOptions
+    )
+    response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
+
+    return response
   })
-  const onboardingComplete = session?.onboardingComplete ?? false
-  const response = new NextResponse(null, {
-    headers: {
-      Location: onboardingComplete ? "/app" : "/onboarding",
-    },
-    status: 303,
-  })
-
-  response.cookies.set(demoSessionCookieName, demoUserId, sessionCookieOptions)
-  response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
-
-  return response
 }

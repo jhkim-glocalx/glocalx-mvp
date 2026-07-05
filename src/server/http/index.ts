@@ -4,18 +4,17 @@ import type { z } from "zod"
 import {
   demoSessionCookieName,
   demoStoreCookieName,
-  getStoredSessionFromCookieValues,
   onboardingCompleteCookieName,
 } from "@/auth/session"
 import type { DemoSession } from "@/auth/session"
 import { parseRoutePayload } from "@/domain/schemas"
 import type { ParsedValidationIssue } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
-import type { DatabaseContext } from "@/server/db"
 import { openDatabaseContext, resolveDatabaseConfig } from "@/server/db"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 import { createDatabaseConversationStore } from "@/server/repositories/conversation-store"
 import type { ConversationStore } from "@/server/repositories/conversation-store"
+import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
 import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
 import { createDatabasePostStore } from "@/server/repositories/post-store"
@@ -42,14 +41,10 @@ export type ParsedJsonRoutePayload<TValue> =
       readonly response: Response
     }
 
-export type RouteDatabaseContext = {
-  readonly adapters: ReturnType<typeof createIntegrationAdapters>
-  readonly database: DatabaseContext["legacySqliteDatabase"]
-}
-
 export type QueryableRouteDatabaseContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
   readonly conversationStore: ConversationStore
+  readonly gbpStore: ReturnType<typeof createDatabaseGbpStore>
   readonly legacySqliteDatabase?: SqliteDatabase
   readonly oauthIdentityRepository: ReturnType<
     typeof createDatabaseOAuthIdentityRepository
@@ -146,15 +141,6 @@ export function forbiddenStoreResponse(): Response {
   )
 }
 
-export function readDemoSession(request: NextRequest): DemoSession | undefined {
-  return getStoredSessionFromCookieValues({
-    onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
-      ?.value,
-    storeId: request.cookies.get(demoStoreCookieName)?.value,
-    userId: request.cookies.get(demoSessionCookieName)?.value,
-  })
-}
-
 export async function readDatabaseSession(
   request: NextRequest,
   sessionStore: SessionStore
@@ -174,22 +160,6 @@ export function requireSessionStoreAccess(
   return storeId === session.storeId ? undefined : forbiddenStoreResponse()
 }
 
-export async function withRouteDatabase<TResponse extends Response>(
-  handler: (context: RouteDatabaseContext) => Promise<TResponse> | TResponse
-): Promise<TResponse> {
-  const databaseContext = await openDatabaseContext()
-  const database = databaseContext.legacySqliteDatabase
-
-  try {
-    return await handler({
-      adapters: createIntegrationAdapters({ database }),
-      database,
-    })
-  } finally {
-    await databaseContext.close()
-  }
-}
-
 export async function withQueryableRouteDatabase<TResponse extends Response>(
   handler: (
     context: QueryableRouteDatabaseContext
@@ -203,6 +173,7 @@ export async function withQueryableRouteDatabase<TResponse extends Response>(
     return await handler({
       adapters: createIntegrationAdapters(),
       conversationStore: createDatabaseConversationStore(queryable),
+      gbpStore: createDatabaseGbpStore(queryable),
       ...(databaseConfig.provider === "sqlite"
         ? { legacySqliteDatabase: databaseContext.legacySqliteDatabase }
         : {}),

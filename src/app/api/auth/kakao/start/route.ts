@@ -6,8 +6,6 @@ import {
   demoStoreCookieName,
   demoStoreId,
   demoUserId,
-  ensureDemoOwnerStore,
-  getStoredSessionFromCookieValues,
   sessionCookieOptions,
 } from "@/auth/session"
 import {
@@ -17,27 +15,32 @@ import {
   kakaoOAuthStateCookieOptions,
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
+import { withQueryableRouteDatabase } from "@/server/http"
 
-function createDemoSessionRedirect(): NextResponse {
-  ensureDemoOwnerStore()
+async function createDemoSessionRedirect(): Promise<NextResponse> {
+  return withQueryableRouteDatabase(async ({ sessionStore }) => {
+    const session = await sessionStore.readSessionFromCookieValues({
+      onboardingComplete: undefined,
+      storeId: demoStoreId,
+      userId: demoUserId,
+    })
+    const onboardingComplete = session?.onboardingComplete ?? false
+    const response = new NextResponse(null, {
+      headers: {
+        Location: onboardingComplete ? "/app" : "/onboarding",
+      },
+      status: 303,
+    })
 
-  const session = getStoredSessionFromCookieValues({
-    onboardingComplete: undefined,
-    storeId: demoStoreId,
-    userId: demoUserId,
+    response.cookies.set(
+      demoSessionCookieName,
+      demoUserId,
+      sessionCookieOptions
+    )
+    response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
+
+    return response
   })
-  const onboardingComplete = session?.onboardingComplete ?? false
-  const response = new NextResponse(null, {
-    headers: {
-      Location: onboardingComplete ? "/app" : "/onboarding",
-    },
-    status: 303,
-  })
-
-  response.cookies.set(demoSessionCookieName, demoUserId, sessionCookieOptions)
-  response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
-
-  return response
 }
 
 function createKakaoConfigErrorRedirect(): NextResponse {
@@ -52,7 +55,7 @@ function createKakaoConfigErrorRedirect(): NextResponse {
 export async function POST(request: NextRequest) {
   // Stub mode bypasses Kakao config so local demos do not depend on credentials.
   if (process.env["APP_INTEGRATION_MODE"] === "stub") {
-    return createDemoSessionRedirect()
+    return await createDemoSessionRedirect()
   }
 
   const missingEnvVars = missingKakaoOAuthEnvVars(process.env)

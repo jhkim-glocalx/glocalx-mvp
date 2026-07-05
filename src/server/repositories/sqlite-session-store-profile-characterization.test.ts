@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
 import {
-  completeStoredSessionOnboarding,
+  completeLegacyStoredSessionOnboarding,
   demoStoreId,
   demoUserId,
-  getStoredSessionFromCookieValues,
+  getLegacyStoredSessionFromCookieValues,
 } from "@/auth/session"
 import { getConfirmedGbpStoreProfile } from "@/gbp/store-profile"
 import { confirmStoreProfile } from "@/onboarding/store-profile"
@@ -31,21 +31,21 @@ describe("SQLite session and store profile characterization", () => {
           .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
           .run("IN_PROGRESS", demoStoreId)
 
-        const initialSession = getStoredSessionFromCookieValues({
+        const initialSession = getLegacyStoredSessionFromCookieValues({
           onboardingComplete: "true",
           storeId: demoStoreId,
           userId: demoUserId,
         })
-        const completed = completeStoredSessionOnboarding({
+        const completed = completeLegacyStoredSessionOnboarding({
           storeId: demoStoreId,
           userId: demoUserId,
         })
-        const completedSession = getStoredSessionFromCookieValues({
+        const completedSession = getLegacyStoredSessionFromCookieValues({
           onboardingComplete: "false",
           storeId: demoStoreId,
           userId: demoUserId,
         })
-        const missingSession = getStoredSessionFromCookieValues({
+        const missingSession = getLegacyStoredSessionFromCookieValues({
           onboardingComplete: "true",
           storeId: "missing-store",
           userId: demoUserId,

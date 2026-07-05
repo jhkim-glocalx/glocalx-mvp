@@ -4,34 +4,35 @@ import { onboardingSlotTurnRequestSchema } from "@/domain/schemas"
 import { processOnboardingSlotTurn } from "@/onboarding/conversation"
 import {
   parseJsonRoutePayload,
-  readDemoSession,
+  readDatabaseSession,
   requiredSessionResponse,
   withQueryableRouteDatabase,
 } from "@/server/http"
 
 export async function POST(request: NextRequest) {
-  // Slot turns are scoped to the session store before any client payload is used.
-  const session = readDemoSession(request)
-  if (session === undefined) {
-    return requiredSessionResponse()
-  }
+  return withQueryableRouteDatabase(
+    async ({ adapters, conversationStore, sessionStore }) => {
+      const session = await readDatabaseSession(request, sessionStore)
+      if (session === undefined) {
+        return requiredSessionResponse()
+      }
 
-  const parsed = await parseJsonRoutePayload(
-    request,
-    onboardingSlotTurnRequestSchema
+      const parsed = await parseJsonRoutePayload(
+        request,
+        onboardingSlotTurnRequestSchema
+      )
+      if (parsed.kind === "response") {
+        return parsed.response
+      }
+
+      const result = await processOnboardingSlotTurn({
+        adapters,
+        conversationStore,
+        request: parsed.value,
+        storeId: session.storeId,
+      })
+      const status = result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
+      return Response.json(result, { status })
+    }
   )
-  if (parsed.kind === "response") {
-    return parsed.response
-  }
-
-  return withQueryableRouteDatabase(async ({ adapters, conversationStore }) => {
-    const result = await processOnboardingSlotTurn({
-      adapters,
-      conversationStore,
-      request: parsed.value,
-      storeId: session.storeId,
-    })
-    const status = result["status"] === "CONVERSATION_NOT_FOUND" ? 404 : 200
-    return Response.json(result, { status })
-  })
 }
