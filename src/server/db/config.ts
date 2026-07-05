@@ -15,6 +15,9 @@ const databaseConfigSchema = z.object({
   DATABASE_POOL_MAX: z.string().optional(),
   DATABASE_PROVIDER: databaseProviderSchema,
   DATABASE_URL: z.string().optional(),
+  DATABASE_URL_DIRECT: z.string().optional(),
+  VERCEL: z.string().optional(),
+  VERCEL_ENV: z.string().optional(),
 })
 
 export type DatabaseProvider = z.infer<
@@ -36,6 +39,8 @@ export type DatabaseConfig = SqliteDatabaseConfig | PostgresDatabaseConfig
 export type DatabaseConfigurationCode =
   | "DATABASE_POOL_MAX_INVALID"
   | "DATABASE_PROVIDER_UNSUPPORTED"
+  | "DATABASE_URL_DIRECT_INVALID"
+  | "DATABASE_URL_DIRECT_REQUIRED"
   | "DATABASE_URL_INVALID"
   | "DATABASE_URL_REQUIRED"
 
@@ -124,13 +129,83 @@ function readPostgresRuntimeUrl(rawRuntimeUrl: string | undefined): string {
   return runtimeUrl
 }
 
+function readPostgresDirectUrl(rawDirectUrl: string | undefined): string {
+  const directUrl = rawDirectUrl?.trim()
+  if (!directUrl) {
+    throw new DatabaseConfigurationError({
+      code: "DATABASE_URL_DIRECT_REQUIRED",
+      message:
+        "DATABASE_URL_DIRECT is required for production-like Postgres deployments",
+      provider: "postgres",
+    })
+  }
+
+  try {
+    const parsedUrl = new URL(directUrl)
+    if (!postgresProtocols.has(parsedUrl.protocol)) {
+      throw new DatabaseConfigurationError({
+        code: "DATABASE_URL_DIRECT_INVALID",
+        message:
+          "DATABASE_URL_DIRECT must use a postgres:// or postgresql:// URL",
+        provider: "postgres",
+      })
+    }
+  } catch (error) {
+    if (error instanceof DatabaseConfigurationError) {
+      throw error
+    }
+
+    throw new DatabaseConfigurationError({
+      code: "DATABASE_URL_DIRECT_INVALID",
+      message: "DATABASE_URL_DIRECT must be a valid Postgres connection URL",
+      provider: "postgres",
+    })
+  }
+
+  return directUrl
+}
+
+function isProductionLikeDeployment(
+  env: Readonly<Record<string, string | undefined>>
+): boolean {
+  return (
+    env["VERCEL"] === "1" ||
+    env["VERCEL_ENV"] === "preview" ||
+    env["VERCEL_ENV"] === "production"
+  )
+}
+
+function rejectProductionLikeSqliteProvider(): never {
+  throw new DatabaseConfigurationError({
+    code: "DATABASE_PROVIDER_UNSUPPORTED",
+    message:
+      "Production-like deployments require DATABASE_PROVIDER=postgres; SQLite is local-only",
+    provider: "sqlite",
+  })
+}
+
+function rejectMissingProductionLikePostgresProvider(
+  provider: string | undefined
+): never {
+  throw new DatabaseConfigurationError({
+    code: "DATABASE_PROVIDER_UNSUPPORTED",
+    message:
+      "Production-like deployments require DATABASE_PROVIDER=postgres after both Postgres URLs are configured",
+    provider,
+  })
+}
+
 export function resolveDatabaseConfig(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): DatabaseConfig {
+  const rawProvider = env["DATABASE_PROVIDER"]?.trim()
   const parsed = databaseConfigSchema.safeParse({
     DATABASE_POOL_MAX: env["DATABASE_POOL_MAX"],
     DATABASE_PROVIDER: env["DATABASE_PROVIDER"],
     DATABASE_URL: env["DATABASE_URL"],
+    DATABASE_URL_DIRECT: env["DATABASE_URL_DIRECT"],
+    VERCEL: env["VERCEL"],
+    VERCEL_ENV: env["VERCEL_ENV"],
   })
 
   if (!parsed.success) {
@@ -142,6 +217,25 @@ export function resolveDatabaseConfig(
           : `Unsupported database provider: ${env["DATABASE_PROVIDER"]}`,
       provider: env["DATABASE_PROVIDER"],
     })
+  }
+
+  if (isProductionLikeDeployment(parsed.data)) {
+    if (rawProvider === "sqlite") {
+      return rejectProductionLikeSqliteProvider()
+    }
+
+    const runtimeUrl = readPostgresRuntimeUrl(parsed.data.DATABASE_URL)
+    readPostgresDirectUrl(parsed.data.DATABASE_URL_DIRECT)
+
+    if (rawProvider !== "postgres") {
+      return rejectMissingProductionLikePostgresProvider(rawProvider)
+    }
+
+    return {
+      poolMax: parsePostgresPoolMax(parsed.data.DATABASE_POOL_MAX),
+      provider: "postgres",
+      runtimeUrl,
+    }
   }
 
   switch (parsed.data.DATABASE_PROVIDER) {

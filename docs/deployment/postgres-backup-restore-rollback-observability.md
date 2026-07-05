@@ -22,6 +22,11 @@ Do not use pooled transaction-pooler URLs for dump, restore, migration, schema
 verification, replication, or admin sessions. Do not use direct URLs for normal
 application request traffic.
 
+Production-like deployments (`VERCEL=1`, `VERCEL_ENV=preview`, or
+`VERCEL_ENV=production`) validate both URL roles at startup. The direct URL is a
+release and operations safety requirement; request handlers continue to use the
+pooled `DATABASE_URL`.
+
 ## Backup Policy
 
 | Environment     | Frequency                                                                                                                                                     | Owner                                     | Required evidence                                                                                                                                       |
@@ -103,6 +108,7 @@ over staging or production in place.
    VERCEL_ENV=preview \
    DATABASE_PROVIDER=postgres \
    DATABASE_URL=[pooled-non-production-url] \
+   DATABASE_URL_DIRECT="$RESTORE_DATABASE_URL_DIRECT" \
    APP_INTEGRATION_MODE=stub \
    npm run test -- src/server/db
    ```
@@ -126,6 +132,7 @@ pg_dump --format=custom --no-owner --no-acl --file .omo/evidence/task-16-local.d
 createdb "[local-docker-restore-direct-url]"
 pg_restore --clean --if-exists --no-owner --no-acl --dbname "[local-docker-restore-direct-url]" .omo/evidence/task-16-local.dump
 DATABASE_URL_DIRECT=[local-docker-restore-direct-url] VERCEL_ENV=preview DATABASE_PROVIDER=postgres npm run db:pg:verify
+DATABASE_URL=[local-docker-pooled-or-direct-runtime-url-from-docker-compose] DATABASE_URL_DIRECT=[local-docker-restore-direct-url] VERCEL_ENV=preview DATABASE_PROVIDER=postgres npm run test -- src/server/db
 ```
 
 This fallback proves the dump/restore mechanics and schema verification path. It
@@ -237,6 +244,8 @@ Do not promote or declare backup readiness if any condition is true:
 
 - No non-production restore drill has been run and recorded.
 - The only available database URL is production.
+- A production-like deployment would start without `DATABASE_PROVIDER=postgres`,
+  pooled `DATABASE_URL`, or direct `DATABASE_URL_DIRECT`.
 - `DATABASE_URL_DIRECT` is missing for migration, backup, restore, or admin work.
 - Dump/restore uses the pooled URL.
 - Schema verification fails on the restored target.

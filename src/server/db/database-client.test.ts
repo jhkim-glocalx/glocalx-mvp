@@ -90,6 +90,75 @@ describe("database client boundary", () => {
     })
   })
 
+  it("requires Postgres URLs instead of defaulting to SQLite in Vercel production", () => {
+    // Given: a production-like Vercel runtime without database configuration.
+    vi.stubEnv("VERCEL", "1")
+    vi.stubEnv("VERCEL_ENV", "production")
+    vi.stubEnv("DATABASE_PROVIDER", "")
+    vi.stubEnv("DATABASE_URL", "")
+    vi.stubEnv("DATABASE_URL_DIRECT", "")
+
+    // When / Then: the environment boundary rejects the missing pooled URL first.
+    expect(() => resolveDatabaseConfig()).toThrow(
+      expect.objectContaining({
+        code: "DATABASE_URL_REQUIRED",
+        name: "DatabaseConfigurationError",
+      })
+    )
+  })
+
+  it("rejects explicit SQLite in production-like deployments", () => {
+    // Given: a preview deployment explicitly selects the local-only provider.
+    vi.stubEnv("VERCEL_ENV", "preview")
+    vi.stubEnv("DATABASE_PROVIDER", "sqlite")
+
+    // When / Then: the environment boundary rejects SQLite before opening it.
+    expect(() => resolveDatabaseConfig()).toThrow(
+      expect.objectContaining({
+        code: "DATABASE_PROVIDER_UNSUPPORTED",
+        name: "DatabaseConfigurationError",
+        provider: "sqlite",
+      })
+    )
+  })
+
+  it("requires a direct Postgres URL in production-like deployments", () => {
+    // Given: production-like Postgres mode has the pooled runtime URL only.
+    vi.stubEnv("VERCEL", "1")
+    vi.stubEnv("DATABASE_PROVIDER", "postgres")
+    vi.stubEnv("DATABASE_URL", "postgres://app:secret@localhost:5432/glocalx")
+    vi.stubEnv("DATABASE_URL_DIRECT", "")
+
+    // When / Then: the release-safety direct URL requirement is enforced.
+    expect(() => resolveDatabaseConfig()).toThrow(
+      expect.objectContaining({
+        code: "DATABASE_URL_DIRECT_REQUIRED",
+        name: "DatabaseConfigurationError",
+      })
+    )
+  })
+
+  it("resolves pooled runtime URL when production-like Postgres config is complete", () => {
+    // Given: production-like Postgres mode has both required URL roles.
+    vi.stubEnv("VERCEL_ENV", "production")
+    vi.stubEnv("DATABASE_PROVIDER", "postgres")
+    vi.stubEnv("DATABASE_URL", "postgres://app:secret@localhost:5432/glocalx")
+    vi.stubEnv(
+      "DATABASE_URL_DIRECT",
+      "postgres://admin:secret@localhost:5432/glocalx"
+    )
+
+    // When: the environment boundary is parsed.
+    const config = resolveDatabaseConfig()
+
+    // Then: app traffic still uses the pooled runtime URL.
+    expect(config).toEqual({
+      poolMax: 5,
+      provider: "postgres",
+      runtimeUrl: "postgres://app:secret@localhost:5432/glocalx",
+    })
+  })
+
   it("throws DATABASE_URL_REQUIRED when Postgres runtime URL is missing", async () => {
     // Given: Postgres mode is selected without a pooled runtime URL.
     vi.stubEnv("DATABASE_PROVIDER", "postgres")

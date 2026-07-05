@@ -38,6 +38,27 @@ npm run dev -- --hostname 127.0.0.1 --port 3000
 
 Copy `.env.example` to `.env.local` and keep real credentials out of git. Stub mode is the default until Naver Developers and Google Business Profile credentials are available.
 
+Local development and tests may use the default SQLite fallback:
+
+```bash
+DATABASE_PROVIDER=sqlite
+GLOCALX_DB_PATH=.glocalx/dev.db
+```
+
+Production-like deployments do not allow SQLite or the default `/tmp` database
+fallback. Any Vercel runtime (`VERCEL=1`) and any `VERCEL_ENV=preview` or
+`VERCEL_ENV=production` runtime must set:
+
+```bash
+DATABASE_PROVIDER=postgres
+DATABASE_URL=[pooled-postgres-url]
+DATABASE_URL_DIRECT=[direct-postgres-url]
+```
+
+Application request traffic uses pooled `DATABASE_URL`. `DATABASE_URL_DIRECT` is
+validated in production-like deployments so migrations, backup, restore, and
+admin workflows cannot ship without a direct connection configured.
+
 ## Integration Notes
 
 ### Naver Store Search

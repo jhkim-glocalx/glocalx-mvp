@@ -11,8 +11,9 @@ the first implementation target for this plan. Supabase is comparative only and
 is not implemented in this plan unless the CTO later changes the provider
 decision.
 
-SQLite remains a temporary local fallback until Postgres development and staging
-are proven. It should not become the v2 production architecture.
+SQLite remains a temporary local/dev/test fallback until Postgres development
+and staging are proven. It is not allowed in production-like deployments and
+should not become the v2 production architecture.
 
 Runtime and operational connection strings have separate roles:
 
@@ -50,6 +51,10 @@ runtime assumptions.
   SQLite-specific behavior.
 - Local development can keep SQLite only as a temporary fallback while Postgres
   dev and staging are stabilized.
+- Any Vercel runtime (`VERCEL=1`) and any `VERCEL_ENV=preview` or
+  `VERCEL_ENV=production` runtime must resolve `DATABASE_PROVIDER=postgres` with
+  both `DATABASE_URL` and `DATABASE_URL_DIRECT`; it must not fall back to
+  SQLite or `/tmp`.
 - Application code must use the pooled `DATABASE_URL` for normal runtime
   database access.
 - Migration, backup, restore, replication, and admin workflows must use
@@ -64,6 +69,10 @@ runtime assumptions.
 - Do not paste database connection strings into docs, tickets, screenshots, or
   evidence files.
 - Do not add provider secrets to committed files.
+- Do not use `DATABASE_PROVIDER` as a vendor label. It is the runtime selector
+  and supports only `sqlite` or `postgres`.
+- Do not allow SQLite in Vercel preview or production. Missing production-like
+  Postgres configuration must fail before a SQLite database opens.
 - Do not use the pooled URL for schema migrations, dump/restore, long analytics,
   logical replication, or admin tasks that need a persistent session.
 - Do not use transaction pooling features that require persistent sessions.
@@ -86,10 +95,11 @@ Cutover should be staged:
 5. Promote only after staging evidence confirms runtime queries use the pooled
    URL and operational commands use the direct URL.
 
-Rollback should preserve a known-good SQLite fallback only during the transition
-window. After Postgres staging and production are proven, SQLite fallback should
-be removed or narrowed to tests and offline fixtures so production behavior has
-one database model.
+Rollback should preserve a known-good SQLite fallback only for local/dev/test
+during the transition window. The fallback sunsets for deployable runtimes now:
+Vercel preview and production must require Postgres. After Postgres staging and
+production are proven, SQLite fallback should be removed or narrowed to tests and
+offline fixtures so production behavior has one database model.
 
 ## References
 

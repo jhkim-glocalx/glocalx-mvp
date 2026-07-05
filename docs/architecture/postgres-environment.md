@@ -7,12 +7,12 @@ examples.
 
 ## Required Variables
 
-| Variable              | Required value                                                               | Secret handling                                                                       |
-| --------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `DATABASE_PROVIDER`   | `[postgres-provider]`, for example the selected managed Postgres vendor name | Non-secret label only.                                                                |
-| `DATABASE_URL`        | `[pooled-postgres-url]`                                                      | Secret. Use the pooled application connection URL.                                    |
-| `DATABASE_URL_DIRECT` | `[direct-postgres-url]`                                                      | Secret. Use only for migrations, backups, restore jobs, replication, and admin tasks. |
-| `DATABASE_POOL_MAX`   | `[max-application-pool-connections]`                                         | Non-secret numeric pool limit. Tune per environment and provider limits.              |
+| Variable              | Required value                                                                        | Secret handling                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `DATABASE_PROVIDER`   | `postgres` for production-like deployments; `sqlite` only for local/dev/test fallback | Non-secret provider selector. Supported values are `sqlite` and `postgres`, not vendor names. |
+| `DATABASE_URL`        | `[pooled-postgres-url]`                                                               | Secret. Use the pooled application connection URL.                                            |
+| `DATABASE_URL_DIRECT` | `[direct-postgres-url]`                                                               | Secret. Use only for migrations, backups, restore jobs, replication, and admin tasks.         |
+| `DATABASE_POOL_MAX`   | `[max-application-pool-connections]`                                                  | Non-secret numeric pool limit. Tune per environment and provider limits.                      |
 
 Do not paste real database URLs into `.env.example`, markdown, source comments,
 tests, logs, screenshots, or issue descriptions. If a value is needed in
@@ -22,20 +22,38 @@ documentation, use bracketed placeholders like `[pooled-postgres-url]`.
 
 Local development:
 
-- Developers may keep using the existing local development flow until the
-  Postgres adapter lands.
+- Developers may keep using the existing SQLite local development fallback while
+  Postgres development and staging remain in transition.
+- When `DATABASE_PROVIDER` is unset, empty, or `sqlite` outside production-like
+  environments, the app uses local SQLite. `GLOCALX_DB_PATH` may override the
+  default `.glocalx/dev.db` path.
 - When testing Postgres locally, set `DATABASE_PROVIDER`, `DATABASE_URL`,
   `DATABASE_URL_DIRECT`, and `DATABASE_POOL_MAX` in a private `.env` file or in
   the local shell session.
 - Use a non-production database for local work. Never reuse staging or
   production credentials on a developer machine.
 
+Production-like deployments:
+
+- Any runtime with `VERCEL=1`, `VERCEL_ENV=preview`, or
+  `VERCEL_ENV=production` is production-like for database configuration.
+- Production-like deployments must set `DATABASE_PROVIDER=postgres`,
+  `DATABASE_URL=[pooled-postgres-url]`, and
+  `DATABASE_URL_DIRECT=[direct-postgres-url]`.
+- Missing pooled runtime URL fails with `DATABASE_URL_REQUIRED`; the app must
+  not resolve SQLite or write durable state to `/tmp`.
+- Explicit `DATABASE_PROVIDER=sqlite` fails with a typed configuration error
+  before SQLite opens.
+- `DATABASE_URL_DIRECT` is validated as a release and operations safety gate in
+  production-like environments. Application request handlers still use the
+  pooled `DATABASE_URL`.
+
 Staging and preview:
 
 - Vercel preview deployments should receive database variables through the
   deployment environment, not through committed files.
 - `DATABASE_URL` must point at the pooled connection endpoint for web traffic.
-- `DATABASE_URL_DIRECT` may be configured for migration or administrative
+- `DATABASE_URL_DIRECT` must be configured for migration or administrative
   workflows, but application request handlers should not use it.
 - Set `DATABASE_POOL_MAX` conservatively because preview deployments can scale
   horizontally and exhaust provider connection limits.
@@ -66,7 +84,6 @@ should keep pooled queries stateless.
 
 ## `.env.example` Status
 
-`.env.example` changes are deferred for this task. The main checkout currently
-has dirty `.env.example` WIP that must be preserved, so this task records the
-required database contract in docs only and leaves the env template for a later
-explicit merge.
+`.env.example` includes local SQLite defaults plus bracketed Postgres URL
+placeholders. Keep real database URLs in `.env.local`, the local shell, or the
+deployment secret manager only.

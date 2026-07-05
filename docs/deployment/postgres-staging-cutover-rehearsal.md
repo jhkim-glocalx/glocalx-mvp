@@ -34,6 +34,8 @@ validation, use the placeholder values from `.env.example`, keep
 
 Production gate language:
 
+- Vercel preview and production deployments must never rely on SQLite or a
+  default `/tmp` database path.
 - `VERCEL_ENV=production` must not be changed by this rehearsal.
 - Production may use `DATABASE_PROVIDER=postgres` only after staging evidence
   proves schema migration, demo seed, SQLite export/import/reconcile, app
@@ -58,6 +60,9 @@ were provided; live migration, seed, import, runtime, and e2e steps were not run
 
 Use the pooled URL for web/serverless app traffic. Use the direct URL for
 schema, import, backup, restore, replication, long analytics, and admin tasks.
+Production-like app startup also validates that `DATABASE_URL_DIRECT` is present
+so operational workflows cannot ship unconfigured, but request handlers continue
+to use pooled `DATABASE_URL`.
 
 | Step or command                                | URL role        | Notes                                                         |
 | ---------------------------------------------- | --------------- | ------------------------------------------------------------- |
@@ -179,11 +184,13 @@ Run from a clean branch checkout in preview/staging mode.
     ```bash
     VERCEL_ENV=preview DATABASE_PROVIDER=postgres \
       DATABASE_URL=[pooled-preview-postgres-url] \
+      DATABASE_URL_DIRECT=[direct-preview-postgres-url] \
       APP_INTEGRATION_MODE=stub \
       npm run build
 
     VERCEL_ENV=preview DATABASE_PROVIDER=postgres \
       DATABASE_URL=[pooled-preview-postgres-url] \
+      DATABASE_URL_DIRECT=[direct-preview-postgres-url] \
       APP_INTEGRATION_MODE=stub \
       npm run dev -- --hostname 127.0.0.1 --port 3000
     ```
@@ -195,8 +202,9 @@ Run from a clean branch checkout in preview/staging mode.
 
     VERCEL_ENV=preview DATABASE_PROVIDER=postgres \
       DATABASE_URL=[pooled-preview-postgres-url] \
+      DATABASE_URL_DIRECT=[direct-preview-postgres-url] \
       APP_INTEGRATION_MODE=stub \
-      PLAYWRIGHT_WEB_SERVER_COMMAND="VERCEL_ENV=preview DATABASE_PROVIDER=postgres DATABASE_URL=[pooled-preview-postgres-url] APP_INTEGRATION_MODE=stub npm run dev -- --hostname 127.0.0.1 --port 3000" \
+      PLAYWRIGHT_WEB_SERVER_COMMAND="VERCEL_ENV=preview DATABASE_PROVIDER=postgres DATABASE_URL=[pooled-preview-postgres-url] DATABASE_URL_DIRECT=[direct-preview-postgres-url] APP_INTEGRATION_MODE=stub npm run dev -- --hostname 127.0.0.1 --port 3000" \
       npm run e2e:postgres
 
     npm run typecheck
