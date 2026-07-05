@@ -1,0 +1,198 @@
+Task 13 alias fix evidence
+Timestamp UTC: 2026-07-05T04:23:34Z
+Branch: feat/v2-postgres-architecture
+
+Scope
+- Changed source/test file: src/server/repositories/post-store.test.ts
+- Evidence file: .omo/evidence/task-13-alias-fix-v1-to-v2-postgres-architecture.txt
+- Existing dirty evidence file preserved: .omo/evidence/task-13-cleanup.txt
+
+Red/gate proof
+- Gate source read and verified: .omo/evidence/todo-13-repair-gate-review.md.
+- Gate blocker: src/server/repositories/post-store.test.ts used `post_drafts.status AS draftStatus`; PostgreSQL folds that unquoted alias to `draftstatus`, while postRowsSchema expects `draftStatus`.
+- Direct pre-fix scan before edit: `rg -n "AS draftStatus" src/server/repositories/post-store.test.ts` returned line 58 with the unquoted alias.
+
+Repair
+- Replaced the query alias with `AS "draftStatus"` so PostgreSQL preserves camelCase and SQLite remains compatible.
+
+Verification log follows.
+
+## Timestamp
+2026-07-05T04:22:21Z
+
+## Post-fix alias scans
+$ rg -n "AS draftStatus" src/server/repositories/post-store.test.ts
+exit=1
+$ rg -n "AS \\"draftStatus\\"|draftStatus" src/server/repositories/post-store.test.ts
+16:  draftStatus: z.literal("PUBLISHED"),
+58:      'SELECT post_drafts.status AS "draftStatus", (SELECT COUNT(*) FROM post_publish_attempts WHERE idempotency_key = ?) AS attempts FROM post_drafts WHERE id = ?',
+75:  expect(row).toEqual({ attempts: 1, draftStatus: "PUBLISHED" })
+exit=0
+
+## Command: npm run test -- src/server/repositories/post-store.test.ts --reporter=verbose
+
+> glocalx-mvp@0.1.0 test
+> vitest run src/server/repositories/post-store.test.ts --reporter=verbose
+
+
+ RUN  v4.1.8 /private/tmp/glocalx-v2-postgres-architecture
+
+stdout | src/server/repositories/post-store.test.ts > post store queryable boundary > runs Postgres post persistence checks when local Postgres env is configured
+BLOCKED_BY_ENV missing DATABASE_URL,DATABASE_URL_DIRECT
+
+ ✓ src/server/repositories/post-store.test.ts > post store queryable boundary > persists drafts and publish attempts through SQLite Queryable 32ms
+ ✓ src/server/repositories/post-store.test.ts > post store queryable boundary > runs Postgres post persistence checks when local Postgres env is configured 1ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  13:22:26
+   Duration  429ms (transform 118ms, setup 73ms, import 186ms, tests 34ms, environment 0ms)
+
+zsh:1: read-only variable: status
+
+## Rerun after shell wrapper fix: npm run test -- src/server/repositories/post-store.test.ts --reporter=verbose
+
+> glocalx-mvp@0.1.0 test
+> vitest run src/server/repositories/post-store.test.ts --reporter=verbose
+
+
+ RUN  v4.1.8 /private/tmp/glocalx-v2-postgres-architecture
+
+stdout | src/server/repositories/post-store.test.ts > post store queryable boundary > runs Postgres post persistence checks when local Postgres env is configured
+BLOCKED_BY_ENV missing DATABASE_URL,DATABASE_URL_DIRECT
+
+ ✓ src/server/repositories/post-store.test.ts > post store queryable boundary > persists drafts and publish attempts through SQLite Queryable 27ms
+ ✓ src/server/repositories/post-store.test.ts > post store queryable boundary > runs Postgres post persistence checks when local Postgres env is configured 1ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  13:22:36
+   Duration  403ms (transform 114ms, setup 65ms, import 178ms, tests 28ms, environment 0ms)
+
+
+exit=0
+
+## Command: DATABASE_PROVIDER=postgres npm run test -- src/server/repositories/post-store.test.ts --reporter=verbose
+
+> glocalx-mvp@0.1.0 test
+> vitest run src/server/repositories/post-store.test.ts --reporter=verbose
+
+
+ RUN  v4.1.8 /private/tmp/glocalx-v2-postgres-architecture
+
+stdout | src/server/repositories/post-store.test.ts > post store queryable boundary > runs Postgres post persistence checks when local Postgres env is configured
+BLOCKED_BY_ENV missing DATABASE_URL,DATABASE_URL_DIRECT
+
+ ✓ src/server/repositories/post-store.test.ts > post store queryable boundary > persists drafts and publish attempts through SQLite Queryable 26ms
+ ✓ src/server/repositories/post-store.test.ts > post store queryable boundary > runs Postgres post persistence checks when local Postgres env is configured 1ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  13:22:42
+   Duration  399ms (transform 108ms, setup 64ms, import 173ms, tests 28ms, environment 0ms)
+
+
+exit=0
+
+## Command: npm run test -- src/posts/post-flow-publishing.test.ts src/server/repositories/post-store.test.ts src/app/api/posts/post-routes-auth.test.ts --reporter=verbose
+
+> glocalx-mvp@0.1.0 test
+> vitest run src/posts/post-flow-publishing.test.ts src/server/repositories/post-store.test.ts src/app/api/posts/post-routes-auth.test.ts --reporter=verbose
+
+
+ RUN  v4.1.8 /private/tmp/glocalx-v2-postgres-architecture
+
+stdout | src/server/repositories/post-store.test.ts > post store queryable boundary > runs Postgres post persistence checks when local Postgres env is configured
+BLOCKED_BY_ENV missing DATABASE_URL,DATABASE_URL_DIRECT
+
+ ✓ src/server/repositories/post-store.test.ts > post store queryable boundary > persists drafts and publish attempts through SQLite Queryable 28ms
+ ✓ src/server/repositories/post-store.test.ts > post store queryable boundary > runs Postgres post persistence checks when local Postgres env is configured 1ms
+ ✓ src/posts/post-flow-publishing.test.ts > post-flow publishing > publishes a draft idempotently without replaying local-post side effects 28ms
+ ✓ src/posts/post-flow-publishing.test.ts > post-flow publishing > blocks publish when the GBP location is not verified 17ms
+ ✓ src/posts/post-flow-publishing.test.ts > post-flow publishing > surfaces manual publish guidance after three failed attempts 19ms
+stderr | src/app/api/posts/post-routes-auth.test.ts > post API route authorization > returns JSON when production image draft generation fails upstream
+Post draft generation failed Error: OpenAI marketing generation failed: 500 {"error":{"message":"upstream failed"}}
+    at Object.generateMarketingDraft (/private/tmp/glocalx-v2-postgres-architecture/src/integrations/openai-production.ts:204:15)
+    at buildMarketingPreview (/private/tmp/glocalx-v2-postgres-architecture/src/posts/post-marketing-preview.ts:153:5)
+    at createPostDraft (/private/tmp/glocalx-v2-postgres-architecture/src/posts/post-flow.ts:37:19)
+    at /private/tmp/glocalx-v2-postgres-architecture/src/app/api/posts/drafts/route.ts:50:22
+    at withQueryableRouteDatabase (/private/tmp/glocalx-v2-postgres-architecture/src/server/http/index.ts:203:12)
+    at /private/tmp/glocalx-v2-postgres-architecture/src/app/api/posts/post-routes-auth.test.ts:136:22
+    at file:///private/tmp/glocalx-v2-postgres-architecture/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20
+
+stderr | src/app/api/posts/post-routes-auth.test.ts > post API route authorization > returns JSON when production posting decision classification fails upstream
+Posting conversation failed MalformedLlmResponseError: Malformed LLM response for posting_decision
+    at requestStructuredOutput (/private/tmp/glocalx-v2-postgres-architecture/src/integrations/openai-structured-output.ts:243:11)
+    at Object.classifyOwnerReply (/private/tmp/glocalx-v2-postgres-architecture/src/integrations/openai-conversation.ts:125:16)
+    at processPostingDecision (/private/tmp/glocalx-v2-postgres-architecture/src/posts/posting-conversation.ts:155:5)
+    at /private/tmp/glocalx-v2-postgres-architecture/src/app/api/posts/conversation/decision/route.ts:135:24
+    at withQueryableRouteDatabase (/private/tmp/glocalx-v2-postgres-architecture/src/server/http/index.ts:203:12)
+    at /private/tmp/glocalx-v2-postgres-architecture/src/app/api/posts/post-routes-auth.test.ts:180:22
+    at file:///private/tmp/glocalx-v2-postgres-architecture/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20 {
+  contract: 'posting_decision'
+}
+
+ ✓ src/app/api/posts/post-routes-auth.test.ts > post API route authorization > requires a valid session before creating a post draft 6ms
+ ✓ src/app/api/posts/post-routes-auth.test.ts > post API route authorization > keeps the validation JSON when creating a post draft with malformed JSON 21ms
+ ✓ src/app/api/posts/post-routes-auth.test.ts > post API route authorization > rejects post draft requests for a store outside the session 15ms
+ ✓ src/app/api/posts/post-routes-auth.test.ts > post API route authorization > returns JSON when production image draft generation fails upstream 23ms
+ ✓ src/app/api/posts/post-routes-auth.test.ts > post API route authorization > returns JSON when production posting decision classification fails upstream 20ms
+ ✓ src/app/api/posts/post-routes-auth.test.ts > post API route authorization > requires a valid session before publishing a post draft 1ms
+ ✓ src/app/api/posts/post-routes-auth.test.ts > post API route authorization > rejects publish requests for a store outside the session 14ms
+
+ Test Files  3 passed (3)
+      Tests  12 passed (12)
+   Start at  13:22:48
+   Duration  542ms (transform 301ms, setup 214ms, import 562ms, tests 194ms, environment 0ms)
+
+
+exit=0
+
+## Command: npm run typecheck
+
+> glocalx-mvp@0.1.0 typecheck
+> tsc --noEmit
+
+
+exit=0
+
+## Command: npm run lint
+
+> glocalx-mvp@0.1.0 lint
+> eslint .
+
+
+exit=0
+
+## Command: npm run format:check
+
+> glocalx-mvp@0.1.0 format:check
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
+
+exit=0
+
+## Command: NODE_PATH=/private/tmp/glocalx-v2-postgres-architecture/node_modules bun run /Users/jeahun/.codex/plugins/cache/sisyphuslabs/omo/4.15.1/skills/programming/scripts/typescript/check-no-excuse-rules.ts src/server/repositories/post-store.test.ts
+No violations in 1 file(s).
+
+exit=0
+
+## Command: pure LOC scan for changed source/test file
+128 src/server/repositories/post-store.test.ts
+
+exit=0
+
+## Command: git diff --check
+
+exit=0
+
+## Live Postgres env status
+BLOCKED_BY_ENV missing DATABASE_URL,DATABASE_URL_DIRECT
+
+exit=0
+
+## Final rerun: git diff --check after evidence append
+
+exit=0

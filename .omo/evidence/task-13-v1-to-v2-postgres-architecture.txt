@@ -1,0 +1,241 @@
+Todo 13 salvage evidence
+Task: Salvage and finish existing Todo 13 uncommitted diff, or return BLOCKED.
+Worktree: /private/tmp/glocalx-v2-postgres-architecture
+Branch: feat/v2-postgres-architecture
+
+Baseline captured before code edits:
+- This is salvage from a stopped prior worker. Prior worker was stopped for broad silent edits, missing evidence, and oversized file.
+- Required reads completed before evidence/code action:
+  - AGENTS.md
+  - /Users/jeahun/.codex/plugins/cache/sisyphuslabs/omo/4.15.1/skills/programming/SKILL.md
+  - /Users/jeahun/.codex/plugins/cache/sisyphuslabs/omo/4.15.1/skills/programming/references/typescript/README.md
+  - node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md lines 13-51 and 111-124
+- Baseline git status:
+  - branch feat/v2-postgres-architecture
+  - modified: src/app/api/posts/[draftId]/publish/route.ts
+  - modified: src/app/api/posts/drafts/route.ts
+  - modified: src/posts/post-flow.ts
+  - modified: src/posts/post-marketing-preview.ts
+  - modified: src/posts/post-repository.ts
+  - modified: src/posts/post-types.ts
+  - modified: src/server/http/index.ts
+  - modified: src/server/repositories/post-store.ts
+  - untracked: src/server/repositories/post-store.test.ts
+- Baseline diff stat:
+  - 8 tracked files changed, 441 insertions, 300 deletions
+  - untracked test file present: src/server/repositories/post-store.test.ts
+- Known size defect verified:
+  - src/server/repositories/post-store.ts measured 391 pure LOC
+
+Baseline decision pending:
+- Need inspect whether inherited diff coherently ports drafts, publish attempts, and marketing preview through Queryable DB boundary while preserving SQLite fallback and route contracts.
+
+Checkpoint after user scope warning:
+- Status: WORKING, not committed.
+- No live publish side effects have been run. Only local unit/integration-style Vitest commands against stub adapters and local SQLite temp files have run.
+- Coherence decision at checkpoint: still coherent. The diff expansion is limited to post route/test/support files required by the inherited async `PostStore` contract change. No unrelated domain behavior was added. Out-of-scope inherited review/reply persistence was removed from the Todo 13 salvage.
+
+Current changed files:
+- modified: src/app/api/posts/[draftId]/publish/route.ts
+- modified: src/app/api/posts/conversation/decision/route.ts
+- modified: src/app/api/posts/drafts/route.ts
+- modified: src/posts/post-flow-boundaries.test.ts
+- modified: src/posts/post-flow.test.ts
+- modified: src/posts/post-flow.ts
+- modified: src/posts/post-marketing-preview.ts
+- modified: src/posts/post-repository.ts
+- modified: src/posts/post-types.ts
+- modified: src/server/http/index.ts
+- modified: src/server/repositories/post-store.ts
+- modified: src/server/repositories/sqlite-conversation-post-characterization.test.ts
+- untracked: src/posts/post-flow-publishing.test.ts
+- untracked: src/server/repositories/post-store-drafts.ts
+- untracked: src/server/repositories/post-store-publishing.ts
+- untracked: src/server/repositories/post-store.test.ts
+
+Why each newly touched file beyond the initial expectation is necessary:
+- src/app/api/posts/conversation/decision/route.ts: this post route calls createPostDraft/revisePostDraft. The inherited diff changed those functions from direct SQLite `database` input to async `postStore`; leaving this route on the old signature makes the Todo 13 port incoherent and fails typecheck.
+- src/posts/post-flow.test.ts: existing post-flow tests used the old `database` option and synchronous publish return shape. Once touched, the file had to be shrunk under the 250 pure LOC gate, so it now keeps draft/revision coverage only.
+- src/posts/post-flow-boundaries.test.ts: existing marketing boundary tests call createPostDraft. They must construct `PostStore` from the SQLite Queryable to keep marketing preview coverage on the new persistence boundary.
+- src/posts/post-flow-publishing.test.ts: extracted from oversized post-flow.test to keep changed tests under 250 pure LOC. It preserves publish/idempotency coverage and adds the binary observable that same-key replay does not call the local-post adapter again.
+- src/server/repositories/sqlite-conversation-post-characterization.test.ts: existing characterization coverage calls createPostDraft/publishPostDraft. It must use `createDatabasePostStore(queryable)` or the repository characterization fails against the new contract.
+- src/server/repositories/post-store-drafts.ts: split draft/store/location SQL and row parsing out of oversized post-store.ts to fix the 391 pure LOC defect.
+- src/server/repositories/post-store-publishing.ts: split publish attempt SQL and idempotent recording out of oversized post-store.ts to fix the 391 pure LOC defect.
+- src/server/repositories/post-store.test.ts: expected Todo 13 untracked test. It now verifies only drafts and publish attempts through Queryable after removing out-of-scope review/reply persistence from the inherited diff.
+
+Current command status:
+- PASS: `npm run test -- src/posts/post-flow-publishing.test.ts src/server/repositories/post-store.test.ts src/app/api/posts/post-routes-auth.test.ts`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/focused-post-store-route.log was not captured for this early run; terminal observable was 3 test files passed, 12 tests passed.
+- PASS: `npm run typecheck`
+  - Artifact: not captured for this early run; terminal observable was `tsc --noEmit` exit 0 after narrowing the post-store test helper to Queryable.
+- FAIL_TOOLING: `bun /Users/jeahun/.codex/plugins/cache/sisyphuslabs/omo/4.15.1/skills/programming/scripts/typescript/check-no-excuse-rules.ts ...`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/no-excuse.log
+  - Failure: external skill script could not resolve package `typescript` from the plugin cache. This is a checker bootstrap failure, not a code rule failure.
+- NOT_RUN_YET at checkpoint: full required verification matrix, lint, format:check, final secret scan, full evidence log capture, commit.
+
+Pure LOC checkpoint for changed source/test files:
+- 138 src/app/api/posts/conversation/decision/route.ts
+- 57 src/app/api/posts/[draftId]/publish/route.ts
+- 58 src/app/api/posts/drafts/route.ts
+- 152 src/posts/post-flow.ts
+- 181 src/posts/post-flow.test.ts
+- 203 src/posts/post-flow-boundaries.test.ts
+- 186 src/posts/post-flow-publishing.test.ts
+- 180 src/posts/post-marketing-preview.ts
+- 5 src/posts/post-repository.ts
+- 85 src/posts/post-types.ts
+- 199 src/server/http/index.ts
+- 80 src/server/repositories/post-store.ts
+- 123 src/server/repositories/post-store-drafts.ts
+- 114 src/server/repositories/post-store-publishing.ts
+- 95 src/server/repositories/post-store.test.ts
+- 132 src/server/repositories/sqlite-conversation-post-characterization.test.ts
+
+Hook verification rerun:
+- Date context: 2026-07-05.
+- WORKING checkpoint, not complete, not committed.
+- No live publish side effects were run.
+- PASS rerun: `npm run test -- src/posts/post-flow-publishing.test.ts src/server/repositories/post-store.test.ts src/app/api/posts/post-routes-auth.test.ts`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/focused-post-store-route-rerun.log
+  - Binary observable: command exit 0; Vitest reports 3 test files passed and 12 tests passed.
+- PASS rerun: `npm run typecheck`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/typecheck-rerun.log
+  - Binary observable: command exit 0; `tsc --noEmit` completed with no diagnostics.
+- PASS rerun: pure LOC scan for all changed source/test files.
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/pure-loc-rerun.log
+  - Binary observable: command exit 0; maximum changed-file pure LOC is 203 in src/posts/post-flow-boundaries.test.ts.
+- FAIL_TOOLING rerun: TypeScript no-excuse checker from OMO programming skill.
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/no-excuse-rerun.log
+  - Binary observable: command exit 1; Bun reports it cannot find package `typescript` from the plugin-cache checker script path.
+- Dirty worktree remains expected for an in-progress Todo 13 salvage; no commit was attempted at checkpoint.
+
+Second hook verification rerun:
+- Date context: 2026-07-05.
+- WORKING checkpoint, not complete, not committed.
+- No live publish side effects were run.
+- Nonempty artifact check:
+  - .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook2/focused-post-store-route.log: 398 bytes
+  - .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook2/typecheck.log: 47 bytes
+  - .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook2/pure-loc.log: 677 bytes
+  - .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook2/no-excuse.log: 196 bytes
+- PASS rerun: `npm run test -- src/posts/post-flow-publishing.test.ts src/server/repositories/post-store.test.ts src/app/api/posts/post-routes-auth.test.ts`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook2/focused-post-store-route.log
+  - Binary observable: command exit 0; Vitest reports 3 test files passed and 12 tests passed.
+- PASS rerun: `npm run typecheck`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook2/typecheck.log
+  - Binary observable: command exit 0; `tsc --noEmit` completed with no diagnostics.
+- PASS rerun: pure LOC scan for all changed source/test files.
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook2/pure-loc.log
+  - Binary observable: command exit 0; maximum changed-file pure LOC remains 203 in src/posts/post-flow-boundaries.test.ts.
+- FAIL_TOOLING rerun: TypeScript no-excuse checker from OMO programming skill.
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook2/no-excuse.log
+  - Binary observable: command exit 1; Bun reports it cannot find package `typescript` from the plugin-cache checker script path.
+
+Third hook verification rerun:
+- Date context: 2026-07-05.
+- WORKING checkpoint, not complete, not committed.
+- No live publish side effects were run.
+- Nonempty artifact check:
+  - .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook3/focused-post-store-route.log: 398 bytes
+  - .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook3/typecheck.log: 47 bytes
+  - .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook3/pure-loc.log: 677 bytes
+  - .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook3/no-excuse.log: 196 bytes
+- PASS rerun: `npm run test -- src/posts/post-flow-publishing.test.ts src/server/repositories/post-store.test.ts src/app/api/posts/post-routes-auth.test.ts`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook3/focused-post-store-route.log
+  - Binary observable: command exit 0; Vitest reports 3 test files passed and 12 tests passed.
+- PASS rerun: `npm run typecheck`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook3/typecheck.log
+  - Binary observable: command exit 0; `tsc --noEmit` completed with no diagnostics.
+- PASS rerun: pure LOC scan for all changed source/test files.
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook3/pure-loc.log
+  - Binary observable: command exit 0; maximum changed-file pure LOC remains 203 in src/posts/post-flow-boundaries.test.ts.
+- FAIL_TOOLING rerun: TypeScript no-excuse checker from OMO programming skill.
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/hook3/no-excuse.log
+  - Binary observable: command exit 1; Bun reports it cannot find package `typescript` from the plugin-cache checker script path.
+
+Final closer pass after no-excuse bootstrap failure:
+- Date context: 2026-07-05.
+- Closer pass purpose: rerun the incomplete Todo 13 salvage verification with `NODE_PATH=/private/tmp/glocalx-v2-postgres-architecture/node_modules` so the OMO TypeScript no-excuse checker can resolve the project `typescript` package.
+- Required reads completed before closer verification:
+  - AGENTS.md
+  - /Users/jeahun/.codex/plugins/cache/sisyphuslabs/omo/4.15.1/skills/programming/SKILL.md
+  - /Users/jeahun/.codex/plugins/cache/sisyphuslabs/omo/4.15.1/skills/programming/references/typescript/README.md
+  - /Users/jeahun/.codex/plugins/cache/sisyphuslabs/omo/4.15.1/skills/git-master/SKILL.md
+  - node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md sections around lines 13-51 and 111-124
+  - this evidence file
+- Scope/coherence checkpoint: changed source/test files are confined to post routes, post flow/tests, post repository/store, SQLite characterization, and the tiny `withQueryableRouteDatabase` post-store support. No unrelated non-evidence file outside this posts/http support scope was found.
+- Size checkpoint before final matrix: pure LOC maximum is 203 in `src/posts/post-flow-boundaries.test.ts`; all changed source/test files are at or below the 250 pure-LOC ceiling.
+- No-excuse correction during closer pass: first proper `NODE_PATH` run found one in-scope `catch-without-narrowing` violation in `src/app/api/posts/drafts/route.ts`. The route now narrows `Error` before returning the generation failure response and rethrows non-`Error` values.
+- PASS final: `npm run test -- src/posts src/app/app`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/test-default.log
+  - Binary observable: command exit 0; Vitest reports 10 test files passed and 34 tests passed.
+- PASS final: `DATABASE_PROVIDER=sqlite npm run test -- src/posts src/app/app`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/test-sqlite.log
+  - Binary observable: command exit 0; Vitest reports 10 test files passed and 34 tests passed.
+- BLOCKED_BY_ENV final: `DATABASE_PROVIDER=postgres npm run test -- src/posts src/app/app src/server/repositories --reporter=verbose`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/test-postgres.log
+  - Binary observable: command not run as a live Postgres pass because `DATABASE_URL` and `DATABASE_URL_DIRECT` are missing.
+- PASS final: `npm run test -- src/posts/post-flow-publishing.test.ts src/server/repositories/post-store.test.ts src/app/api/posts/post-routes-auth.test.ts --reporter=verbose`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/test-focused-publish-idempotency.log
+  - Binary observable: command exit 0; Vitest reports 3 test files passed and 12 tests passed.
+  - Manual-QA/data-surface proof: the verbose output includes `persists drafts and publish attempts through SQLite Queryable`, `publishes a draft idempotently without replaying local-post side effects`, and route auth coverage. The first scenario proves draft rows and publish attempt rows persist through the DB boundary. The second proves the same idempotency key replays the existing attempt and `localPostCalls` remains 1, so no duplicate publish side effect occurs.
+- PASS final: `npm run typecheck`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/typecheck.log
+  - Binary observable: command exit 0; `tsc --noEmit` completed with no diagnostics.
+- PASS final: `npm run lint`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/lint.log
+  - Binary observable: command exit 0; `eslint .` completed.
+- PASS final: `npm run format:check`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/format-check.log
+  - Binary observable: command exit 0; Prettier reports all matched files use Prettier code style.
+- PASS final: pure LOC scan for all changed source/test files.
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/pure-loc.log
+  - Binary observable: command exit 0; maximum changed-file pure LOC is 203.
+- PASS final: `NODE_PATH=/private/tmp/glocalx-v2-postgres-architecture/node_modules bun run /Users/jeahun/.codex/plugins/cache/sisyphuslabs/omo/4.15.1/skills/programming/scripts/typescript/check-no-excuse-rules.ts <changed source/test files>`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/no-excuse.log
+  - Binary observable: command exit 0; checker reports `No violations in 16 file(s).`
+- PASS final: token/secret/live side-effect scan over changed source/test files and Todo 13 evidence.
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/secret-live-scan.log
+  - Binary observable: command exit 0; no secret value patterns or source live side-effect patterns were found. Documented false positives are the source literal stub access token, evidence environment-variable names, and evidence policy mention of production mode.
+- PASS final: `git diff --check`
+  - Artifact: .omo/evidence/task-13-v1-to-v2-postgres-architecture/final/git-diff-check.log
+  - Binary observable: command exit 0 with no whitespace/conflict-marker output.
+
+Repair pass for Todo 13 gate blockers:
+- Timestamp UTC: 2026-07-05T04:09:41Z.
+- Commit: 254e3d6 fix(db): repair posting postgres test coverage.
+- Gate rejection source: .omo/evidence/todo-13-gate-review.md.
+- Source/test repair: src/server/repositories/post-store.test.ts no longer calls context.legacySqliteDatabase after setting DATABASE_PROVIDER=postgres. The Postgres branch now uses context.queryable.transaction, creates temporary post persistence tables through Queryable, and runs the PostStore scenario through Queryable only. The SQLite scenario explicitly stubs DATABASE_PROVIDER=sqlite so the required Postgres-mode focused command can still run the SQLite branch.
+- PASS repair: `npm run test -- src/server/repositories/post-store.test.ts --reporter=verbose`
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/test-post-store-default.log
+  - Binary observable: command exit 0; Vitest reports 1 test file passed and 2 tests passed.
+- PASS repair: `DATABASE_PROVIDER=postgres npm run test -- src/server/repositories/post-store.test.ts --reporter=verbose`
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/test-post-store-postgres-mode.log
+  - Binary observable: command exit 0; Vitest reports 1 test file passed and 2 tests passed, with live branch BLOCKED_BY_ENV missing DATABASE_URL,DATABASE_URL_DIRECT.
+- BLOCKED_BY_ENV repair: `DATABASE_PROVIDER=postgres npm run test -- src/posts src/app/app src/server/repositories --reporter=verbose`
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/test-postgres-full.log
+  - Binary observable: real command output captured; command exits 1 because legacy SQLite characterization files fail with DATABASE_URL_REQUIRED while DATABASE_URL/DATABASE_URL_DIRECT are absent. The repaired post-store test passes in this run.
+- PASS repair: `npm run test -- src/posts/post-flow-publishing.test.ts src/server/repositories/post-store.test.ts src/app/api/posts/post-routes-auth.test.ts --reporter=verbose`
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/test-focused-publish-idempotency.log
+  - Binary observable: command exit 0; 3 test files and 12 tests passed, including same-key publish idempotency without replaying local-post side effects.
+
+Alias repair pass for Todo 13 Postgres gate blocker:
+- Timestamp UTC: 2026-07-05T04:23:34Z.
+- Source/test repair: `src/server/repositories/post-store.test.ts` now quotes the `draftStatus` SQL alias as `AS "draftStatus"` so PostgreSQL does not fold it to `draftstatus`; SQLite compatibility is retained.
+- Evidence artifact: .omo/evidence/task-13-alias-fix-v1-to-v2-postgres-architecture.txt.
+- Live Postgres status: BLOCKED_BY_ENV because DATABASE_URL and DATABASE_URL_DIRECT are absent.
+- PASS repair: `npm run typecheck`
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/typecheck.log
+- PASS repair: `npm run lint`
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/lint.log
+- PASS repair: `npm run format:check`
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/format-check.log
+- PASS repair: no-excuse scan for src/server/repositories/post-store.test.ts.
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/no-excuse.log
+- PASS repair: pure LOC scan for src/server/repositories/post-store.test.ts.
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/pure-loc.log
+  - Binary observable: 128 pure LOC.
+- PASS repair: `git diff --check`
+  - Artifact: .omo/evidence/task-13-repair-v1-to-v2-postgres-architecture/git-diff-check.log
+- UltraQA artifact added: .omo/evidence/todo-13-ultraqa.md.
+- Cleanup artifact replaced with meaningful final status: .omo/evidence/task-13-cleanup.txt.

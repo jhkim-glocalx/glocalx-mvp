@@ -55,7 +55,7 @@ async function runPostStorePersistenceScenario(context: {
   const history = await store.readPublishHistory("queryable-draft")
   const row = postRowsSchema.parse(
     await context.queryable.queryOne(
-      "SELECT post_drafts.status AS draftStatus, (SELECT COUNT(*) FROM post_publish_attempts WHERE idempotency_key = ?) AS attempts FROM post_drafts WHERE id = ?",
+      'SELECT post_drafts.status AS "draftStatus", (SELECT COUNT(*) FROM post_publish_attempts WHERE idempotency_key = ?) AS attempts FROM post_drafts WHERE id = ?',
       ["queryable-publish-key", "queryable-draft"]
     )
   )
