@@ -1,19 +1,13 @@
 import { randomUUID } from "node:crypto"
 
-import {
-  createConversationSession,
-  readConversationReplay,
-  recordConversationTurn,
-  resumeConversationSession,
-  type ConversationSlotInput,
-} from "@/conversations/repository"
+import type { ConversationSlotInput } from "@/conversations/repository"
 import type {
   AdapterBusinessProfileCandidate,
   MissingBusinessField,
   OnboardingSlotTurnRequest,
 } from "@/domain/schemas"
 import type { IntegrationAdapters } from "@/integrations/contracts"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { ConversationStore } from "@/server/repositories/conversation-store"
 
 import type { OnboardingConversationOutput } from "@/conversations/contracts"
 import { requestedFieldForTurn } from "./guided-slot-output"
@@ -21,7 +15,7 @@ import { extractGuidedSlotOutput } from "./slot-extraction"
 
 type OnboardingSlotTurnOptions = {
   readonly adapters: IntegrationAdapters
-  readonly database: SqliteDatabase
+  readonly conversationStore: ConversationStore
   readonly request: OnboardingSlotTurnRequest
   readonly storeId: string
 }
@@ -98,22 +92,22 @@ function slotInputs(
   ]
 }
 
-function readOrCreateSession(
-  database: SqliteDatabase,
+async function readOrCreateSession(
+  conversationStore: ConversationStore,
   request: OnboardingSlotTurnRequest,
   storeId: string,
   now: Date
 ) {
   if (request.sessionId !== undefined) {
     // Existing session ids must belong to this store; missing sessions become a typed not-found response.
-    return resumeConversationSession(database, {
+    return conversationStore.resumeSession({
       kind: "onboarding",
       sessionId: request.sessionId,
       storeId,
     })
   }
 
-  return createConversationSession(database, {
+  return conversationStore.createSession({
     id: randomUUID(),
     kind: "onboarding",
     now,
@@ -126,8 +120,8 @@ export async function processOnboardingSlotTurn(
   options: OnboardingSlotTurnOptions
 ): Promise<OnboardingSlotTurnResponse | Readonly<Record<string, unknown>>> {
   const now = options.adapters.clock.now()
-  const session = readOrCreateSession(
-    options.database,
+  const session = await readOrCreateSession(
+    options.conversationStore,
     options.request,
     options.storeId,
     now
@@ -140,7 +134,7 @@ export async function processOnboardingSlotTurn(
     }
   }
 
-  const replay = readConversationReplay(options.database, {
+  const replay = await options.conversationStore.readReplay({
     clientEventId: options.request.clientEventId,
     sessionId: session.id,
     storeId: options.storeId,
@@ -169,7 +163,7 @@ export async function processOnboardingSlotTurn(
     status: "ONBOARDING_CONVERSATION_TURN",
   }
 
-  const turn = recordConversationTurn(options.database, {
+  const turn = await options.conversationStore.recordTurn({
     assistantMessage: response.assistantMessage,
     clientEventId: options.request.clientEventId,
     eventId: randomUUID(),

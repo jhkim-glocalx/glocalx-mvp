@@ -19,6 +19,111 @@ class ConversationTurnTransactionError extends Error {
   readonly name = "ConversationTurnTransactionError"
 }
 
+const conversationTurnRetryAttempts = 8
+let recordTurnQueue: Promise<void> = Promise.resolve()
+
+function isDatabaseLockedError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("database is locked")
+}
+
+async function enqueueRecordTurn<TResult>(
+  work: () => Promise<TResult>
+): Promise<TResult> {
+  const previousTurn = recordTurnQueue
+  let releaseCurrentTurn: () => void = () => undefined
+  recordTurnQueue = new Promise<void>((resolve) => {
+    releaseCurrentTurn = resolve
+  })
+
+  await previousTurn
+  try {
+    return await work()
+  } finally {
+    releaseCurrentTurn()
+  }
+}
+
+async function recordTurnOnce(
+  queryable: Queryable,
+  options: Parameters<ConversationStore["recordTurn"]>[0]
+): Promise<RecordConversationTurnResult> {
+  let result: RecordConversationTurnResult | undefined
+  await queryable.transaction(async (transaction) => {
+    const session = await requireActiveQueryableSession(transaction, options)
+    const claim = await claimQueryableReplayEvent(transaction, options)
+    if (claim !== "claimed") {
+      result = { kind: "replayed", response: claim }
+      return
+    }
+    const ownerMessage = await insertQueryableMessage(
+      transaction,
+      session,
+      "owner",
+      options.ownerMessage,
+      options.clientEventId,
+      options.now
+    )
+    const assistantMessage = await insertQueryableMessage(
+      transaction,
+      session,
+      "assistant",
+      options.assistantMessage,
+      null,
+      options.now
+    )
+    await upsertQueryableSlotsForSession(
+      transaction,
+      session.id,
+      options.slots,
+      options.now
+    )
+    await transaction.execute(
+      "UPDATE conversation_sessions SET state = ?, updated_at = ? WHERE id = ?",
+      [options.nextState, options.now.toISOString(), session.id]
+    )
+    await transaction.execute(
+      "UPDATE conversation_events SET response_message_id = ? WHERE session_id = ? AND client_event_id = ?",
+      [assistantMessage.id, session.id, options.clientEventId]
+    )
+    result = {
+      assistantMessage,
+      kind: "created",
+      ownerMessage,
+      response: options.publicResponse,
+      slots: await readQueryableSlots(transaction, session.id),
+    }
+  })
+  if (result === undefined) {
+    throw new ConversationTurnTransactionError()
+  }
+  return result
+}
+
+async function recordTurnWithRetry(
+  queryable: Queryable,
+  options: Parameters<ConversationStore["recordTurn"]>[0]
+): Promise<RecordConversationTurnResult> {
+  for (
+    let attempt = 1;
+    attempt <= conversationTurnRetryAttempts;
+    attempt += 1
+  ) {
+    try {
+      return await recordTurnOnce(queryable, options)
+    } catch (error) {
+      if (
+        attempt < conversationTurnRetryAttempts &&
+        isDatabaseLockedError(error)
+      ) {
+        await Promise.resolve()
+        continue
+      }
+      throw error
+    }
+  }
+  throw new ConversationTurnTransactionError()
+}
+
 export function createDatabaseConversationStore(
   queryable: Queryable
 ): ConversationStore {
@@ -106,60 +211,8 @@ export function createDatabaseConversationStore(
       return readQueryableReplay(queryable, options)
     },
 
-    async recordTurn(options) {
-      let result: RecordConversationTurnResult | undefined
-      await queryable.transaction(async (transaction) => {
-        const session = await requireActiveQueryableSession(
-          transaction,
-          options
-        )
-        const claim = await claimQueryableReplayEvent(transaction, options)
-        if (claim !== "claimed") {
-          result = { kind: "replayed", response: claim }
-          return
-        }
-        const ownerMessage = await insertQueryableMessage(
-          transaction,
-          session,
-          "owner",
-          options.ownerMessage,
-          options.clientEventId,
-          options.now
-        )
-        const assistantMessage = await insertQueryableMessage(
-          transaction,
-          session,
-          "assistant",
-          options.assistantMessage,
-          null,
-          options.now
-        )
-        await upsertQueryableSlotsForSession(
-          transaction,
-          session.id,
-          options.slots,
-          options.now
-        )
-        await transaction.execute(
-          "UPDATE conversation_sessions SET state = ?, updated_at = ? WHERE id = ?",
-          [options.nextState, options.now.toISOString(), session.id]
-        )
-        await transaction.execute(
-          "UPDATE conversation_events SET response_message_id = ? WHERE session_id = ? AND client_event_id = ?",
-          [assistantMessage.id, session.id, options.clientEventId]
-        )
-        result = {
-          assistantMessage,
-          kind: "created",
-          ownerMessage,
-          response: options.publicResponse,
-          slots: await readQueryableSlots(transaction, session.id),
-        }
-      })
-      if (result === undefined) {
-        throw new ConversationTurnTransactionError()
-      }
-      return result
+    recordTurn(options) {
+      return enqueueRecordTurn(() => recordTurnWithRetry(queryable, options))
     },
 
     resumeSession(lookup) {

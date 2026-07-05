@@ -6,7 +6,7 @@ import {
   parseJsonRoutePayload,
   readDemoSession,
   requiredSessionResponse,
-  withRouteDatabase,
+  withQueryableRouteDatabase,
 } from "@/server/http"
 
 export async function POST(request: NextRequest) {
@@ -24,10 +24,10 @@ export async function POST(request: NextRequest) {
     return parsed.response
   }
 
-  return withRouteDatabase(async ({ adapters, database }) => {
+  return withQueryableRouteDatabase(async ({ adapters, conversationStore }) => {
     const result = await processOnboardingSlotTurn({
       adapters,
-      database,
+      conversationStore,
       request: parsed.value,
       storeId: session.storeId,
     })

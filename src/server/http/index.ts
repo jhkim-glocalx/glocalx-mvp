@@ -11,9 +11,12 @@ import type { DemoSession } from "@/auth/session"
 import { parseRoutePayload } from "@/domain/schemas"
 import type { ParsedValidationIssue } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
-import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import type { DatabaseContext } from "@/server/db"
-import { openDatabaseContext } from "@/server/db"
+import { openDatabaseContext, resolveDatabaseConfig } from "@/server/db"
+import type { SqliteDatabase } from "@/server/db/sqlite"
+import { createDatabaseConversationStore } from "@/server/repositories/conversation-store"
+import type { ConversationStore } from "@/server/repositories/conversation-store"
+import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
 import { createDatabaseSessionStore } from "@/server/repositories/session-store"
 import type { SessionStore } from "@/server/repositories/session-store"
@@ -45,6 +48,8 @@ export type RouteDatabaseContext = {
 
 export type QueryableRouteDatabaseContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
+  readonly conversationStore: ConversationStore
+  readonly legacySqliteDatabase?: SqliteDatabase
   readonly oauthIdentityRepository: ReturnType<
     typeof createDatabaseOAuthIdentityRepository
   >
@@ -188,12 +193,17 @@ export async function withQueryableRouteDatabase<TResponse extends Response>(
     context: QueryableRouteDatabaseContext
   ) => Promise<TResponse> | TResponse
 ): Promise<TResponse> {
+  const databaseConfig = resolveDatabaseConfig()
   const databaseContext = await openDatabaseContext()
   const queryable = databaseContext.queryable
 
   try {
     return await handler({
       adapters: createIntegrationAdapters(),
+      conversationStore: createDatabaseConversationStore(queryable),
+      ...(databaseConfig.provider === "sqlite"
+        ? { legacySqliteDatabase: databaseContext.legacySqliteDatabase }
+        : {}),
       oauthIdentityRepository: createDatabaseOAuthIdentityRepository(queryable),
       onboardingExtractionRepository:
         createDatabaseOnboardingExtractionRepository(queryable),

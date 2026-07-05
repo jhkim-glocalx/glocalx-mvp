@@ -1,22 +1,16 @@
 import { randomUUID } from "node:crypto"
 
-import {
-  createConversationSession,
-  readConversationReplay,
-  recordConversationTurn,
-  resumeConversationSession,
-} from "@/conversations/repository"
 import type { PostingConversationDecision } from "@/conversations/contracts"
 import type { PostingDecisionRequest } from "@/domain/schemas"
 import type { IntegrationAdapters } from "@/integrations/contracts"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { ConversationStore } from "@/server/repositories/conversation-store"
 
-import { createPostDraft, revisePostDraft } from "./post-flow"
 import type { PostDraftResult } from "./post-types"
 
 type PostingDecisionOptions = {
   readonly adapters: IntegrationAdapters
-  readonly database: SqliteDatabase
+  readonly conversationStore: ConversationStore
+  readonly draftWriter: PostingDraftWriter
   readonly request: PostingDecisionRequest
   readonly storeId: string
 }
@@ -32,22 +26,26 @@ type PostingDecisionResponse = {
   readonly status: "POSTING_CONVERSATION_TURN"
 }
 
-function readOrCreateSession(
-  database: SqliteDatabase,
+export type PostingDraftWriter = (
+  decision: PostingConversationDecision
+) => Promise<PostDraftResult | undefined>
+
+async function readOrCreateSession(
+  conversationStore: ConversationStore,
   request: PostingDecisionRequest,
   storeId: string,
   now: Date
 ) {
   // Suggestion chats resume only with a session id; otherwise create a store-scoped posting session.
   if (request.sessionId !== undefined) {
-    return resumeConversationSession(database, {
+    return conversationStore.resumeSession({
       kind: "posting",
       sessionId: request.sessionId,
       storeId,
     })
   }
 
-  return createConversationSession(database, {
+  return conversationStore.createSession({
     id: randomUUID(),
     kind: "posting",
     now,
@@ -72,40 +70,9 @@ async function draftForDecision(
   // Each LLM decision maps deterministically to a draft action or no-op follow-up question.
   switch (decision.decision) {
     case "accepted":
-      return createPostDraft({
-        acceptedSuggestionId:
-          decision.acceptedSuggestionId ?? options.request.activeSuggestionId,
-        adapters: options.adapters,
-        database: options.database,
-        imageAssets: options.request.imageAssets ?? [],
-        ownerIntent:
-          options.request.suggestionRevisedIntent ??
-          options.request.ownerIntent,
-        storeId: options.storeId,
-        suggestionMode: "accepted",
-        targetChannel: "GBP",
-      })
     case "skipped":
-      return createPostDraft({
-        adapters: options.adapters,
-        database: options.database,
-        imageAssets: options.request.imageAssets ?? [],
-        ownerIntent: options.request.ownerIntent,
-        storeId: options.storeId,
-        suggestionMode: "skipped",
-        targetChannel: "GBP",
-      })
     case "revision_requested":
-      return revisePostDraft({
-        adapters: options.adapters,
-        database: options.database,
-        imageAssets: options.request.imageAssets ?? [],
-        originalDraftId: options.request.draftId,
-        ownerIntent: decision.revisedIntent ?? options.request.ownerMessage,
-        storeId: options.storeId,
-        suggestionMode: "skipped",
-        targetChannel: "GBP",
-      })
+      return options.draftWriter(decision)
     case "question":
       return undefined
     default:
@@ -160,8 +127,8 @@ export async function processPostingDecision(
   options: PostingDecisionOptions
 ): Promise<PostingDecisionResponse | Readonly<Record<string, unknown>>> {
   const now = options.adapters.clock.now()
-  const session = readOrCreateSession(
-    options.database,
+  const session = await readOrCreateSession(
+    options.conversationStore,
     options.request,
     options.storeId,
     now
@@ -174,7 +141,7 @@ export async function processPostingDecision(
     }
   }
 
-  const replay = readConversationReplay(options.database, {
+  const replay = await options.conversationStore.readReplay({
     clientEventId: options.request.clientEventId,
     sessionId: session.id,
     storeId: options.storeId,
@@ -223,7 +190,7 @@ export async function processPostingDecision(
   }
 
   // Persist response and state transition together so later retries replay exact assistant output.
-  const turn = recordConversationTurn(options.database, {
+  const turn = await options.conversationStore.recordTurn({
     assistantMessage: response.assistantMessage,
     clientEventId: options.request.clientEventId,
     eventId: randomUUID(),

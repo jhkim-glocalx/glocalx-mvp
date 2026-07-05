@@ -5,14 +5,23 @@ import { join } from "node:path"
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { resetDatabaseFile } from "@/server/db/sqlite"
+import { openDatabase, resetDatabaseFile } from "@/server/db/sqlite"
 
 import { POST as onboardingSlotTurn } from "./onboarding/conversation/slots/route"
 import { POST as postingDecision } from "./posts/conversation/decision/route"
 
-const demoCookieHeader =
-  "glocalx_demo_session=demo-owner; glocalx_demo_store=demo-store"
 const tempPaths: string[] = []
+const missingPostgresEnvNames = ["DATABASE_URL", "DATABASE_URL_DIRECT"].filter(
+  (name) => !process.env[name]
+)
+const skipLivePostgresRoutes =
+  process.env["DATABASE_PROVIDER"] === "postgres" &&
+  missingPostgresEnvNames.length > 0
+type ConversationRows = Readonly<Record<"assistantMessages" | "events", number>>
+
+if (skipLivePostgresRoutes) {
+  console.info(`BLOCKED_BY_ENV missing ${missingPostgresEnvNames.join(",")}`)
+}
 
 async function useTempDatabase(): Promise<void> {
   const tempPath = await mkdtemp(join(tmpdir(), "glocalx-conversation-routes-"))
@@ -25,7 +34,7 @@ async function useTempDatabase(): Promise<void> {
 function createJsonRequest(
   url: string,
   body: Record<string, unknown>,
-  cookieHeader: string = demoCookieHeader
+  cookieHeader = "glocalx_demo_session=demo-owner; glocalx_demo_store=demo-store"
 ): NextRequest {
   return new NextRequest(url, {
     body: JSON.stringify(body),
@@ -35,6 +44,33 @@ function createJsonRequest(
     },
     method: "POST",
   })
+}
+
+function createOnboardingSlotRequest(
+  body: Record<string, unknown>
+): NextRequest {
+  return createJsonRequest(
+    "http://localhost:3000/api/onboarding/conversation/slots",
+    body
+  )
+}
+
+function readConversationRows(sessionId: string): ConversationRows {
+  const database = openDatabase()
+  try {
+    const rows = database
+      .prepare<
+        unknown[],
+        ConversationRows
+      >("SELECT (SELECT COUNT(*) FROM conversation_messages WHERE session_id = ? AND role = 'assistant') AS assistantMessages, (SELECT COUNT(*) FROM conversation_events WHERE session_id = ?) AS events")
+      .get(sessionId, sessionId)
+    if (rows === undefined) {
+      throw new Error("Expected conversation route rows")
+    }
+    return rows
+  } finally {
+    database.close()
+  }
 }
 
 const naverCandidate = {
@@ -47,63 +83,51 @@ const naverCandidate = {
   sourceInput: "https://naver.me/mybrunchcafe",
 }
 
-describe("conversation API routes", () => {
-  beforeEach(async () => {
-    await useTempDatabase()
-  })
+describe.skipIf(skipLivePostgresRoutes)("conversation API routes", () => {
+  beforeEach(useTempDatabase)
 
   afterEach(async () => {
     resetDatabaseFile()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
-    for (const tempPath of tempPaths) {
+    for (const tempPath of tempPaths.splice(0)) {
       await rm(tempPath, { force: true, recursive: true })
     }
-    tempPaths.length = 0
   })
 
   it("asks for one onboarding field at a time and replays duplicates", async () => {
     // Given
-    const firstRequest = createJsonRequest(
-      "http://localhost:3000/api/onboarding/conversation/slots",
-      {
-        candidate: naverCandidate,
-        clientEventId: "slot-turn-1",
-        currentState: "slot_elicitation",
-        ownerMessage: "전화번호는 1-2342-232예요",
-        requestedField: "phone",
-      }
-    )
+    const firstRequest = createOnboardingSlotRequest({
+      candidate: naverCandidate,
+      clientEventId: "slot-turn-1",
+      currentState: "slot_elicitation",
+      ownerMessage: "전화번호는 1-2342-232예요",
+      requestedField: "phone",
+    })
 
     // When
     const firstResponse = await onboardingSlotTurn(firstRequest)
     const firstPayload = await firstResponse.json()
     const secondResponse = await onboardingSlotTurn(
-      createJsonRequest(
-        "http://localhost:3000/api/onboarding/conversation/slots",
-        {
-          candidate: firstPayload.draft,
-          clientEventId: "slot-turn-2",
-          currentState: "slot_clarification",
-          ownerMessage: "평일 9-6이에요",
-          requestedField: "hours",
-          sessionId: firstPayload.sessionId,
-        }
-      )
+      createOnboardingSlotRequest({
+        candidate: firstPayload.draft,
+        clientEventId: "slot-turn-2",
+        currentState: "slot_clarification",
+        ownerMessage: "평일 9-6이에요",
+        requestedField: "hours",
+        sessionId: firstPayload.sessionId,
+      })
     )
     const secondPayload = await secondResponse.json()
     const replayResponse = await onboardingSlotTurn(
-      createJsonRequest(
-        "http://localhost:3000/api/onboarding/conversation/slots",
-        {
-          candidate: firstPayload.draft,
-          clientEventId: "slot-turn-2",
-          currentState: "slot_clarification",
-          ownerMessage: "다른 시간으로 바꾸려는 재전송입니다.",
-          requestedField: "hours",
-          sessionId: firstPayload.sessionId,
-        }
-      )
+      createOnboardingSlotRequest({
+        candidate: firstPayload.draft,
+        clientEventId: "slot-turn-2",
+        currentState: "slot_clarification",
+        ownerMessage: "다른 시간으로 바꾸려는 재전송입니다.",
+        requestedField: "hours",
+        sessionId: firstPayload.sessionId,
+      })
     )
 
     // Then
@@ -131,20 +155,64 @@ describe("conversation API routes", () => {
     expect(await replayResponse.json()).toEqual(secondPayload)
   })
 
+  it("replays concurrent duplicate onboarding events without duplicate rows", async () => {
+    // Given
+    const firstResponse = await onboardingSlotTurn(
+      createOnboardingSlotRequest({
+        candidate: naverCandidate,
+        clientEventId: "slot-turn-concurrent-1",
+        currentState: "slot_elicitation",
+        ownerMessage: "전화번호는 1-2342-232예요",
+        requestedField: "phone",
+      })
+    )
+    const firstPayload = await firstResponse.json()
+    const rowsBeforeDuplicate = readConversationRows(firstPayload.sessionId)
+
+    // When
+    const duplicateResponses = await Promise.all(
+      ["평일 9-6이에요", "중복 제출입니다."].map((ownerMessage) =>
+        onboardingSlotTurn(
+          createOnboardingSlotRequest({
+            candidate: firstPayload.draft,
+            clientEventId: "slot-turn-concurrent-2",
+            currentState: "slot_clarification",
+            ownerMessage,
+            requestedField: "hours",
+            sessionId: firstPayload.sessionId,
+          })
+        )
+      )
+    )
+    const firstDuplicate = duplicateResponses[0]
+    const secondDuplicate = duplicateResponses[1]
+    if (firstDuplicate === undefined || secondDuplicate === undefined) {
+      throw new Error("Expected two duplicate route responses")
+    }
+    const firstDuplicatePayload = await firstDuplicate.json()
+    const secondDuplicatePayload = await secondDuplicate.json()
+
+    // Then
+    expect(firstDuplicate.status).toBe(200)
+    expect(secondDuplicate.status).toBe(200)
+    expect(secondDuplicatePayload).toEqual(firstDuplicatePayload)
+    expect(readConversationRows(firstPayload.sessionId)).toEqual({
+      assistantMessages: rowsBeforeDuplicate.assistantMessages + 1,
+      events: rowsBeforeDuplicate.events + 1,
+    })
+  })
+
   it("fills onboarding fields from explicit owner text when production LLM credentials are absent", async () => {
     // Given
     vi.stubEnv("APP_INTEGRATION_MODE", "production")
     vi.stubEnv("OPENAI_API_KEY", "")
-    const request = createJsonRequest(
-      "http://localhost:3000/api/onboarding/conversation/slots",
-      {
-        candidate: naverCandidate,
-        clientEventId: "slot-turn-production-local-fill",
-        currentState: "slot_elicitation",
-        ownerMessage: "전화번호 01082432196",
-        requestedField: "phone",
-      }
-    )
+    const request = createOnboardingSlotRequest({
+      candidate: naverCandidate,
+      clientEventId: "slot-turn-production-local-fill",
+      currentState: "slot_elicitation",
+      ownerMessage: "전화번호 01082432196",
+      requestedField: "phone",
+    })
 
     // When
     const response = await onboardingSlotTurn(request)
@@ -166,16 +234,13 @@ describe("conversation API routes", () => {
     vi.stubEnv("APP_INTEGRATION_MODE", "production")
     vi.stubEnv("OPENAI_API_KEY", "openai-key")
     vi.stubGlobal("fetch", async () => new Response("{}", { status: 500 }))
-    const request = createJsonRequest(
-      "http://localhost:3000/api/onboarding/conversation/slots",
-      {
-        candidate: naverCandidate,
-        clientEventId: "slot-turn-production-llm-fallback",
-        currentState: "slot_elicitation",
-        ownerMessage: "영업시간은 weekdays 6 to 10pm 이에요",
-        requestedField: "hours",
-      }
-    )
+    const request = createOnboardingSlotRequest({
+      candidate: naverCandidate,
+      clientEventId: "slot-turn-production-llm-fallback",
+      currentState: "slot_elicitation",
+      ownerMessage: "영업시간은 weekdays 6 to 10pm 이에요",
+      requestedField: "hours",
+    })
 
     // When
     const response = await onboardingSlotTurn(request)
