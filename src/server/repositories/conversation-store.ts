@@ -22,33 +22,33 @@ export interface ConversationStore {
     readonly now: Date
     readonly state: string
     readonly storeId: string
-  }): ConversationSession
+  }): Promise<ConversationSession>
   readCurrentSession(options: {
     readonly kind: ConversationKind
     readonly storeId: string
-  }): ConversationSession | undefined
+  }): Promise<ConversationSession | undefined>
   resumeSession(
     lookup: ConversationSessionLookup
-  ): ConversationSession | undefined
+  ): Promise<ConversationSession | undefined>
   appendOwnerMessage(
     options: ConversationSessionLookup & {
       readonly clientEventId: string
       readonly content: string
       readonly now: Date
     }
-  ): ConversationMessage
+  ): Promise<ConversationMessage>
   appendAssistantMessage(
     options: ConversationSessionLookup & {
       readonly content: string
       readonly now: Date
     }
-  ): ConversationMessage
+  ): Promise<ConversationMessage>
   upsertSlots(
     options: ConversationSessionLookup & {
       readonly now: Date
       readonly slots: readonly ConversationSlotInput[]
     }
-  ): readonly ConversationSlotValue[]
+  ): Promise<readonly ConversationSlotValue[]>
   recordTurn(
     options: ConversationSessionLookup & {
       readonly assistantMessage: string
@@ -60,26 +60,28 @@ export interface ConversationStore {
       readonly publicResponse: PublicConversationResponse
       readonly slots: readonly ConversationSlotInput[]
     }
-  ): RecordConversationTurnResult
+  ): Promise<RecordConversationTurnResult>
   readReplay(options: {
     readonly clientEventId: string
     readonly sessionId: string
     readonly storeId: string
-  }): PublicConversationResponse | undefined
+  }): Promise<PublicConversationResponse | undefined>
   readDraft(lookup: {
     readonly sessionId: string
     readonly storeId: string
-  }): ConversationDraft | undefined
+  }): Promise<ConversationDraft | undefined>
   completeSession(options: {
     readonly now: Date
     readonly sessionId: string
     readonly storeId: string
-  }): ConversationSession
+  }): Promise<ConversationSession>
   selectCandidate(options: {
     readonly candidateId: string
     readonly candidateJson: PublicConversationResponse
     readonly now: Date
     readonly sessionId: string
     readonly storeId: string
-  }): ConversationSession
+  }): Promise<ConversationSession>
 }
+
+export { createDatabaseConversationStore } from "./conversation-store-queryable"
