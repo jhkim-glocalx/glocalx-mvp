@@ -10,6 +10,7 @@
     "db:pg:reset": "node scripts/db-pg-reset.ts",
     "db:pg:seed": "node scripts/db-pg-seed.ts",
     "db:pg:verify": "node scripts/db-pg-verify.ts",
+    "db:migrate:sqlite-to-pg": "node scripts/db-migrate-sqlite-to-pg.ts",
     "db:reset": "node scripts/db-reset.ts",
     "db:seed": "node scripts/db-seed.ts",
     "lint": "eslint .",
