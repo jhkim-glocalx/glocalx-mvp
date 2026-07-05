@@ -8,6 +8,8 @@ import type {
   SearchGoogleLocationsResult,
 } from "@/integrations/contracts"
 import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { GbpStore } from "@/server/repositories/gbp-store"
+import type { StoreProfileRepository } from "@/server/repositories/store-profile"
 
 import {
   persistClaimRequiredRecords,
@@ -56,9 +58,15 @@ export type GbpSetupResult =
 
 export type SetupGoogleBusinessProfileOptions = {
   readonly adapters: IntegrationAdapters
-  readonly database: SqliteDatabase
+  readonly database?: SqliteDatabase
+  readonly gbpStore?: GbpStore
   readonly mode: GbpSetupMode
+  readonly storeProfileRepository?: StoreProfileRepository
   readonly storeId: string
+}
+
+class GbpSetupConfigurationError extends Error {
+  readonly name = "GbpSetupConfigurationError"
 }
 
 export type BuildClaimRequiredResultOptions = {
@@ -95,13 +103,24 @@ export function buildClaimRequiredResult(
   }
 }
 
+async function readConfirmedGbpStoreProfile(
+  options: SetupGoogleBusinessProfileOptions
+) {
+  if (options.storeProfileRepository !== undefined) {
+    return await options.storeProfileRepository.readConfirmedGbpProfile(
+      options.storeId
+    )
+  }
+  if (options.database !== undefined) {
+    return getConfirmedGbpStoreProfile(options.database, options.storeId)
+  }
+  throw new GbpSetupConfigurationError()
+}
+
 export async function setupGoogleBusinessProfile(
   options: SetupGoogleBusinessProfileOptions
 ): Promise<GbpSetupResult> {
-  const storeProfileResult = getConfirmedGbpStoreProfile(
-    options.database,
-    options.storeId
-  )
+  const storeProfileResult = await readConfirmedGbpStoreProfile(options)
   if (storeProfileResult.kind === "missing") {
     // A GBP listing cannot be created until onboarding has confirmed the public store facts.
     return {
@@ -145,7 +164,7 @@ export async function setupGoogleBusinessProfile(
         requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
       })
       // Persist before returning so owners keep the admin-rights follow-up after leaving setup.
-      persistClaimRequiredRecords(options, {
+      await persistClaimRequiredRecords(options, {
         googleLocationId: claimedMatch.googleLocationId,
         requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
       })

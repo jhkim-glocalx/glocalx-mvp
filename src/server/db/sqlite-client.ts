@@ -56,9 +56,13 @@ class SqliteQueryable implements Queryable {
   }
 }
 
+export function createSqliteQueryable(database: SqliteDatabase): Queryable {
+  return new SqliteQueryable(database)
+}
+
 export function openSqliteDatabaseContext(): DatabaseContext {
   const database = openDatabase()
-  const queryable = new SqliteQueryable(database)
+  const queryable = createSqliteQueryable(database)
 
   return {
     close: async () => {
