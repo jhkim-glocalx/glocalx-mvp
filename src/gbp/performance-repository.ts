@@ -74,8 +74,31 @@ const locationPerformanceRowSchema = z.object({
   updated_at: timestampSchema,
 })
 
+const safeCountNumberSchema = z
+  .number()
+  .int()
+  .nonnegative()
+  .refine((value) => Number.isSafeInteger(value), {
+    message: "Count must be a safe integer",
+  })
+
+const safeCountStringSchema = z
+  .string()
+  .regex(/^\d+$/)
+  .transform((value, context) => {
+    const count = Number(value)
+    if (!Number.isSafeInteger(count)) {
+      context.addIssue({
+        code: "custom",
+        message: "Count must be a safe integer",
+      })
+      return z.NEVER
+    }
+    return count
+  })
+
 const countRowSchema = z.object({
-  count: z.number(),
+  count: z.union([safeCountNumberSchema, safeCountStringSchema]),
 })
 
 function parseScopes(
