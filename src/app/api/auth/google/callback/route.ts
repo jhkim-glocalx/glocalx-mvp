@@ -11,6 +11,7 @@ import {
   getGoogleRedirectUri,
   missingGoogleOAuthEnvVars,
 } from "@/auth/google-oauth"
+import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
 import {
   expiredGoogleOAuthStateCookieOptions,
   googleOAuthStateCookieName,
@@ -46,6 +47,10 @@ export async function GET(request: NextRequest) {
 
   // A valid state is not enough if provider credentials drifted after start.
   if (missingGoogleOAuthEnvVars(process.env).length > 0) {
+    return redirectToLandingClearingState("google_config")
+  }
+
+  if (missingTokenEncryptionEnvVars(process.env).length > 0) {
     return redirectToLandingClearingState("google_config")
   }
 

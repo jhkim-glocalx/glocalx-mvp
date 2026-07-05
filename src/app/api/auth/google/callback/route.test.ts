@@ -4,6 +4,7 @@ import { join } from "node:path"
 
 import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 import {
   upsertOAuthIdentity,
@@ -37,6 +38,26 @@ const googleProfile: OAuthIdentityProfile = {
 
 const mockedFetchGoogleOAuthProfile = vi.mocked(fetchGoogleOAuthProfile)
 const tempPaths: string[] = []
+const originalTokenEncryptionKey = process.env["TOKEN_ENCRYPTION_KEY"]
+const countRowSchema = z.object({ count: z.number() })
+const guardedTableCountQueries = {
+  authIdentities: "SELECT COUNT(*) AS count FROM auth_identities",
+  stores: "SELECT COUNT(*) AS count FROM stores",
+  users: "SELECT COUNT(*) AS count FROM users",
+} as const
+const unusableProductionTokenEncryptionKeys = [
+  { name: "missing", tokenEncryptionKey: undefined },
+  { name: "blank", tokenEncryptionKey: " \t\n " },
+  {
+    name: "replace-with placeholder",
+    tokenEncryptionKey: "replace-with-32-byte-base64-key",
+  },
+  {
+    name: "invalid-length base64",
+    tokenEncryptionKey: Buffer.alloc(31, 7).toString("base64"),
+  },
+  { name: "invalid base64", tokenEncryptionKey: "not-base64!!" },
+] as const
 
 async function createDatabasePath(): Promise<string> {
   const tempPath = await mkdtemp(join(tmpdir(), "glocalx-google-callback-"))
@@ -56,6 +77,18 @@ function configureEnv(databasePath: string): void {
     "GOOGLE_REDIRECT_URI",
     "http://localhost:3000/api/auth/google/callback"
   )
+}
+
+function configureProductionTokenEncryptionKey(
+  tokenEncryptionKey: string | undefined
+): void {
+  vi.stubEnv("NODE_ENV", "production")
+  if (tokenEncryptionKey === undefined) {
+    delete process.env["TOKEN_ENCRYPTION_KEY"]
+    return
+  }
+
+  process.env["TOKEN_ENCRYPTION_KEY"] = tokenEncryptionKey
 }
 
 function createCookieHeader(cookies: Readonly<Record<string, string>>): string {
@@ -103,9 +136,34 @@ function completeExistingStore(
   }
 }
 
+function countRows(
+  databasePath: string,
+  tableName: keyof typeof guardedTableCountQueries
+): number {
+  const database = openDatabase(databasePath)
+  try {
+    return countRowSchema.parse(
+      database.prepare(guardedTableCountQueries[tableName]).get()
+    ).count
+  } finally {
+    database.close()
+  }
+}
+
+function expectGoogleStateCookieCleared(response: Response): void {
+  const setCookie = response.headers.get("Set-Cookie")
+  expect(setCookie).toContain(`${googleOAuthStateCookieName}=`)
+  expect(setCookie).toContain("Max-Age=0")
+}
+
 afterEach(async () => {
   vi.resetAllMocks()
   vi.unstubAllEnvs()
+  if (originalTokenEncryptionKey === undefined) {
+    delete process.env["TOKEN_ENCRYPTION_KEY"]
+  } else {
+    process.env["TOKEN_ENCRYPTION_KEY"] = originalTokenEncryptionKey
+  }
 
   for (const tempPath of tempPaths) {
     await rm(tempPath, { force: true, recursive: true })
@@ -154,6 +212,36 @@ describe("Google OAuth callback route", () => {
     expect(response.status).toBe(303)
     expect(response.headers.get("Location")).toBe("/app")
   })
+
+  it.each(unusableProductionTokenEncryptionKeys)(
+    "redirects production callbacks to Google config before provider calls when TOKEN_ENCRYPTION_KEY is $name",
+    async ({ tokenEncryptionKey }) => {
+      const databasePath = await createDatabasePath()
+      configureEnv(databasePath)
+      configureProductionTokenEncryptionKey(tokenEncryptionKey)
+      mockedFetchGoogleOAuthProfile.mockResolvedValue(googleProfile)
+
+      const response = await GET(
+        createGoogleCallbackRequest({
+          code: "test-code",
+          cookies: {
+            [googleOAuthStateCookieName]: "valid-google-state",
+          },
+          state: "valid-google-state",
+        })
+      )
+
+      expect.soft(response.status).toBe(303)
+      expect
+        .soft(response.headers.get("Location"))
+        .toBe("/?auth_error=google_config")
+      expectGoogleStateCookieCleared(response)
+      expect.soft(mockedFetchGoogleOAuthProfile).not.toHaveBeenCalled()
+      expect.soft(countRows(databasePath, "users")).toBe(0)
+      expect.soft(countRows(databasePath, "stores")).toBe(0)
+      expect.soft(countRows(databasePath, "authIdentities")).toBe(0)
+    }
+  )
 
   it("redirects missing state to the Google auth error without provider calls", async () => {
     const databasePath = await createDatabasePath()
