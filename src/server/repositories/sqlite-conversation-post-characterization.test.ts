@@ -9,6 +9,7 @@ import {
 } from "@/conversations/repository"
 import { createPostDraft, publishPostDraft } from "@/posts/post-flow"
 
+import { createDatabasePostStore } from "./post-store"
 import { withRepositoryTestContext } from "./sqlite-characterization-support"
 
 const draftRowSchema = z.object({
@@ -82,54 +83,57 @@ describe("SQLite conversation and post characterization", () => {
   })
 
   it("characterizes post draft creation, publish updates, and idempotent replay", async () => {
-    await withRepositoryTestContext(async ({ adapters, database }) => {
-      const draft = await createPostDraft({
-        adapters,
-        database,
-        ownerIntent: "repository characterization brunch update",
-        storeId: demoStoreId,
-        targetChannel: "GBP",
-      })
-      const firstPublish = publishPostDraft({
-        adapters,
-        database,
-        draftId: draft.draftId,
-        idempotencyKey: "repository-publish-key",
-        storeId: demoStoreId,
-      })
-      const secondPublish = publishPostDraft({
-        adapters,
-        database,
-        draftId: draft.draftId,
-        idempotencyKey: "repository-publish-key",
-        storeId: demoStoreId,
-      })
-      const row = draftRowSchema.parse(
-        database
-          .prepare(
-            "SELECT post_drafts.status AS draftStatus, (SELECT COUNT(*) FROM post_publish_attempts WHERE idempotency_key = 'repository-publish-key') AS attempts FROM post_drafts WHERE id = ?"
-          )
-          .get(draft.draftId)
-      )
+    await withRepositoryTestContext(
+      async ({ adapters, database, queryable }) => {
+        const postStore = createDatabasePostStore(queryable)
+        const draft = await createPostDraft({
+          adapters,
+          ownerIntent: "repository characterization brunch update",
+          postStore,
+          storeId: demoStoreId,
+          targetChannel: "GBP",
+        })
+        const firstPublish = await publishPostDraft({
+          adapters,
+          draftId: draft.draftId,
+          idempotencyKey: "repository-publish-key",
+          postStore,
+          storeId: demoStoreId,
+        })
+        const secondPublish = await publishPostDraft({
+          adapters,
+          draftId: draft.draftId,
+          idempotencyKey: "repository-publish-key",
+          postStore,
+          storeId: demoStoreId,
+        })
+        const row = draftRowSchema.parse(
+          database
+            .prepare(
+              "SELECT post_drafts.status AS draftStatus, (SELECT COUNT(*) FROM post_publish_attempts WHERE idempotency_key = 'repository-publish-key') AS attempts FROM post_drafts WHERE id = ?"
+            )
+            .get(draft.draftId)
+        )
 
-      expect(draft.status).toBe("DRAFT_READY")
-      expect(firstPublish).toEqual({
-        attemptNumber: 1,
-        draftId: draft.draftId,
-        gbpPostId: "stub-gbp-post",
-        history: [
-          {
-            attemptNumber: 1,
-            gbpPostId: "stub-gbp-post",
-            publicUrl: "https://business.google.com/local-post/stub-gbp-post",
-            status: "SUCCEEDED",
-          },
-        ],
-        publicUrl: "https://business.google.com/local-post/stub-gbp-post",
-        status: "PUBLISHED",
-      })
-      expect(secondPublish).toEqual(firstPublish)
-      expect(row).toEqual({ attempts: 1, draftStatus: "PUBLISHED" })
-    })
+        expect(draft.status).toBe("DRAFT_READY")
+        expect(firstPublish).toEqual({
+          attemptNumber: 1,
+          draftId: draft.draftId,
+          gbpPostId: "stub-gbp-post",
+          history: [
+            {
+              attemptNumber: 1,
+              gbpPostId: "stub-gbp-post",
+              publicUrl: "https://business.google.com/local-post/stub-gbp-post",
+              status: "SUCCEEDED",
+            },
+          ],
+          publicUrl: "https://business.google.com/local-post/stub-gbp-post",
+          status: "PUBLISHED",
+        })
+        expect(secondPublish).toEqual(firstPublish)
+        expect(row).toEqual({ attempts: 1, draftStatus: "PUBLISHED" })
+      }
+    )
   })
 })

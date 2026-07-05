@@ -11,7 +11,7 @@ import {
   processPostingDecision,
   type PostingDraftWriter,
 } from "@/posts/posting-conversation"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { PostStore } from "@/server/repositories/post-store"
 import {
   parseJsonRoutePayload,
   readDemoSession,
@@ -22,23 +22,22 @@ import {
 
 type PostingDraftWriterOptions = {
   readonly adapters: IntegrationAdapters
-  readonly database: SqliteDatabase | undefined
+  readonly postStore: PostStore
   readonly request: PostingDecisionRequest
   readonly storeId: string
 }
 
-class PostingDraftPersistenceUnavailableError extends Error {
-  readonly name = "PostingDraftPersistenceUnavailableError"
+class UnexpectedPostingDecisionError extends Error {
+  readonly name = "UnexpectedPostingDecisionError"
+
+  constructor(value: never) {
+    super(`Unexpected posting decision: ${String(value)}`)
+  }
 }
 
 function createPostingDraftWriter(
   options: PostingDraftWriterOptions
 ): PostingDraftWriter {
-  if (options.database === undefined) {
-    return async () => undefined
-  }
-  const database = options.database
-
   return async (decision: PostingConversationDecision) => {
     switch (decision.decision) {
       case "accepted":
@@ -46,11 +45,11 @@ function createPostingDraftWriter(
           acceptedSuggestionId:
             decision.acceptedSuggestionId ?? options.request.activeSuggestionId,
           adapters: options.adapters,
-          database,
           imageAssets: options.request.imageAssets ?? [],
           ownerIntent:
             options.request.suggestionRevisedIntent ??
             options.request.ownerIntent,
+          postStore: options.postStore,
           storeId: options.storeId,
           suggestionMode: "accepted",
           targetChannel: "GBP",
@@ -58,9 +57,9 @@ function createPostingDraftWriter(
       case "skipped":
         return createPostDraft({
           adapters: options.adapters,
-          database,
           imageAssets: options.request.imageAssets ?? [],
           ownerIntent: options.request.ownerIntent,
+          postStore: options.postStore,
           storeId: options.storeId,
           suggestionMode: "skipped",
           targetChannel: "GBP",
@@ -68,10 +67,10 @@ function createPostingDraftWriter(
       case "revision_requested":
         return revisePostDraft({
           adapters: options.adapters,
-          database,
           imageAssets: options.request.imageAssets ?? [],
           originalDraftId: options.request.draftId,
           ownerIntent: decision.revisedIntent ?? options.request.ownerMessage,
+          postStore: options.postStore,
           storeId: options.storeId,
           suggestionMode: "skipped",
           targetChannel: "GBP",
@@ -85,9 +84,7 @@ function createPostingDraftWriter(
 }
 
 function assertNeverPostingDecision(value: never): never {
-  throw new PostingDraftPersistenceUnavailableError(
-    `Unexpected posting decision: ${String(value)}`
-  )
+  throw new UnexpectedPostingDecisionError(value)
 }
 
 function conversationFailureResponse(error: unknown): Response {
@@ -126,10 +123,10 @@ export async function POST(request: NextRequest) {
   }
 
   return withQueryableRouteDatabase(
-    async ({ adapters, conversationStore, legacySqliteDatabase }) => {
+    async ({ adapters, conversationStore, postStore }) => {
       const draftWriter = createPostingDraftWriter({
         adapters,
-        database: legacySqliteDatabase,
+        postStore,
         request: parsed.value,
         storeId: session.storeId,
       })

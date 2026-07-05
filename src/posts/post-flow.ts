@@ -2,18 +2,7 @@ import { z } from "zod"
 
 import { canUseLiveGbpActions } from "@/gbp/state-machine"
 
-import {
-  failedAttemptCount,
-  getAttemptByIdempotencyKey,
-  getCurrentLocation,
-  getDraft,
-  getPublishHistory,
-  insertDraft,
-  insertSuccessfulPublishAttempt,
-  markDraftPublished,
-  nextAttemptNumber,
-  stableId,
-} from "./post-repository"
+import { stableId } from "./post-repository"
 import { buildMarketingPreview } from "./post-marketing-preview"
 import type {
   CreatePostDraftOptions,
@@ -43,7 +32,7 @@ const localPostBodySchema = z
 export async function createPostDraft(
   options: CreatePostDraftOptions
 ): Promise<PostDraftResult> {
-  const location = getCurrentLocation(options.database, options.storeId)
+  const location = await options.postStore.readCurrentLocation(options.storeId)
   const eligibility = canUseLiveGbpActions(location.status)
   const preview = await buildMarketingPreview(
     options,
@@ -56,8 +45,7 @@ export async function createPostDraft(
       options.imageAssets ?? []
     )}:${options.suggestionMode ?? "request"}:${options.acceptedSuggestionId ?? ""}`
   )
-  insertDraft({
-    database: options.database,
+  await options.postStore.upsertDraft({
     draftId,
     now: options.adapters.clock.now(),
     ownerIntent: options.ownerIntent,
@@ -71,7 +59,7 @@ export async function createPostDraft(
 export async function revisePostDraft(
   options: RevisePostDraftOptions
 ): Promise<PostDraftResult> {
-  const location = getCurrentLocation(options.database, options.storeId)
+  const location = await options.postStore.readCurrentLocation(options.storeId)
   const eligibility = canUseLiveGbpActions(location.status)
   const preview = await buildMarketingPreview(
     options,
@@ -84,8 +72,7 @@ export async function revisePostDraft(
       options.imageAssets ?? []
     )}:${options.suggestionMode ?? "request"}:${options.acceptedSuggestionId ?? ""}`
   )
-  insertDraft({
-    database: options.database,
+  await options.postStore.upsertDraft({
     draftId,
     now: options.adapters.clock.now(),
     ownerIntent: options.ownerIntent,
@@ -102,10 +89,10 @@ export async function revisePostDraft(
   }
 }
 
-export function publishPostDraft(
+export async function publishPostDraft(
   options: PublishPostDraftOptions
-): PublishPostResult {
-  const location = getCurrentLocation(options.database, options.storeId)
+): Promise<PublishPostResult> {
+  const location = await options.postStore.readCurrentLocation(options.storeId)
   const eligibility = canUseLiveGbpActions(location.status)
   if (eligibility.kind === "blocked") {
     return {
@@ -115,13 +102,11 @@ export function publishPostDraft(
     }
   }
 
-  const draft = getDraft(options.database, options.draftId)
+  const draft = await options.postStore.readDraft(options.draftId)
   // Publish retries default to one key per draft, preventing duplicate GBP posts after success.
   const idempotencyKey = options.idempotencyKey ?? `publish-${options.draftId}`
-  const existingAttempt = getAttemptByIdempotencyKey(
-    options.database,
-    idempotencyKey
-  )
+  const existingAttempt =
+    await options.postStore.readAttemptByIdempotencyKey(idempotencyKey)
   if (
     existingAttempt?.status === "SUCCEEDED" &&
     existingAttempt.gbpPostId !== null &&
@@ -133,12 +118,12 @@ export function publishPostDraft(
       gbpPostId: existingAttempt.gbpPostId,
       publicUrl: existingAttempt.publicUrl,
       attemptNumber: existingAttempt.attemptNumber,
-      history: getPublishHistory(options.database, options.draftId),
+      history: await options.postStore.readPublishHistory(options.draftId),
     }
   }
 
   // After repeated failures, automated publish stops before another adapter call mutates state.
-  if (failedAttemptCount(options.database, options.draftId) >= 3) {
+  if ((await options.postStore.countFailedAttempts(options.draftId)) >= 3) {
     return {
       status: "MANUAL_PUBLISH_REQUIRED",
       code: "POST_PUBLISH_RETRY_LIMIT",
@@ -147,7 +132,9 @@ export function publishPostDraft(
     }
   }
 
-  const attemptNumber = nextAttemptNumber(options.database, options.draftId)
+  const attemptNumber = await options.postStore.readNextAttemptNumber(
+    options.draftId
+  )
   const adapterResult = options.adapters.gbpLocalPosts.createLocalPost({
     accessToken: "stub-access-token",
     parent: "accounts/stub/locations/stub-created",
@@ -162,16 +149,14 @@ export function publishPostDraft(
           publicUrl: "https://business.google.com/local-post/stub-gbp-post",
         }
 
-  insertSuccessfulPublishAttempt({
+  await options.postStore.recordSuccessfulPublishAttempt({
     attemptNumber,
-    database: options.database,
     draftId: options.draftId,
     gbpPostId: body.gbpPostId,
     idempotencyKey,
     now: options.adapters.clock.now(),
     publicUrl: body.publicUrl,
   })
-  markDraftPublished(options.database, options.draftId)
 
   return {
     status: "PUBLISHED",
@@ -179,6 +164,6 @@ export function publishPostDraft(
     gbpPostId: body.gbpPostId,
     publicUrl: body.publicUrl,
     attemptNumber,
-    history: getPublishHistory(options.database, options.draftId),
+    history: await options.postStore.readPublishHistory(options.draftId),
   }
 }

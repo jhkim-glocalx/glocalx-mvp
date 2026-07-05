@@ -8,7 +8,7 @@ import {
   readDemoSession,
   requireSessionStoreAccess,
   requiredSessionResponse,
-  withRouteDatabase,
+  withQueryableRouteDatabase,
 } from "@/server/http"
 
 function generationFailureResponse(error: unknown): Response {
@@ -45,23 +45,26 @@ export async function POST(request: NextRequest) {
 
   ensureDemoOwnerStore()
 
-  return withRouteDatabase(async ({ adapters, database }) => {
+  return withQueryableRouteDatabase(async ({ adapters, postStore }) => {
     try {
       const result = await createPostDraft({
         adapters,
-        database,
         ...(parsed.value.acceptedSuggestionId === undefined
           ? {}
           : { acceptedSuggestionId: parsed.value.acceptedSuggestionId }),
         imageAssets: parsed.value.imageAssets ?? [],
         ownerIntent: parsed.value.ownerIntent,
+        postStore,
         storeId: session.storeId,
         suggestionMode: parsed.value.suggestionMode ?? "request",
         targetChannel: parsed.value.targetChannel,
       })
       return Response.json(result)
     } catch (error) {
-      return generationFailureResponse(error)
+      if (error instanceof Error) {
+        return generationFailureResponse(error)
+      }
+      throw error
     }
   })
 }

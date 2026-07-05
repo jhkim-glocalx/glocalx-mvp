@@ -1,4 +1,3 @@
-import { getStore } from "./post-repository"
 import type { CreatePostDraftOptions, PostPreview } from "./post-types"
 import type { MarketingCaptionTranslation } from "@/integrations/contracts"
 
@@ -35,11 +34,11 @@ function fallbackTranslations(
   ]
 }
 
-function buildPreview(
+async function buildPreview(
   options: CreatePostDraftOptions,
   canPublish: boolean
-): PostPreview {
-  const store = getStore(options.database, options.storeId)
+): Promise<PostPreview> {
+  const store = await options.postStore.readStore(options.storeId)
   const generated = options.adapters.contentGeneration.generatePostCopy(
     options.ownerIntent
   )
@@ -58,12 +57,12 @@ function buildPreview(
   }
 }
 
-function buildFallbackMarketingPreview(
+async function buildFallbackMarketingPreview(
   options: CreatePostDraftOptions,
   canPublish: boolean,
   basePreview: PostPreview
-): PostPreview {
-  const store = getStore(options.database, options.storeId)
+): Promise<PostPreview> {
+  const store = await options.postStore.readStore(options.storeId)
   const imageAssets = options.imageAssets ?? []
   const keywords = Array.from(
     new Set(
@@ -143,13 +142,13 @@ export async function buildMarketingPreview(
   options: CreatePostDraftOptions,
   canPublish: boolean
 ): Promise<PostPreview> {
-  const basePreview = buildPreview(options, canPublish)
+  const basePreview = await buildPreview(options, canPublish)
   const imageAssets = options.imageAssets ?? []
   if (imageAssets.length === 0) {
     return basePreview
   }
 
-  const store = getStore(options.database, options.storeId)
+  const store = await options.postStore.readStore(options.storeId)
   const result =
     await options.adapters.marketingGeneration.generateMarketingDraft({
       ...(options.acceptedSuggestionId === undefined
@@ -164,7 +163,11 @@ export async function buildMarketingPreview(
 
   if (result.kind === "blocked_by_credentials") {
     return {
-      ...buildFallbackMarketingPreview(options, canPublish, basePreview),
+      ...(await buildFallbackMarketingPreview(
+        options,
+        canPublish,
+        basePreview
+      )),
       generationStatus: {
         kind: "blocked_by_credentials",
         missingEnvVars: result.missingEnvVars,

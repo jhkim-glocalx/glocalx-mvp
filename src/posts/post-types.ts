@@ -5,14 +5,14 @@ import type {
   MarketingImageAssetInput,
   MarketingSuggestionMode,
 } from "@/integrations/contracts"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { PostStore } from "@/server/repositories/post-store"
 
 export type CreatePostDraftOptions = {
   readonly acceptedSuggestionId?: string
   readonly adapters: IntegrationAdapters
-  readonly database: SqliteDatabase
   readonly imageAssets?: readonly MarketingImageAssetInput[]
   readonly ownerIntent: string
+  readonly postStore: PostStore
   readonly storeId: string
   readonly suggestionMode?: MarketingSuggestionMode
   readonly targetChannel: "GBP"
@@ -24,9 +24,9 @@ export type RevisePostDraftOptions = CreatePostDraftOptions & {
 
 export type PublishPostDraftOptions = {
   readonly adapters: IntegrationAdapters
-  readonly database: SqliteDatabase
   readonly draftId: string
   readonly idempotencyKey?: string
+  readonly postStore: PostStore
   readonly storeId: string
 }
 

@@ -6,13 +6,21 @@ import { afterEach, describe, expect, it } from "vitest"
 import { z } from "zod"
 
 import { createIntegrationAdapters } from "@/integrations"
-import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
+import { createSqliteQueryable } from "@/server/db/sqlite-client"
+import {
+  applyMigrations,
+  openDatabase,
+  seedDemoData,
+  type SqliteDatabase,
+} from "@/server/db/sqlite"
+import { createDatabasePostStore } from "@/server/repositories/post-store"
 
-import { createPostDraft, publishPostDraft, revisePostDraft } from "./post-flow"
+import { createPostDraft, revisePostDraft } from "./post-flow"
 
 const countRowSchema = z.object({
   count: z.number(),
 })
+
 const storedMarketingPreviewSchema = z.object({
   platformPreviews: z.array(
     z.object({
@@ -25,8 +33,12 @@ const storedMarketingPreviewSchema = z.object({
     })
   ),
 })
+const draftPreviewRowSchema = z.object({
+  marketing_preview_json: z.string(),
+  revision_of_draft_id: z.string().nullable(),
+})
 
-describe("post-flow", () => {
+describe("post-flow drafts", () => {
   const tempPaths: string[] = []
 
   afterEach(async () => {
@@ -45,6 +57,10 @@ describe("post-flow", () => {
     return database
   }
 
+  function createPostStore(database: SqliteDatabase) {
+    return createDatabasePostStore(createSqliteQueryable(database))
+  }
+
   it("creates a GBP draft preview with Korean and English copy", async () => {
     // Given
     const database = await createDatabase()
@@ -53,8 +69,8 @@ describe("post-flow", () => {
     // When
     const result = await createPostDraft({
       adapters,
-      database,
       ownerIntent: "주말 브런치 신메뉴 홍보",
+      postStore: createPostStore(database),
       storeId: "demo-store",
       targetChannel: "GBP",
     })
@@ -80,7 +96,6 @@ describe("post-flow", () => {
     // When
     const result = await createPostDraft({
       adapters,
-      database,
       imageAssets: [
         {
           dataUrl: "data:image/png;base64,c3R1Yi1pbWFnZQ==",
@@ -91,6 +106,7 @@ describe("post-flow", () => {
         },
       ],
       ownerIntent: "이번 주말 브런치 신메뉴 홍보",
+      postStore: createPostStore(database),
       storeId: "demo-store",
       suggestionMode: "request",
       targetChannel: "GBP",
@@ -128,16 +144,16 @@ describe("post-flow", () => {
       ],
     })
 
-    const row = database
-      .prepare(
-        "SELECT revision_of_draft_id, marketing_preview_json FROM post_drafts WHERE id = ?"
-      )
-      .get(result.draftId) as
-      | { revision_of_draft_id: string | null; marketing_preview_json: string }
-      | undefined
-    expect(row?.revision_of_draft_id).toBeNull()
+    const row = draftPreviewRowSchema.parse(
+      database
+        .prepare(
+          "SELECT revision_of_draft_id, marketing_preview_json FROM post_drafts WHERE id = ?"
+        )
+        .get(result.draftId)
+    )
+    expect(row.revision_of_draft_id).toBeNull()
     const marketingPreview = storedMarketingPreviewSchema.parse(
-      JSON.parse(row?.marketing_preview_json ?? "{}")
+      JSON.parse(row.marketing_preview_json)
     )
     expect(marketingPreview).toMatchObject({
       platformPreviews: [{ platform: "GBP" }, { platform: "INSTAGRAM" }],
@@ -154,153 +170,15 @@ describe("post-flow", () => {
     database.close()
   })
 
-  it("publishes a draft idempotently with deterministic stub history", async () => {
-    // Given
-    const database = await createDatabase()
-    const adapters = createIntegrationAdapters({ database, env: {} })
-    const draft = await createPostDraft({
-      adapters,
-      database,
-      ownerIntent: "주말 브런치 신메뉴 홍보",
-      storeId: "demo-store",
-      targetChannel: "GBP",
-    })
-
-    // When
-    const firstPublish = publishPostDraft({
-      adapters,
-      database,
-      draftId: draft.draftId,
-      idempotencyKey: "publish-weekend-brunch",
-      storeId: "demo-store",
-    })
-    const secondPublish = publishPostDraft({
-      adapters,
-      database,
-      draftId: draft.draftId,
-      idempotencyKey: "publish-weekend-brunch",
-      storeId: "demo-store",
-    })
-
-    // Then
-    expect(firstPublish).toEqual({
-      status: "PUBLISHED",
-      draftId: draft.draftId,
-      gbpPostId: "stub-gbp-post",
-      publicUrl: "https://business.google.com/local-post/stub-gbp-post",
-      attemptNumber: 1,
-      history: [
-        {
-          attemptNumber: 1,
-          status: "SUCCEEDED",
-          gbpPostId: "stub-gbp-post",
-          publicUrl: "https://business.google.com/local-post/stub-gbp-post",
-        },
-      ],
-    })
-    expect(secondPublish).toEqual(firstPublish)
-
-    const countRow = countRowSchema.parse(
-      database
-        .prepare(
-          "SELECT COUNT(*) AS count FROM post_publish_attempts WHERE idempotency_key = 'publish-weekend-brunch'"
-        )
-        .get()
-    )
-    expect(countRow.count).toBe(1)
-    database.close()
-  })
-
-  it("blocks publish when the GBP location is not verified", async () => {
-    // Given
-    const database = await createDatabase()
-    const adapters = createIntegrationAdapters({ database, env: {} })
-    database
-      .prepare("UPDATE gbp_locations SET status = ? WHERE id = ?")
-      .run("VERIFICATION_PENDING", "demo-gbp-location")
-    const draft = await createPostDraft({
-      adapters,
-      database,
-      ownerIntent: "주말 브런치 신메뉴 홍보",
-      storeId: "demo-store",
-      targetChannel: "GBP",
-    })
-
-    // When
-    const result = publishPostDraft({
-      adapters,
-      database,
-      draftId: draft.draftId,
-      idempotencyKey: "blocked-publish",
-      storeId: "demo-store",
-    })
-
-    // Then
-    expect(result).toEqual({
-      status: "BLOCKED",
-      code: "LOCATION_NOT_VERIFIED",
-      message:
-        "Google 비즈니스 프로필 인증이 완료되어야 게시글과 리뷰 답글을 라이브로 진행할 수 있습니다.",
-    })
-    database.close()
-  })
-
-  it("surfaces manual publish guidance after three failed attempts", async () => {
-    // Given
-    const database = await createDatabase()
-    const adapters = createIntegrationAdapters({ database, env: {} })
-    const draft = await createPostDraft({
-      adapters,
-      database,
-      ownerIntent: "주말 브런치 신메뉴 홍보",
-      storeId: "demo-store",
-      targetChannel: "GBP",
-    })
-    for (const attemptNumber of [1, 2, 3]) {
-      database
-        .prepare(
-          "INSERT INTO post_publish_attempts (id, draft_id, idempotency_key, attempt_number, status, gbp_post_id, public_url, error_code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        )
-        .run(
-          `failed-attempt-${attemptNumber}`,
-          draft.draftId,
-          `failed-key-${attemptNumber}`,
-          attemptNumber,
-          "FAILED",
-          null,
-          null,
-          "STUB_FAILURE",
-          "2026-06-04T00:00:00.000Z"
-        )
-    }
-
-    // When
-    const result = publishPostDraft({
-      adapters,
-      database,
-      draftId: draft.draftId,
-      idempotencyKey: "fourth-attempt",
-      storeId: "demo-store",
-    })
-
-    // Then
-    expect(result).toEqual({
-      status: "MANUAL_PUBLISH_REQUIRED",
-      code: "POST_PUBLISH_RETRY_LIMIT",
-      message:
-        "게시 시도가 3회 실패했습니다. Google Business Profile에서 직접 게시하고 상태를 확인해주세요.",
-    })
-    database.close()
-  })
-
   it("regenerates edited drafts without deleting original draft history", async () => {
     // Given
     const database = await createDatabase()
     const adapters = createIntegrationAdapters({ database, env: {} })
+    const postStore = createPostStore(database)
     const original = await createPostDraft({
       adapters,
-      database,
       ownerIntent: "주말 브런치 신메뉴 홍보",
+      postStore,
       storeId: "demo-store",
       targetChannel: "GBP",
     })
@@ -308,9 +186,9 @@ describe("post-flow", () => {
     // When
     const revised = await revisePostDraft({
       adapters,
-      database,
       originalDraftId: original.draftId,
       ownerIntent: "비 오는 날 따뜻한 라떼 홍보",
+      postStore,
       storeId: "demo-store",
       targetChannel: "GBP",
     })

@@ -8,7 +8,7 @@ import {
   readDemoSession,
   requireSessionStoreAccess,
   requiredSessionResponse,
-  withRouteDatabase,
+  withQueryableRouteDatabase,
 } from "@/server/http"
 
 type PublishRouteContext = {
@@ -43,20 +43,20 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
   // Await after auth/validation so Next's promise params are consumed at the route boundary.
   const { draftId } = await context.params
 
-  return withRouteDatabase(({ adapters, database }) => {
+  return withQueryableRouteDatabase(async ({ adapters, postStore }) => {
     const result =
       parsed.value.idempotencyKey === undefined
-        ? publishPostDraft({
+        ? await publishPostDraft({
             adapters,
-            database,
             draftId,
+            postStore,
             storeId: session.storeId,
           })
-        : publishPostDraft({
+        : await publishPostDraft({
             adapters,
-            database,
             draftId,
             idempotencyKey: parsed.value.idempotencyKey,
+            postStore,
             storeId: session.storeId,
           })
     const status =

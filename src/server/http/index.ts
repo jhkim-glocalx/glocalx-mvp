@@ -18,6 +18,7 @@ import { createDatabaseConversationStore } from "@/server/repositories/conversat
 import type { ConversationStore } from "@/server/repositories/conversation-store"
 import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
+import { createDatabasePostStore } from "@/server/repositories/post-store"
 import { createDatabaseSessionStore } from "@/server/repositories/session-store"
 import type { SessionStore } from "@/server/repositories/session-store"
 import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
@@ -56,6 +57,7 @@ export type QueryableRouteDatabaseContext = {
   readonly onboardingExtractionRepository: ReturnType<
     typeof createDatabaseOnboardingExtractionRepository
   >
+  readonly postStore: ReturnType<typeof createDatabasePostStore>
   readonly sessionStore: SessionStore
   readonly storeProfileRepository: ReturnType<
     typeof createDatabaseStoreProfileRepository
@@ -207,6 +209,7 @@ export async function withQueryableRouteDatabase<TResponse extends Response>(
       oauthIdentityRepository: createDatabaseOAuthIdentityRepository(queryable),
       onboardingExtractionRepository:
         createDatabaseOnboardingExtractionRepository(queryable),
+      postStore: createDatabasePostStore(queryable),
       sessionStore: createDatabaseSessionStore(queryable),
       storeProfileRepository: createDatabaseStoreProfileRepository(queryable),
     })
