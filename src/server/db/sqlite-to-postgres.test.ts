@@ -6,6 +6,7 @@ import Database from "better-sqlite3"
 import { describe, expect, it } from "vitest"
 
 import { applyMigrations, requiredTableNames, seedDemoData } from "./sqlite.ts"
+import { importTable } from "./postgres/sqlite-import.ts"
 import type { ExportSnapshot } from "./sqlite-to-postgres.ts"
 import {
   MigrationInputError,
@@ -42,6 +43,23 @@ function removeFirstUser(snapshot: ExportSnapshot): ExportSnapshot {
     tables: snapshot.tables.map((table) =>
       table.name === "users" ? { ...table, rows: table.rows.slice(1) } : table
     ),
+  }
+}
+
+type CapturingSql = {
+  readonly capturedParameters: readonly (readonly unknown[])[]
+  readonly executor: Parameters<typeof importTable>[0]
+}
+
+function capturingSql(): CapturingSql {
+  const capturedParameters: unknown[][] = []
+  return {
+    capturedParameters,
+    executor: {
+      unsafe: async (_query, parameters) => {
+        capturedParameters.push([...(parameters ?? [])])
+      },
+    },
   }
 }
 
@@ -116,5 +134,35 @@ describe("SQLite to Postgres migration export", () => {
     expect(() => reconcileSnapshots(snapshot, targetSnapshot)).toThrow(
       MigrationReconciliationError
     )
+  })
+
+  it("binds SQL NULL when nullable JSON export value is null", async () => {
+    // Given: an exported nullable JSON value from SQLite.
+    const sql = capturingSql()
+
+    // When: the row is imported through the Postgres insert path.
+    await importTable(sql.executor, {
+      columns: ["id", "marketing_preview_json"],
+      name: "post_drafts",
+      rows: [{ id: "draft_with_null_preview", marketing_preview_json: null }],
+    })
+
+    // Then: Postgres receives SQL NULL instead of the JSONB string "null".
+    expect(sql.capturedParameters).toEqual([["draft_with_null_preview", null]])
+  })
+
+  it("binds SQL NULL when nullable JSON export value is undefined", async () => {
+    // Given: an exported row where SQLite omitted a nullable JSON field.
+    const sql = capturingSql()
+
+    // When: the row is imported through the Postgres insert path.
+    await importTable(sql.executor, {
+      columns: ["id", "marketing_preview_json"],
+      name: "post_drafts",
+      rows: [{ id: "draft_without_preview" }],
+    })
+
+    // Then: Postgres receives SQL NULL for the nullable JSON column.
+    expect(sql.capturedParameters).toEqual([["draft_without_preview", null]])
   })
 })

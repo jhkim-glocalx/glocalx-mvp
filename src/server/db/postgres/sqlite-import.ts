@@ -18,7 +18,12 @@ export class MigrationSafetyError extends Error {
 }
 
 type PostgresParameter = boolean | number | string | null
-type UnsafeSqlExecutor = Pick<PostgresClient, "unsafe">
+export type UnsafeSqlExecutor = {
+  readonly unsafe: (
+    query: string,
+    parameters?: PostgresParameter[]
+  ) => PromiseLike<unknown>
+}
 
 export function assertSafePostgresImportTarget(
   env: Readonly<Record<string, string | undefined>>,
@@ -104,7 +109,7 @@ export async function collectPostgresSnapshot(
   }
 }
 
-async function importTable(
+export async function importTable(
   sql: UnsafeSqlExecutor,
   table: ExportSnapshot["tables"][number]
 ): Promise<void> {
@@ -164,11 +169,16 @@ function toPostgresParameter(
   row: MigrationRow
 ): PostgresParameter {
   const value = row[column]
+  const isNullableJsonColumn =
+    spec.nullableJsonColumns?.includes(column) === true
   if (value === undefined) {
+    if (isNullableJsonColumn) {
+      return null
+    }
     throw new MigrationInputError(`Missing exported column ${column}`)
   }
   if (spec.jsonColumns.includes(column)) {
-    return JSON.stringify(value)
+    return value === null && isNullableJsonColumn ? null : JSON.stringify(value)
   }
   if (
     value === null ||

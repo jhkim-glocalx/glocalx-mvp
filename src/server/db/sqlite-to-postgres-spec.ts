@@ -8,6 +8,7 @@ export type TableSpec = {
   readonly idempotencyColumns: readonly string[]
   readonly jsonColumns: readonly string[]
   readonly name: RequiredTableName
+  readonly nullableJsonColumns?: readonly string[]
 }
 
 export const sqliteToPostgresTableSpecs = [
@@ -45,6 +46,7 @@ export const sqliteToPostgresTableSpecs = [
   {
     name: "post_drafts",
     jsonColumns: ["marketing_preview_json"],
+    nullableJsonColumns: ["marketing_preview_json"],
     idempotencyColumns: ["id", "store_id"],
     deferredColumns: ["revision_of_draft_id"],
   },
@@ -56,6 +58,7 @@ export const sqliteToPostgresTableSpecs = [
   {
     name: "conversation_sessions",
     jsonColumns: ["selected_candidate_json", "support_metadata_json"],
+    nullableJsonColumns: ["selected_candidate_json"],
     idempotencyColumns: ["id", "store_id"],
   },
   {
