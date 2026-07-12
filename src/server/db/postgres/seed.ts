@@ -1,11 +1,13 @@
+import { demoStoreId, demoUserId } from "@/auth/session"
+
 import type { PostgresClient } from "./connection.ts"
 
 export async function seedPostgresDemoData(sql: PostgresClient): Promise<void> {
   await sql`
     INSERT INTO users (id, email, display_name, role, created_at)
     VALUES (
-      'demo-owner-user',
-      'owner@glocalx.local',
+      ${demoUserId},
+      'demo-owner@glocalx.example',
       'Demo Owner',
       'OWNER',
       now()
@@ -26,8 +28,8 @@ export async function seedPostgresDemoData(sql: PostgresClient): Promise<void> {
       created_at
     )
     VALUES (
-      'demo-store',
-      'demo-owner-user',
+      ${demoStoreId},
+      ${demoUserId},
       'GlocalX Demo Store',
       'Seoul, Korea',
       'Cafe',
@@ -53,8 +55,8 @@ export async function seedPostgresDemoData(sql: PostgresClient): Promise<void> {
     )
     VALUES (
       'demo-seed-audit-log',
-      'demo-store',
-      'demo-owner-user',
+      ${demoStoreId},
+      ${demoUserId},
       'demo.seed',
       'demo-seed-key',
       '{}'::jsonb,
