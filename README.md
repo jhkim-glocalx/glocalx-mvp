@@ -55,9 +55,12 @@ DATABASE_URL=[pooled-postgres-url]
 DATABASE_URL_DIRECT=[direct-postgres-url]
 ```
 
-Application request traffic uses pooled `DATABASE_URL`. `DATABASE_URL_DIRECT` is
+Application request traffic uses pooled `DATABASE_URL`. A direct URL is
 validated in production-like deployments so migrations, backup, restore, and
-admin workflows cannot ship without a direct connection configured.
+admin workflows cannot ship without a direct connection configured. The
+canonical direct variable is `DATABASE_URL_DIRECT`; Vercel-managed Neon can
+also satisfy the same role with `DATABASE_URL_UNPOOLED`, and legacy Neon/Vercel
+setups may provide `POSTGRES_URL_NON_POOLING`.
 
 ## Integration Notes
 

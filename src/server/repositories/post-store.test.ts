@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { demoStoreId } from "@/auth/session"
 import { openDatabaseContext, type Queryable } from "@/server/db"
+import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
 
 import { createDatabasePostStore } from "./post-store"
 import { withRepositoryTestContext } from "./sqlite-characterization-support"
@@ -123,9 +124,14 @@ describe("post store queryable boundary", () => {
 
   it("runs Postgres post persistence checks when local Postgres env is configured", async () => {
     // Given: live Postgres integration is intentionally gated by both URLs.
-    const missingEnvNames = ["DATABASE_URL", "DATABASE_URL_DIRECT"].filter(
-      (name) => !process.env[name]
-    )
+    const missingEnvNames = [
+      ...(!process.env["DATABASE_URL"] ? ["DATABASE_URL"] : []),
+      ...(hasConfiguredPostgresDirectUrl(process.env)
+        ? []
+        : [
+            "DATABASE_URL_DIRECT or DATABASE_URL_UNPOOLED or POSTGRES_URL_NON_POOLING",
+          ]),
+    ]
     if (missingEnvNames.length > 0) {
       console.info(`BLOCKED_BY_ENV missing ${missingEnvNames.join(",")}`)
       return

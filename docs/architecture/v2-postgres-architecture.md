@@ -21,7 +21,9 @@ Runtime and operational connection strings have separate roles:
   route handlers, and normal web traffic use this URL.
 - `DATABASE_URL_DIRECT` is the direct URL for migrations, schema management,
   backups, restores, long analytics, logical replication, and administrative
-  tasks.
+  tasks when setting variables manually. Vercel-managed Neon may provide this
+  same direct role as `DATABASE_URL_UNPOOLED`; legacy Neon/Vercel environments
+  may provide `POSTGRES_URL_NON_POOLING`.
 - No provider secrets belong in docs, ADRs, screenshots, logs, or examples.
 
 ## Context
@@ -53,12 +55,12 @@ runtime assumptions.
   dev and staging are stabilized.
 - Any Vercel runtime (`VERCEL=1`) and any `VERCEL_ENV=preview` or
   `VERCEL_ENV=production` runtime must resolve `DATABASE_PROVIDER=postgres` with
-  both `DATABASE_URL` and `DATABASE_URL_DIRECT`; it must not fall back to
-  SQLite or `/tmp`.
+  `DATABASE_URL` and one configured direct URL variable; it must not fall back
+  to SQLite or `/tmp`.
 - Application code must use the pooled `DATABASE_URL` for normal runtime
   database access.
-- Migration, backup, restore, replication, and admin workflows must use
-  `DATABASE_URL_DIRECT`.
+- Migration, backup, restore, replication, and admin workflows must use the
+  configured direct URL variable.
 - Provider-specific setup should start with Neon. Supabase-specific docs or code
   require a later CTO decision.
 - Operational evidence should show which URL role was used, but must never
@@ -88,7 +90,7 @@ runtime assumptions.
 Cutover should be staged:
 
 1. Prove Postgres locally or in a dedicated development database.
-2. Run migrations through `DATABASE_URL_DIRECT`.
+2. Run migrations through the configured direct URL variable.
 3. Run the app against the pooled `DATABASE_URL` in staging.
 4. Validate owner flows, onboarding writes, post draft writes, publish attempts,
    and rollback paths against staging data.

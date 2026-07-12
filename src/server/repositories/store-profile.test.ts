@@ -8,13 +8,18 @@ import { z } from "zod"
 import type { ConfirmedStoreProfile } from "@/domain/schemas"
 import { openDatabaseContext } from "@/server/db"
 import type { Queryable } from "@/server/db"
+import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
 
 import { createDatabaseStoreProfileRepository } from "./store-profile"
 
 const tempDirectories: string[] = []
 
+const countSchema = z
+  .union([z.number(), z.string(), z.bigint()])
+  .transform((value) => Number(value))
+
 const confirmedRowsSchema = z.object({
-  extractionCount: z.number(),
+  extractionCount: countSchema,
   extractionSourceInput: z.string(),
   storeHours: z.string(),
   storeName: z.string(),
@@ -99,7 +104,7 @@ describe("database store profile repository", () => {
         })
         const row = confirmedRowsSchema.parse(
           await transaction.queryOne(
-            "SELECT stores.name AS storeName, stores.hours AS storeHours, stores.onboarding_status AS storeOnboardingStatus, business_profile_extractions.source_input AS extractionSourceInput, (SELECT COUNT(*) FROM business_profile_extractions WHERE id = ?) AS extractionCount FROM stores JOIN business_profile_extractions ON business_profile_extractions.store_id = stores.id WHERE stores.id = ? AND business_profile_extractions.id = ?",
+            'SELECT stores.name AS "storeName", stores.hours AS "storeHours", stores.onboarding_status AS "storeOnboardingStatus", business_profile_extractions.source_input AS "extractionSourceInput", (SELECT COUNT(*) FROM business_profile_extractions WHERE id = ?) AS "extractionCount" FROM stores JOIN business_profile_extractions ON business_profile_extractions.store_id = stores.id WHERE stores.id = ? AND business_profile_extractions.id = ?',
             [
               "confirmed-extraction-demo-store",
               "demo-store",
@@ -133,9 +138,14 @@ describe("database store profile repository", () => {
 
   it("runs Postgres profile confirmation when local Postgres env is configured", async () => {
     // Given: live Postgres integration is intentionally gated by both URLs.
-    const missingEnvNames = ["DATABASE_URL", "DATABASE_URL_DIRECT"].filter(
-      (name) => !process.env[name]
-    )
+    const missingEnvNames = [
+      ...(!process.env["DATABASE_URL"] ? ["DATABASE_URL"] : []),
+      ...(hasConfiguredPostgresDirectUrl(process.env)
+        ? []
+        : [
+            "DATABASE_URL_DIRECT or DATABASE_URL_UNPOOLED or POSTGRES_URL_NON_POOLING",
+          ]),
+    ]
     if (missingEnvNames.length > 0) {
       console.info(`BLOCKED_BY_ENV missing ${missingEnvNames.join(",")}`)
       return
@@ -166,7 +176,7 @@ describe("database store profile repository", () => {
         })
         const row = confirmedRowsSchema.parse(
           await transaction.queryOne(
-            "SELECT stores.name AS storeName, stores.hours AS storeHours, stores.onboarding_status AS storeOnboardingStatus, business_profile_extractions.source_input AS extractionSourceInput, (SELECT COUNT(*) FROM business_profile_extractions WHERE id = ?) AS extractionCount FROM stores JOIN business_profile_extractions ON business_profile_extractions.store_id = stores.id WHERE stores.id = ? AND business_profile_extractions.id = ?",
+            'SELECT stores.name AS "storeName", stores.hours AS "storeHours", stores.onboarding_status AS "storeOnboardingStatus", business_profile_extractions.source_input AS "extractionSourceInput", (SELECT COUNT(*) FROM business_profile_extractions WHERE id = ?) AS "extractionCount" FROM stores JOIN business_profile_extractions ON business_profile_extractions.store_id = stores.id WHERE stores.id = ? AND business_profile_extractions.id = ?',
             [
               "confirmed-extraction-demo-store",
               "demo-store",

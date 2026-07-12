@@ -5,6 +5,7 @@ import {
   PostgresMigrationChecksumError,
   PostgresSchemaVerificationError,
 } from "./errors.ts"
+import { readConfiguredPostgresDirectUrl } from "./direct-url.ts"
 
 export type PostgresClient = ReturnType<typeof postgres>
 
@@ -33,10 +34,10 @@ export async function runPostgresCli(
 export function readDatabaseUrlDirect(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): string {
-  const configuredUrl = env["DATABASE_URL_DIRECT"]?.trim()
+  const configuredUrl = readConfiguredPostgresDirectUrl(env)
   if (!configuredUrl) {
     throw new DatabaseUrlDirectConfigurationError(
-      "DATABASE_URL_DIRECT is required for Postgres migration tooling"
+      "DATABASE_URL_DIRECT, DATABASE_URL_UNPOOLED, or POSTGRES_URL_NON_POOLING is required for Postgres migration tooling"
     )
   }
 

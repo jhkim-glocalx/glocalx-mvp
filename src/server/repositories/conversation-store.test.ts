@@ -6,17 +6,22 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
 import { openDatabaseContext, type Queryable } from "@/server/db"
+import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
 import { applyMigrations, seedDemoData } from "@/server/db/sqlite"
 
 import { createDatabaseConversationStore } from "./conversation-store"
 
 const tempDirectories: string[] = []
 
+const countSchema = z
+  .union([z.number(), z.string(), z.bigint()])
+  .transform((value) => Number(value))
+
 const conversationRowsSchema = z.object({
-  assistantMessages: z.number(),
-  events: z.number(),
-  messages: z.number(),
-  slots: z.number(),
+  assistantMessages: countSchema,
+  events: countSchema,
+  messages: countSchema,
+  slots: countSchema,
 })
 
 function createTempDatabasePath(): string {
@@ -31,7 +36,7 @@ async function readConversationRows(
 ): Promise<z.infer<typeof conversationRowsSchema>> {
   return conversationRowsSchema.parse(
     await queryable.queryOne(
-      "SELECT (SELECT COUNT(*) FROM conversation_messages WHERE session_id = ?) AS messages, (SELECT COUNT(*) FROM conversation_messages WHERE session_id = ? AND role = 'assistant') AS assistantMessages, (SELECT COUNT(*) FROM conversation_slot_values WHERE session_id = ?) AS slots, (SELECT COUNT(*) FROM conversation_events WHERE session_id = ?) AS events",
+      'SELECT (SELECT COUNT(*) FROM conversation_messages WHERE session_id = ?) AS "messages", (SELECT COUNT(*) FROM conversation_messages WHERE session_id = ? AND role = \'assistant\') AS "assistantMessages", (SELECT COUNT(*) FROM conversation_slot_values WHERE session_id = ?) AS "slots", (SELECT COUNT(*) FROM conversation_events WHERE session_id = ?) AS "events"',
       [sessionId, sessionId, sessionId, sessionId]
     )
   )
@@ -136,9 +141,14 @@ describe("database conversation store", () => {
 
   it("runs Postgres conversation checks when local Postgres env is configured", async () => {
     // Given: live Postgres integration is intentionally gated by both URLs.
-    const missingEnvNames = ["DATABASE_URL", "DATABASE_URL_DIRECT"].filter(
-      (name) => !process.env[name]
-    )
+    const missingEnvNames = [
+      ...(!process.env["DATABASE_URL"] ? ["DATABASE_URL"] : []),
+      ...(hasConfiguredPostgresDirectUrl(process.env)
+        ? []
+        : [
+            "DATABASE_URL_DIRECT or DATABASE_URL_UNPOOLED or POSTGRES_URL_NON_POOLING",
+          ]),
+    ]
     if (missingEnvNames.length > 0) {
       console.info(`BLOCKED_BY_ENV missing ${missingEnvNames.join(",")}`)
       return

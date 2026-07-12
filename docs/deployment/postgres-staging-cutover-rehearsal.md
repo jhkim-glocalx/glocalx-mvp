@@ -15,16 +15,16 @@ creating the rehearsal preview deployment.
 
 Preview or staging deployment requirements:
 
-| Variable                     | Required preview value          | Role                                                                      |
-| ---------------------------- | ------------------------------- | ------------------------------------------------------------------------- |
-| `VERCEL_ENV`                 | `preview`                       | Confirms the rehearsal is not production.                                 |
-| `DATABASE_PROVIDER`          | `postgres`                      | Selects the Postgres runtime boundary.                                    |
-| `DATABASE_URL`               | `[pooled-preview-postgres-url]` | Pooled URL for app runtime, route handlers, dev server, build, and e2e.   |
-| `DATABASE_URL_DIRECT`        | `[direct-preview-postgres-url]` | Direct URL for migrations, schema checks, seed, SQLite import, and admin. |
-| `APP_INTEGRATION_MODE`       | `stub`                          | Keeps external integrations deterministic and side-effect free.           |
-| `NEXT_PUBLIC_APP_NAME`       | `GlocalX`                       | Existing public app placeholder.                                          |
-| `ENABLE_ADMIN_DEBUG`         | `false`                         | Existing non-secret debug placeholder.                                    |
-| `RUN_LIVE_INTEGRATION_TESTS` | `0`                             | Keeps live integration tests disabled during rehearsal.                   |
+| Variable                     | Required preview value          | Role                                                                                                                                      |
+| ---------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `VERCEL_ENV`                 | `preview`                       | Confirms the rehearsal is not production.                                                                                                 |
+| `DATABASE_PROVIDER`          | `postgres`                      | Selects the Postgres runtime boundary.                                                                                                    |
+| `DATABASE_URL`               | `[pooled-preview-postgres-url]` | Pooled URL for app runtime, route handlers, dev server, build, and e2e.                                                                   |
+| Direct URL variable          | `[direct-preview-postgres-url]` | Use `DATABASE_URL_DIRECT`, or Vercel-managed Neon `DATABASE_URL_UNPOOLED`, for migrations, schema checks, seed, SQLite import, and admin. |
+| `APP_INTEGRATION_MODE`       | `stub`                          | Keeps external integrations deterministic and side-effect free.                                                                           |
+| `NEXT_PUBLIC_APP_NAME`       | `GlocalX`                       | Existing public app placeholder.                                                                                                          |
+| `ENABLE_ADMIN_DEBUG`         | `false`                         | Existing non-secret debug placeholder.                                                                                                    |
+| `RUN_LIVE_INTEGRATION_TESTS` | `0`                             | Keeps live integration tests disabled during rehearsal.                                                                                   |
 
 Do not add production OAuth, Naver, Google Business Profile, OpenAI, or Kakao
 secrets for this rehearsal unless a separate live-integration test plan is
@@ -41,9 +41,9 @@ Production gate language:
   proves schema migration, demo seed, SQLite export/import/reconcile, app
   runtime, targeted tests, full verification, and abort behavior.
 - Production must use provider-managed production secrets:
-  `DATABASE_URL=[pooled-production-postgres-url]` for runtime and
-  `DATABASE_URL_DIRECT=[direct-production-postgres-url]` for migrations,
-  backup/restore, long analytics, replication, and admin tasks.
+  `DATABASE_URL=[pooled-production-postgres-url]` for runtime and one direct URL
+  variable for migrations, backup/restore, long analytics, replication, and
+  admin tasks.
 - Production promotion requires an explicit release gate from the owner or CTO,
   a reviewed backup/rollback plan, a fresh production deployment, and a no-go
   check that no preview credentials are reused in production.
@@ -52,7 +52,7 @@ If no non-production Postgres URL is available, stop before any live database
 write and record:
 
 ```text
-BLOCKED_BY_ENV: no non-production Postgres DATABASE_URL and DATABASE_URL_DIRECT
+BLOCKED_BY_ENV: no non-production Postgres DATABASE_URL and direct URL variable
 were provided; live migration, seed, import, runtime, and e2e steps were not run.
 ```
 
@@ -60,21 +60,22 @@ were provided; live migration, seed, import, runtime, and e2e steps were not run
 
 Use the pooled URL for web/serverless app traffic. Use the direct URL for
 schema, import, backup, restore, replication, long analytics, and admin tasks.
-Production-like app startup also validates that `DATABASE_URL_DIRECT` is present
+Production-like app startup also validates that a direct URL variable is present
 so operational workflows cannot ship unconfigured, but request handlers continue
-to use pooled `DATABASE_URL`.
+to use pooled `DATABASE_URL`. The code checks `DATABASE_URL_DIRECT`,
+`DATABASE_URL_UNPOOLED`, then `POSTGRES_URL_NON_POOLING`.
 
-| Step or command                                | URL role        | Notes                                                         |
-| ---------------------------------------------- | --------------- | ------------------------------------------------------------- |
-| `npm run build`                                | pooled          | Build-time app code must resolve the runtime Postgres URL.    |
-| `npm run dev -- --hostname ...`                | pooled          | Local staging-like app runtime uses `DATABASE_URL`.           |
-| `npm run e2e:postgres`                         | pooled          | Playwright app server must receive `DATABASE_URL`.            |
-| `npm run db:pg:migrate`                        | direct          | Uses `DATABASE_URL_DIRECT` through migration tooling.         |
-| `npm run db:pg:seed`                           | direct          | Runs migrations first, then deterministic demo seed.          |
-| `npm run db:pg:verify`                         | direct          | Verifies migration source and durable tables.                 |
-| `npm run db:migrate:sqlite-to-pg -- --dry-run` | neither live DB | Exports SQLite and reconciles the local export.               |
-| `npm run db:migrate:sqlite-to-pg -- --import`  | direct          | Imports to Postgres and reconciles via `DATABASE_URL_DIRECT`. |
-| `pg_dump`, `pg_restore`, provider admin        | direct          | Out of scope for this rehearsal unless explicitly approved.   |
+| Step or command                                | URL role        | Notes                                                                      |
+| ---------------------------------------------- | --------------- | -------------------------------------------------------------------------- |
+| `npm run build`                                | pooled          | Build-time app code must resolve the runtime Postgres URL.                 |
+| `npm run dev -- --hostname ...`                | pooled          | Local staging-like app runtime uses `DATABASE_URL`.                        |
+| `npm run e2e:postgres`                         | pooled          | Playwright app server must receive `DATABASE_URL`.                         |
+| `npm run db:pg:migrate`                        | direct          | Uses the configured direct URL variable through migration tooling.         |
+| `npm run db:pg:seed`                           | direct          | Runs migrations first, then deterministic demo seed.                       |
+| `npm run db:pg:verify`                         | direct          | Verifies migration source and durable tables.                              |
+| `npm run db:migrate:sqlite-to-pg -- --dry-run` | neither live DB | Exports SQLite and reconciles the local export.                            |
+| `npm run db:migrate:sqlite-to-pg -- --import`  | direct          | Imports to Postgres and reconciles via the configured direct URL variable. |
+| `pg_dump`, `pg_restore`, provider admin        | direct          | Out of scope for this rehearsal unless explicitly approved.                |
 
 ## Rehearsal Procedure
 
@@ -104,6 +105,9 @@ Run from a clean branch checkout in preview/staging mode.
    export ENABLE_ADMIN_DEBUG=false
    export RUN_LIVE_INTEGRATION_TESTS=0
    ```
+
+   For Vercel-managed Neon, `DATABASE_URL_UNPOOLED=[direct-preview-postgres-url]`
+   can be used instead of `DATABASE_URL_DIRECT`.
 
 3. Prove the controlled missing-runtime-URL failure before using live URLs:
 
@@ -223,9 +227,9 @@ Abort the rehearsal and keep production unchanged if any of these are true:
 
 - `VERCEL_ENV` is `production`, unset in a deployed production context, or points
   to a production deployment.
-- `DATABASE_URL` or `DATABASE_URL_DIRECT` belongs to a production database.
+- `DATABASE_URL` or the configured direct URL belongs to a production database.
 - The only available database URL is production.
-- `DATABASE_URL` is direct-only or `DATABASE_URL_DIRECT` is a pooled pooler URL.
+- `DATABASE_URL` is direct-only or the configured direct URL is a pooled pooler URL.
 - Migration checksum validation fails.
 - SQLite export/import reconciliation reports mismatches.
 - Postgres schema verification reports missing tables or migration metadata.

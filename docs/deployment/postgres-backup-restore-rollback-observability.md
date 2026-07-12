@@ -13,10 +13,10 @@ without a verified restore is an unproven recovery plan.
 
 Use the same connection split as the staging cutover rehearsal:
 
-| Workflow                                                                                               | URL                   | Reason                                                    |
-| ------------------------------------------------------------------------------------------------------ | --------------------- | --------------------------------------------------------- |
-| App runtime, preview/staging smoke checks, Vercel serverless traffic                                   | `DATABASE_URL`        | Pooled runtime URL for web traffic.                       |
-| `pg_dump`, `pg_restore`, `psql`, migrations, schema verification, long analytics, provider admin tasks | `DATABASE_URL_DIRECT` | Direct connection for persistent administrative sessions. |
+| Workflow                                                                                               | URL role            | Reason                                                                                                        |
+| ------------------------------------------------------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| App runtime, preview/staging smoke checks, Vercel serverless traffic                                   | `DATABASE_URL`      | Pooled runtime URL for web traffic.                                                                           |
+| `pg_dump`, `pg_restore`, `psql`, migrations, schema verification, long analytics, provider admin tasks | Direct URL variable | Use `DATABASE_URL_DIRECT`, Vercel-managed Neon `DATABASE_URL_UNPOOLED`, or legacy `POSTGRES_URL_NON_POOLING`. |
 
 Do not use pooled transaction-pooler URLs for dump, restore, migration, schema
 verification, replication, or admin sessions. Do not use direct URLs for normal
@@ -25,7 +25,9 @@ application request traffic.
 Production-like deployments (`VERCEL=1`, `VERCEL_ENV=preview`, or
 `VERCEL_ENV=production`) validate both URL roles at startup. The direct URL is a
 release and operations safety requirement; request handlers continue to use the
-pooled `DATABASE_URL`.
+pooled `DATABASE_URL`. The code checks direct URL variables in this order:
+`DATABASE_URL_DIRECT`, `DATABASE_URL_UNPOOLED`, then
+`POSTGRES_URL_NON_POOLING`.
 
 ## Backup Policy
 
@@ -55,13 +57,13 @@ over staging or production in place.
 2. Confirm URL presence without printing secret values:
 
    ```bash
-   node -e "for (const key of ['DATABASE_URL','DATABASE_URL_DIRECT']) console.log(`${key}=${process.env[key] ? 'SET' : 'MISSING'}`)"
+   node -e "console.log(`DATABASE_URL=${process.env.DATABASE_URL ? 'SET' : 'MISSING'}`); console.log(`direct=${process.env.DATABASE_URL_DIRECT || process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING ? 'SET' : 'MISSING'}`)"
    ```
 
    If both URLs are missing and Docker is unavailable, stop and record:
 
    ```text
-   BLOCKED_BY_ENV: no non-production DATABASE_URL/DATABASE_URL_DIRECT and Docker daemon unavailable; backup dump, restore, schema verify, and app runtime checks were not run.
+   BLOCKED_BY_ENV: no non-production DATABASE_URL/direct URL variable and Docker daemon unavailable; backup dump, restore, schema verify, and app runtime checks were not run.
    ```
 
 3. Create a custom-format dump from the source non-production direct URL:
@@ -166,7 +168,7 @@ vercel rollback [deployment-url-or-id]
 Post-rollback checks:
 
 - App runtime uses pooled `DATABASE_URL`.
-- Migration/admin commands still use `DATABASE_URL_DIRECT`.
+- Migration/admin commands still use the configured direct URL variable.
 - Owner login, onboarding read/write, post draft read/write, and publish-attempt
   history still work in stub mode.
 - No restore or schema mutation is attempted as part of application rollback.
@@ -245,8 +247,8 @@ Do not promote or declare backup readiness if any condition is true:
 - No non-production restore drill has been run and recorded.
 - The only available database URL is production.
 - A production-like deployment would start without `DATABASE_PROVIDER=postgres`,
-  pooled `DATABASE_URL`, or direct `DATABASE_URL_DIRECT`.
-- `DATABASE_URL_DIRECT` is missing for migration, backup, restore, or admin work.
+  pooled `DATABASE_URL`, or a configured direct URL variable.
+- The direct URL variable is missing for migration, backup, restore, or admin work.
 - Dump/restore uses the pooled URL.
 - Schema verification fails on the restored target.
 - App runtime verification uses a direct URL instead of pooled `DATABASE_URL`.

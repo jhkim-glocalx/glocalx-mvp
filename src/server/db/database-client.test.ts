@@ -13,6 +13,7 @@ import {
   buildPostgresRuntimeOptions,
   openPostgresDatabaseContext,
 } from "@/server/db/postgres/runtime-client.ts"
+import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
 
 const tempDirectories: string[] = []
 
@@ -97,6 +98,8 @@ describe("database client boundary", () => {
     vi.stubEnv("DATABASE_PROVIDER", "")
     vi.stubEnv("DATABASE_URL", "")
     vi.stubEnv("DATABASE_URL_DIRECT", "")
+    vi.stubEnv("DATABASE_URL_UNPOOLED", "")
+    vi.stubEnv("POSTGRES_URL_NON_POOLING", "")
 
     // When / Then: the environment boundary rejects the missing pooled URL first.
     expect(() => resolveDatabaseConfig()).toThrow(
@@ -128,6 +131,8 @@ describe("database client boundary", () => {
     vi.stubEnv("DATABASE_PROVIDER", "postgres")
     vi.stubEnv("DATABASE_URL", "postgres://app:secret@localhost:5432/glocalx")
     vi.stubEnv("DATABASE_URL_DIRECT", "")
+    vi.stubEnv("DATABASE_URL_UNPOOLED", "")
+    vi.stubEnv("POSTGRES_URL_NON_POOLING", "")
 
     // When / Then: the release-safety direct URL requirement is enforced.
     expect(() => resolveDatabaseConfig()).toThrow(
@@ -266,9 +271,14 @@ describe("database client boundary", () => {
 
   it("runs Postgres-mode queryable checks when local Postgres env is configured", async () => {
     // Given: live Postgres integration is intentionally gated by both URLs.
-    const missingEnvNames = ["DATABASE_URL", "DATABASE_URL_DIRECT"].filter(
-      (name) => !process.env[name]
-    )
+    const missingEnvNames = [
+      ...(!process.env["DATABASE_URL"] ? ["DATABASE_URL"] : []),
+      ...(hasConfiguredPostgresDirectUrl(process.env)
+        ? []
+        : [
+            "DATABASE_URL_DIRECT or DATABASE_URL_UNPOOLED or POSTGRES_URL_NON_POOLING",
+          ]),
+    ]
     if (missingEnvNames.length > 0) {
       console.info(`BLOCKED_BY_ENV missing ${missingEnvNames.join(",")}`)
       return

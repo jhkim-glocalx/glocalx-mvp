@@ -1,5 +1,10 @@
 import { z } from "zod"
 
+import {
+  readConfiguredPostgresDirectUrl as readPostgresDirectUrlCandidate,
+  type PostgresDirectUrlEnvKey,
+} from "./postgres/direct-url.ts"
+
 const databaseProviderSchema = z
   .union([z.literal("sqlite"), z.literal("postgres"), z.literal("")])
   .optional()
@@ -16,6 +21,8 @@ const databaseConfigSchema = z.object({
   DATABASE_PROVIDER: databaseProviderSchema,
   DATABASE_URL: z.string().optional(),
   DATABASE_URL_DIRECT: z.string().optional(),
+  DATABASE_URL_UNPOOLED: z.string().optional(),
+  POSTGRES_URL_NON_POOLING: z.string().optional(),
   VERCEL: z.string().optional(),
   VERCEL_ENV: z.string().optional(),
 })
@@ -135,7 +142,7 @@ function readPostgresDirectUrl(rawDirectUrl: string | undefined): string {
     throw new DatabaseConfigurationError({
       code: "DATABASE_URL_DIRECT_REQUIRED",
       message:
-        "DATABASE_URL_DIRECT is required for production-like Postgres deployments",
+        "DATABASE_URL_DIRECT, DATABASE_URL_UNPOOLED, or POSTGRES_URL_NON_POOLING is required for production-like Postgres deployments",
       provider: "postgres",
     })
   }
@@ -163,6 +170,14 @@ function readPostgresDirectUrl(rawDirectUrl: string | undefined): string {
   }
 
   return directUrl
+}
+
+function readConfiguredPostgresDirectUrl(
+  env: Readonly<Partial<Record<PostgresDirectUrlEnvKey, string | undefined>>>
+): string {
+  const directUrl = readPostgresDirectUrlCandidate(env)
+
+  return readPostgresDirectUrl(directUrl)
 }
 
 function isProductionLikeDeployment(
@@ -204,6 +219,8 @@ export function resolveDatabaseConfig(
     DATABASE_PROVIDER: env["DATABASE_PROVIDER"],
     DATABASE_URL: env["DATABASE_URL"],
     DATABASE_URL_DIRECT: env["DATABASE_URL_DIRECT"],
+    DATABASE_URL_UNPOOLED: env["DATABASE_URL_UNPOOLED"],
+    POSTGRES_URL_NON_POOLING: env["POSTGRES_URL_NON_POOLING"],
     VERCEL: env["VERCEL"],
     VERCEL_ENV: env["VERCEL_ENV"],
   })
@@ -225,7 +242,7 @@ export function resolveDatabaseConfig(
     }
 
     const runtimeUrl = readPostgresRuntimeUrl(parsed.data.DATABASE_URL)
-    readPostgresDirectUrl(parsed.data.DATABASE_URL_DIRECT)
+    readConfiguredPostgresDirectUrl(parsed.data)
 
     if (rawProvider !== "postgres") {
       return rejectMissingProductionLikePostgresProvider(rawProvider)

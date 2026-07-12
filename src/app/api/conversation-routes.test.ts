@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { resetDatabaseFile } from "@/server/db/sqlite"
+import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url"
 
 import {
   createJsonRequest,
@@ -16,9 +17,14 @@ import { POST as onboardingSlotTurn } from "./onboarding/conversation/slots/rout
 import { POST as postingDecision } from "./posts/conversation/decision/route"
 
 const tempPaths: string[] = []
-const missingPostgresEnvNames = ["DATABASE_URL", "DATABASE_URL_DIRECT"].filter(
-  (name) => !process.env[name]
-)
+const missingPostgresEnvNames = [
+  ...(!process.env["DATABASE_URL"] ? ["DATABASE_URL"] : []),
+  ...(hasConfiguredPostgresDirectUrl(process.env)
+    ? []
+    : [
+        "DATABASE_URL_DIRECT or DATABASE_URL_UNPOOLED or POSTGRES_URL_NON_POOLING",
+      ]),
+]
 const skipLivePostgresRoutes =
   process.env["DATABASE_PROVIDER"] === "postgres" &&
   missingPostgresEnvNames.length > 0

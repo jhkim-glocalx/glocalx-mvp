@@ -40,9 +40,11 @@ describe("Postgres migration tooling", () => {
     expect(migrationSql).toContain("redacted_payload_json jsonb NOT NULL")
   })
 
-  it("throws a controlled error when DATABASE_URL_DIRECT is missing", () => {
+  it("throws a controlled error when no direct Postgres URL is configured", () => {
     // Given: no direct Postgres URL is configured.
     vi.stubEnv("DATABASE_URL_DIRECT", "")
+    vi.stubEnv("DATABASE_URL_UNPOOLED", "")
+    vi.stubEnv("POSTGRES_URL_NON_POOLING", "")
 
     // When / Then: the environment boundary rejects the missing value.
     expect(() => readDatabaseUrlDirect()).toThrow(
@@ -58,6 +60,21 @@ describe("Postgres migration tooling", () => {
     expect(() => readDatabaseUrlDirect()).toThrow(
       DatabaseUrlDirectConfigurationError
     )
+  })
+
+  it("uses Neon unpooled URL when DATABASE_URL_DIRECT is not configured", () => {
+    // Given: Vercel Neon provides the direct connection as DATABASE_URL_UNPOOLED.
+    vi.stubEnv("DATABASE_URL_DIRECT", "")
+    vi.stubEnv(
+      "DATABASE_URL_UNPOOLED",
+      "postgres://admin:secret@localhost:5432/glocalx"
+    )
+
+    // When: the migration tooling reads its admin connection URL.
+    const url = readDatabaseUrlDirect()
+
+    // Then: the unpooled Neon URL satisfies the direct connection role.
+    expect(url).toBe("postgres://admin:secret@localhost:5432/glocalx")
   })
 
   it("passes source verification for the current migration set", () => {
