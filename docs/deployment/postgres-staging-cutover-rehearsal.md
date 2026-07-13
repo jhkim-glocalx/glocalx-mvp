@@ -175,7 +175,11 @@ Run from a clean branch checkout in preview/staging mode.
    ```
 
    Add `--reset-target` only when the target is a disposable preview database
-   and the reset has been explicitly approved for that database.
+   and the reset has been explicitly approved for that database. Destructive
+   resets also require `POSTGRES_RESET_TARGET=host[:port]/database`, matching
+   `DATABASE_URL_DIRECT` exactly without credentials or query parameters. Run
+   that reset from a local admin shell with `VERCEL` and `VERCEL_ENV` unset;
+   resets are unconditionally blocked inside deployed Vercel environments.
    The import invalidates any target sessions before copying account state.
 
 9. Verify Postgres schema through the direct URL:

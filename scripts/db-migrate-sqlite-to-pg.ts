@@ -20,6 +20,10 @@ import {
   readDatabaseUrlDirect,
 } from "../src/server/db/postgres/migrations.ts"
 import {
+  ProductionDatabaseResetError,
+  assertPostgresResetAllowed,
+} from "../src/server/db/postgres/reset-guard.ts"
+import {
   MigrationSafetyError,
   assertSafePostgresImportTarget,
   describePostgresTarget,
@@ -47,7 +51,7 @@ Options:
   --sqlite <path>              SQLite database path. Defaults to GLOCALX_DB_PATH or .glocalx/dev.db.
   --export <path>              Export JSON path. Defaults to ${defaultExportPath}.
   --input <path>               Import an existing export JSON instead of reading SQLite.
-  --reset-target               Reset Postgres public schema before import.
+  --reset-target               Reset Postgres public schema; requires POSTGRES_RESET_TARGET.
   --confirm-non-production     Required before any Postgres write.
   --help                       Show this help.
 `)
@@ -165,6 +169,9 @@ async function runSqliteToPostgresMigrationCli(
     databaseUrl,
     options.confirmedNonProduction
   )
+  if (options.resetTarget) {
+    assertPostgresResetAllowed(env, databaseUrl)
+  }
   const sql = openPostgresDatabase(databaseUrl)
   try {
     const report = await importSnapshotToPostgres(sql, snapshot, {
@@ -197,7 +204,8 @@ try {
     error instanceof DatabaseUrlDirectConfigurationError ||
     error instanceof MigrationInputError ||
     error instanceof MigrationReconciliationError ||
-    error instanceof MigrationSafetyError
+    error instanceof MigrationSafetyError ||
+    error instanceof ProductionDatabaseResetError
   ) {
     console.error(`${error.name}: ${error.message}`)
     process.exitCode = 1

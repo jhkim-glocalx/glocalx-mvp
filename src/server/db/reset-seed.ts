@@ -18,7 +18,10 @@ import {
   seedDemoData,
 } from "./sqlite.ts"
 import type { SqliteDatabase } from "./sqlite.ts"
-import { assertPostgresResetAllowed } from "./postgres/reset-guard.ts"
+import {
+  ProductionDatabaseResetError,
+  assertPostgresResetAllowed,
+} from "./postgres/reset-guard.ts"
 
 type DatabaseEnvironment = Readonly<Record<string, string | undefined>>
 
@@ -105,8 +108,9 @@ function resetAndSeedSqliteDatabaseForProvider(
 async function resetPostgresDatabaseForProvider(
   env: DatabaseEnvironment
 ): Promise<ProviderAwareDatabaseResult> {
-  assertPostgresResetAllowed(env)
-  const sql = openPostgresDatabase(readDatabaseUrlDirect(env))
+  const databaseUrl = readDatabaseUrlDirect(env)
+  assertPostgresResetAllowed(env, databaseUrl)
+  const sql = openPostgresDatabase(databaseUrl)
 
   try {
     await resetPostgresDatabase(sql)
@@ -141,8 +145,9 @@ async function seedPostgresDatabaseForProvider(
 async function resetAndSeedPostgresDatabaseForProvider(
   env: DatabaseEnvironment
 ): Promise<ProviderAwareDatabaseResult> {
-  assertPostgresResetAllowed(env)
-  const sql = openPostgresDatabase(readDatabaseUrlDirect(env))
+  const databaseUrl = readDatabaseUrlDirect(env)
+  assertPostgresResetAllowed(env, databaseUrl)
+  const sql = openPostgresDatabase(databaseUrl)
 
   try {
     await resetPostgresDatabase(sql)
@@ -219,7 +224,8 @@ export async function runProviderAwareDatabaseCli(
       error instanceof DatabaseConfigurationError ||
       error instanceof DatabaseUrlDirectConfigurationError ||
       error instanceof PostgresMigrationChecksumError ||
-      error instanceof PostgresSchemaVerificationError
+      error instanceof PostgresSchemaVerificationError ||
+      error instanceof ProductionDatabaseResetError
     ) {
       console.error(`${error.name}: ${error.message}`)
       process.exitCode = 1

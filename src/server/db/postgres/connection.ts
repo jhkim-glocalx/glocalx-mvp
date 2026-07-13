@@ -6,6 +6,7 @@ import {
   PostgresSchemaVerificationError,
 } from "./errors.ts"
 import { readConfiguredPostgresDirectUrl } from "./direct-url.ts"
+import { ProductionDatabaseResetError } from "./reset-guard.ts"
 
 export type PostgresClient = ReturnType<typeof postgres>
 
@@ -20,7 +21,8 @@ export async function runPostgresCli(
     if (
       error instanceof DatabaseUrlDirectConfigurationError ||
       error instanceof PostgresMigrationChecksumError ||
-      error instanceof PostgresSchemaVerificationError
+      error instanceof PostgresSchemaVerificationError ||
+      error instanceof ProductionDatabaseResetError
     ) {
       console.error(`${error.name}: ${error.message}`)
       process.exitCode = 1
