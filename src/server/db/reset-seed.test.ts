@@ -18,4 +18,20 @@ describe("provider-aware reset and seed harness", () => {
       name: "DatabaseConfigurationError",
     })
   })
+
+  it("blocks Postgres reset in production-like environments", async () => {
+    const databaseUrl = "postgres://admin:secret@localhost:5432/glocalx"
+
+    await expect(
+      resetAndSeedDatabaseForProvider({
+        DATABASE_PROVIDER: "postgres",
+        DATABASE_URL: databaseUrl,
+        DATABASE_URL_DIRECT: databaseUrl,
+        VERCEL_ENV: "production",
+      })
+    ).rejects.toMatchObject({
+      message: "Postgres reset is disabled in production-like environments.",
+      name: "ProductionDatabaseResetError",
+    })
+  })
 })

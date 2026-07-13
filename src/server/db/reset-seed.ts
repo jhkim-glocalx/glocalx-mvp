@@ -18,6 +18,7 @@ import {
   seedDemoData,
 } from "./sqlite.ts"
 import type { SqliteDatabase } from "./sqlite.ts"
+import { assertPostgresResetAllowed } from "./postgres/reset-guard.ts"
 
 type DatabaseEnvironment = Readonly<Record<string, string | undefined>>
 
@@ -104,6 +105,7 @@ function resetAndSeedSqliteDatabaseForProvider(
 async function resetPostgresDatabaseForProvider(
   env: DatabaseEnvironment
 ): Promise<ProviderAwareDatabaseResult> {
+  assertPostgresResetAllowed(env)
   const sql = openPostgresDatabase(readDatabaseUrlDirect(env))
 
   try {
@@ -139,6 +141,7 @@ async function seedPostgresDatabaseForProvider(
 async function resetAndSeedPostgresDatabaseForProvider(
   env: DatabaseEnvironment
 ): Promise<ProviderAwareDatabaseResult> {
+  assertPostgresResetAllowed(env)
   const sql = openPostgresDatabase(readDatabaseUrlDirect(env))
 
   try {
