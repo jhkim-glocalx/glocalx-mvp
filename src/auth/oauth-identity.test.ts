@@ -113,7 +113,7 @@ describe("OAuth identity persistence", () => {
     database.close()
   })
 
-  it("links a verified provider email to the existing owner and store", async () => {
+  it("keeps an email-only account separate from a new provider identity", async () => {
     // Given
     const database = await createDatabase()
     const createdAt = "2026-06-04T00:00:00.000Z"
@@ -184,21 +184,17 @@ describe("OAuth identity persistence", () => {
     )
 
     // Then
-    expect(insertedSession).toEqual({
-      onboardingComplete: false,
-      storeId: "returning-store",
-      userId: "returning-owner",
-    })
-    expect(updatedSession).toEqual({
-      onboardingComplete: true,
-      storeId: "returning-store",
-      userId: "returning-owner",
-    })
+    expect(insertedSession.onboardingComplete).toBe(false)
+    expect(updatedSession.onboardingComplete).toBe(true)
+    expect(updatedSession.storeId).toBe(insertedSession.storeId)
+    expect(updatedSession.userId).toBe(insertedSession.userId)
+    expect(insertedSession.userId).not.toBe("returning-owner")
+    expect(insertedSession.storeId).not.toBe("returning-store")
 
     const storeCountRow = authIdentityCountSchema.parse(
       database
         .prepare("SELECT COUNT(*) AS count FROM stores WHERE owner_user_id = ?")
-        .get("returning-owner")
+        .get(insertedSession.userId)
     )
     expect(storeCountRow.count).toBe(1)
 
@@ -215,7 +211,7 @@ describe("OAuth identity persistence", () => {
       hours: "10:00 ~ 22:00",
       id: "returning-store",
       name: "서울식당 강남점",
-      onboarding_status: "COMPLETED",
+      onboarding_status: "IN_PROGRESS",
       owner_user_id: "returning-owner",
       phone: "02-321-9876",
     })
@@ -229,7 +225,7 @@ describe("OAuth identity persistence", () => {
     )
     expect(identityRow).toMatchObject({
       provider: "GOOGLE",
-      user_id: "returning-owner",
+      user_id: insertedSession.userId,
     })
     expect(identityRow.encrypted_access_token).toMatch(/^v1:/)
     expect(identityRow.encrypted_refresh_token).toMatch(/^v1:/)
