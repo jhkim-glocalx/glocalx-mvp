@@ -9,6 +9,7 @@ import {
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
 import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
+import { hasSameRequestOrigin } from "@/auth/request-origin"
 
 function createKakaoConfigErrorRedirect(): NextResponse {
   return new NextResponse(null, {
@@ -20,6 +21,13 @@ function createKakaoConfigErrorRedirect(): NextResponse {
 }
 
 export async function POST(request: NextRequest) {
+  if (!hasSameRequestOrigin(request)) {
+    return new NextResponse(null, {
+      headers: { Location: "/?auth_error=invalid_request" },
+      status: 303,
+    })
+  }
+
   const missingEnvVars = missingKakaoOAuthEnvVars(process.env)
   if (
     missingEnvVars.length > 0 ||

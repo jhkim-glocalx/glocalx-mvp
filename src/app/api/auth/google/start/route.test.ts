@@ -42,6 +42,7 @@ function restoreEnv(): void {
 function createGoogleStartRequest(cookieHeader?: string): NextRequest {
   if (cookieHeader === undefined) {
     return new NextRequest("http://localhost:3000/api/auth/google/start", {
+      headers: { Origin: "http://localhost:3000" },
       method: "POST",
     })
   }
@@ -49,6 +50,7 @@ function createGoogleStartRequest(cookieHeader?: string): NextRequest {
   return new NextRequest("http://localhost:3000/api/auth/google/start", {
     headers: {
       Cookie: cookieHeader,
+      Origin: "http://localhost:3000",
     },
     method: "POST",
   })
@@ -60,6 +62,21 @@ afterEach(() => {
 })
 
 describe("Google OAuth start route", () => {
+  it("rejects cross-origin OAuth initiation", async () => {
+    const response = await POST(
+      new NextRequest("http://localhost:3000/api/auth/google/start", {
+        headers: { Origin: "https://attacker.example" },
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe(
+      "/?auth_error=invalid_request"
+    )
+    expect(response.headers.get("Set-Cookie")).toBeNull()
+  })
+
   it("redirects to Google when OAuth credentials are configured", async () => {
     replaceEnv({
       GOOGLE_CLIENT_ID: "test-client-id",
@@ -128,7 +145,10 @@ describe("Google OAuth start route", () => {
     const response = await POST(
       new NextRequest(
         "https://glocalx-mvp-tawny.vercel.app/api/auth/google/start",
-        { method: "POST" }
+        {
+          headers: { Origin: "https://glocalx-mvp-tawny.vercel.app" },
+          method: "POST",
+        }
       )
     )
     const location = response.headers.get("Location")

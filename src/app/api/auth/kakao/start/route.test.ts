@@ -46,6 +46,10 @@ function restoreEnv(): void {
 
 function createKakaoStartRequest(): NextRequest {
   return new NextRequest("http://127.0.0.1:5174/api/auth/kakao/start", {
+    headers: {
+      Host: "127.0.0.1:5174",
+      Origin: "http://127.0.0.1:5174",
+    },
     method: "POST",
   })
 }
@@ -62,6 +66,21 @@ afterEach(() => {
 })
 
 describe("Kakao OAuth start route", () => {
+  it("rejects cross-origin OAuth initiation", async () => {
+    const response = await POST(
+      new NextRequest("http://127.0.0.1:5174/api/auth/kakao/start", {
+        headers: { Origin: "https://attacker.example" },
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe(
+      "/?auth_error=invalid_request"
+    )
+    expect(response.headers.get("Set-Cookie")).toBeNull()
+  })
+
   it("builds the Kakao authorization URL", () => {
     const authorizationUrl = buildKakaoOAuthAuthorizationUrl({
       clientId: "test-rest-api-key",
@@ -103,7 +122,7 @@ describe("Kakao OAuth start route", () => {
       "test-rest-api-key"
     )
     expect(authorizationUrl.searchParams.get("redirect_uri")).toBe(
-      "http://localhost:5174/api/auth/kakao/callback"
+      "http://127.0.0.1:5174/api/auth/kakao/callback"
     )
     expect(authorizationUrl.searchParams.get("state")).toBeTruthy()
     expect(setCookie).toContain(
@@ -139,7 +158,10 @@ describe("Kakao OAuth start route", () => {
     const response = await POST(
       new NextRequest(
         "https://glocalx-mvp-tawny.vercel.app/api/auth/kakao/start",
-        { method: "POST" }
+        {
+          headers: { Origin: "https://glocalx-mvp-tawny.vercel.app" },
+          method: "POST",
+        }
       )
     )
     const location = response.headers.get("Location")
@@ -191,6 +213,7 @@ describe("Kakao OAuth start route", () => {
 
     const response = await POST(
       new NextRequest("https://glocalx.example/api/auth/kakao/start", {
+        headers: { Origin: "https://glocalx.example" },
         method: "POST",
       })
     )

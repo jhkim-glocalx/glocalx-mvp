@@ -7,12 +7,20 @@ import {
   missingGoogleOAuthEnvVars,
 } from "@/auth/google-oauth"
 import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
+import { hasSameRequestOrigin } from "@/auth/request-origin"
 import {
   googleOAuthStateCookieName,
   googleOAuthStateCookieOptions,
 } from "@/gbp/oauth-callback"
 
 export async function POST(request: NextRequest) {
+  if (!hasSameRequestOrigin(request)) {
+    return new NextResponse(null, {
+      headers: { Location: "/?auth_error=invalid_request" },
+      status: 303,
+    })
+  }
+
   if (
     missingGoogleOAuthEnvVars(process.env).length > 0 ||
     missingTokenEncryptionEnvVars(process.env).length > 0
