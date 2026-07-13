@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 
 import { z } from "zod"
@@ -6,6 +6,10 @@ import { z } from "zod"
 import { requiredTableNames } from "./sqlite.ts"
 import type { RequiredTableName, SqliteDatabase } from "./sqlite.ts"
 import { MigrationInputError } from "./sqlite-to-postgres-errors.ts"
+import {
+  decryptSqliteExport,
+  encryptSqliteExport,
+} from "./sqlite-export-encryption.ts"
 import type { ColumnKind, TableSpec } from "./sqlite-to-postgres-spec.ts"
 import { sqliteToPostgresTableSpecs } from "./sqlite-to-postgres-spec.ts"
 
@@ -105,7 +109,9 @@ export function collectSqliteExportSnapshot(
 
 export function readExportSnapshot(path: string): ExportSnapshot {
   try {
-    const parsedJson: unknown = JSON.parse(readFileSync(path, "utf8"))
+    const parsedJson: unknown = JSON.parse(
+      decryptSqliteExport(readFileSync(path, "utf8"))
+    )
     const snapshot = exportSnapshotSchema.parse(parsedJson)
     assertRequiredSnapshotTables(snapshot)
     return snapshot
@@ -127,7 +133,11 @@ export function writeExportSnapshot(
   snapshot: ExportSnapshot
 ): void {
   mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, `${JSON.stringify(snapshot, null, 2)}\n`)
+  writeFileSync(path, `${encryptSqliteExport(JSON.stringify(snapshot))}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+  })
+  chmodSync(path, 0o600)
 }
 
 function collectSqliteTable(
@@ -154,15 +164,16 @@ function collectSqliteTable(
 function assertRequiredSnapshotTables(snapshot: ExportSnapshot): void {
   const names = snapshot.tables.map((table) => table.name)
   const nameSet = new Set(names)
-  const missing = requiredTableNames.filter(
-    (tableName) => !nameSet.has(tableName)
-  )
+  const expectedNames = sqliteToPostgresTableSpecs.map((spec) => spec.name)
+  const expectedNameSet = new Set<RequiredTableName>(expectedNames)
+  const missing = expectedNames.filter((tableName) => !nameSet.has(tableName))
+  const unexpected = names.filter((name) => !expectedNameSet.has(name))
   const duplicates = names.filter(
     (name, index) => names.indexOf(name) !== index
   )
-  if (missing.length > 0 || duplicates.length > 0) {
+  if (missing.length > 0 || unexpected.length > 0 || duplicates.length > 0) {
     throw new MigrationInputError(
-      `SQLite export must contain every durable table once; missing=${missing.join(",")}; duplicates=${duplicates.join(",")}`
+      `SQLite export must contain every migration table once; missing=${missing.join(",")}; unexpected=${unexpected.join(",")}; duplicates=${duplicates.join(",")}`
     )
   }
 }

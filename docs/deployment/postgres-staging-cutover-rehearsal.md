@@ -100,6 +100,7 @@ Run from a clean branch checkout in preview/staging mode.
    export DATABASE_PROVIDER=postgres
    export DATABASE_URL=[pooled-preview-postgres-url]
    export DATABASE_URL_DIRECT=[direct-preview-postgres-url]
+   export MIGRATION_EXPORT_ENCRYPTION_KEY=[32-byte-base64-key]
    export APP_INTEGRATION_MODE=stub
    export NEXT_PUBLIC_APP_NAME=GlocalX
    export ENABLE_ADMIN_DEBUG=false
@@ -139,8 +140,9 @@ Run from a clean branch checkout in preview/staging mode.
      --export .omo/evidence/task-15-sqlite-to-postgres-export.json
    ```
 
-   Expected result: `Dry-run reconciliation passed` and an ignored export file
-   under `.omo/evidence/`.
+   Expected result: `Dry-run reconciliation passed` and an encrypted,
+   owner-readable export file under `.omo/evidence/`. Active sessions are not
+   exported.
 
 6. Run schema migration against the non-production Postgres direct URL:
 
@@ -174,6 +176,7 @@ Run from a clean branch checkout in preview/staging mode.
 
    Add `--reset-target` only when the target is a disposable preview database
    and the reset has been explicitly approved for that database.
+   The import invalidates any target sessions before copying account state.
 
 9. Verify Postgres schema through the direct URL:
 

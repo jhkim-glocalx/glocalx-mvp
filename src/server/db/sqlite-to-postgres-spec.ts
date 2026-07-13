@@ -28,11 +28,6 @@ export const sqliteToPostgresTableSpecs = [
     idempotencyColumns: ["id", "owner_user_id"],
   },
   {
-    name: "user_sessions",
-    jsonColumns: [],
-    idempotencyColumns: ["id"],
-  },
-  {
     name: "auth_identities",
     jsonColumns: ["scopes_json"],
     idempotencyColumns: ["id", "provider_subject_id"],

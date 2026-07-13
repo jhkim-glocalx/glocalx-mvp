@@ -75,6 +75,7 @@ export async function importSnapshotToPostgres(
     await migratePostgresDatabase(sql)
   }
   await sql.begin(async (transaction) => {
+    await invalidatePostgresSessions(transaction)
     for (const table of snapshot.tables) {
       await importTable(transaction, table)
     }
@@ -82,6 +83,12 @@ export async function importSnapshotToPostgres(
   })
   const importedSnapshot = await collectPostgresSnapshot(sql, snapshot)
   return reconcileSnapshots(snapshot, importedSnapshot)
+}
+
+export async function invalidatePostgresSessions(
+  sql: UnsafeSqlExecutor
+): Promise<void> {
+  await sql.unsafe("DELETE FROM user_sessions")
 }
 
 export async function collectPostgresSnapshot(

@@ -1,12 +1,15 @@
-import { mkdtempSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import Database from "better-sqlite3"
 import { describe, expect, it } from "vitest"
 
-import { applyMigrations, requiredTableNames, seedDemoData } from "./sqlite.ts"
-import { importTable } from "./postgres/sqlite-import.ts"
+import { applyMigrations, seedDemoData } from "./sqlite.ts"
+import {
+  importTable,
+  invalidatePostgresSessions,
+} from "./postgres/sqlite-import.ts"
 import type { ExportSnapshot } from "./sqlite-to-postgres.ts"
 import {
   MigrationInputError,
@@ -102,11 +105,14 @@ describe("SQLite to Postgres migration export", () => {
       ?.rows.at(0)
 
     // Then: every durable table is covered and transformed values are typed.
-    expect(tableNames(snapshot)).toEqual([...requiredTableNames])
+    const exportedTableNames = sqliteToPostgresTableSpecs.map(
+      (spec) => spec.name
+    )
+    expect(tableNames(snapshot)).toEqual(exportedTableNames)
     expect(sqliteToPostgresTableSpecs.map((spec) => spec.name)).toEqual([
-      ...requiredTableNames,
+      ...exportedTableNames,
     ])
-    expect(summary).toHaveLength(requiredTableNames.length)
+    expect(summary).toHaveLength(exportedTableNames.length)
     expect(authIdentity?.["created_at"]).toBe("2026-06-04T00:00:00.000Z")
     expect(authIdentity?.["scopes_json"]).toEqual([
       "openid",
@@ -127,28 +133,34 @@ describe("SQLite to Postgres migration export", () => {
     writeExportSnapshot(exportPath, snapshot)
     const roundTripSnapshot = readExportSnapshot(exportPath)
     const report = reconcileSnapshots(snapshot, roundTripSnapshot)
+    const storedExport = readFileSync(exportPath, "utf8")
 
-    // Then: reconciliation reports every durable table.
-    expect(report.map((table) => table.name)).toEqual([...requiredTableNames])
+    // Then: reconciliation succeeds without exposing credentials on disk.
+    expect(report.map((table) => table.name)).toEqual(
+      sqliteToPostgresTableSpecs.map((spec) => spec.name)
+    )
+    expect(storedExport).not.toContain("password_hash")
+    expect(storedExport).not.toContain("scrypt$")
+    expect(statSync(exportPath).mode & 0o777).toBe(0o600)
   })
 
-  it("rejects export JSON that omits durable tables", () => {
-    // Given: an export file that only includes one durable table.
+  it("rejects an encrypted export that omits migration tables", () => {
+    // Given: an export snapshot that only includes one migration table.
     const exportPath = join(
       mkdtempSync(join(tmpdir(), "glocalx-export-")),
       "export.json"
     )
-    const incompleteSnapshot = {
+    const incompleteSnapshot: ExportSnapshot = {
       exportedAt: "2026-06-04T00:00:00.000Z",
       source: "sqlite",
       tables: [{ columns: ["id"], name: "users", rows: [{ id: "demo" }] }],
       version: 1,
     }
 
-    // When: the export is read through the migration boundary.
-    writeFileSync(exportPath, `${JSON.stringify(incompleteSnapshot)}\n`)
+    // When: the encrypted export is read through the migration boundary.
+    writeExportSnapshot(exportPath, incompleteSnapshot)
 
-    // Then: the boundary rejects missing durable tables.
+    // Then: the boundary rejects missing migration tables.
     expect(() => readExportSnapshot(exportPath)).toThrow(MigrationInputError)
   })
 
@@ -214,23 +226,25 @@ describe("SQLite to Postgres migration export", () => {
     ])
   })
 
-  it("exports stores before active sessions so foreign keys import safely", () => {
-    const snapshot = seededSnapshotWithSession()
-    const tableNamesInOrder = tableNames(snapshot)
+  it("invalidates target sessions before importing account state", async () => {
+    // Given: a Postgres migration executor with potentially active sessions.
+    const sql = capturingSql()
 
-    expect(tableNamesInOrder.indexOf("stores")).toBeLessThan(
-      tableNamesInOrder.indexOf("user_sessions")
-    )
-    expect(
-      snapshot.tables.find((table) => table.name === "user_sessions")?.rows
-    ).toEqual([
-      {
-        created_at: "2026-06-04T00:00:00.000Z",
-        expires_at: "2026-06-11T00:00:00.000Z",
-        id: "session-1",
-        store_id: "demo-store",
-        user_id: "demo-owner",
-      },
-    ])
+    // When: the import boundary invalidates authentication state.
+    await invalidatePostgresSessions(sql.executor)
+
+    // Then: every existing target session is deleted.
+    expect(sql.capturedQueries).toEqual(["DELETE FROM user_sessions"])
+  })
+
+  it("excludes active sessions from migration snapshots", () => {
+    // Given: a source database containing a reusable authenticated session.
+    const snapshot = seededSnapshotWithSession()
+
+    // When: the migration snapshot is collected.
+    const exportedTableNames = tableNames(snapshot)
+
+    // Then: bearer sessions are invalidated instead of serialized.
+    expect(exportedTableNames).not.toContain("user_sessions")
   })
 })

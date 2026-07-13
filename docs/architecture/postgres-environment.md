@@ -7,12 +7,13 @@ examples.
 
 ## Required Variables
 
-| Variable            | Required value                                                                        | Secret handling                                                                               |
-| ------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `DATABASE_PROVIDER` | `postgres` for production-like deployments; `sqlite` only for local/dev/test fallback | Non-secret provider selector. Supported values are `sqlite` and `postgres`, not vendor names. |
-| `DATABASE_URL`      | `[pooled-postgres-url]`                                                               | Secret. Use the pooled application connection URL.                                            |
-| Direct URL variable | `DATABASE_URL_DIRECT`, `DATABASE_URL_UNPOOLED`, or `POSTGRES_URL_NON_POOLING`         | Secret. Use only for migrations, backups, restore jobs, replication, and admin tasks.         |
-| `DATABASE_POOL_MAX` | `[max-application-pool-connections]`                                                  | Non-secret numeric pool limit. Tune per environment and provider limits.                      |
+| Variable                          | Required value                                                                        | Secret handling                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `DATABASE_PROVIDER`               | `postgres` for production-like deployments; `sqlite` only for local/dev/test fallback | Non-secret provider selector. Supported values are `sqlite` and `postgres`, not vendor names. |
+| `DATABASE_URL`                    | `[pooled-postgres-url]`                                                               | Secret. Use the pooled application connection URL.                                            |
+| Direct URL variable               | `DATABASE_URL_DIRECT`, `DATABASE_URL_UNPOOLED`, or `POSTGRES_URL_NON_POOLING`         | Secret. Use only for migrations, backups, restore jobs, replication, and admin tasks.         |
+| `DATABASE_POOL_MAX`               | `[max-application-pool-connections]`                                                  | Non-secret numeric pool limit. Tune per environment and provider limits.                      |
+| `MIGRATION_EXPORT_ENCRYPTION_KEY` | `[32-byte-base64-key]`                                                                | Secret. Encrypts credential-bearing SQLite migration snapshots at rest.                       |
 
 Do not paste real database URLs into `.env.example`, markdown, source comments,
 tests, logs, screenshots, or issue descriptions. If a value is needed in
@@ -92,3 +93,8 @@ should keep pooled queries stateless.
 placeholders, including the Vercel-managed Neon `DATABASE_URL_UNPOOLED` alias.
 Keep real database URLs in `.env.local`, the local shell, or the deployment
 secret manager only.
+
+SQLite migration snapshots require `MIGRATION_EXPORT_ENCRYPTION_KEY`, are
+written with owner-only permissions, and intentionally exclude active sessions.
+Postgres imports delete target sessions before account state is copied so every
+user must authenticate again after cutover.
