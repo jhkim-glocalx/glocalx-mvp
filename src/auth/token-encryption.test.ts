@@ -28,7 +28,13 @@ describe("token encryption", () => {
   })
 
   it("rejects legacy placeholder tokens that contain plaintext", () => {
-    expect(decryptToken("encrypted:legacy-token")).toBeUndefined()
+    expect(decryptToken("encrypted:legacy-token", {})).toBeUndefined()
+  })
+
+  it("reads legacy placeholder tokens only for Playwright fixtures", () => {
+    expect(
+      decryptToken("encrypted:legacy-token", { PLAYWRIGHT_TEST: "true" })
+    ).toBe("legacy-token")
   })
 
   it("requires a configured encryption key in every environment", () => {
