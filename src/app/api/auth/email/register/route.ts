@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         request,
         registration.email
       )
+      const accountRateLimitRule = rateLimitRules[0]
       const rateLimit = await authRateLimitRepository.consume(rateLimitRules)
       if (rateLimit.kind === "blocked") {
         return rateLimitedResponse(rateLimit.retryAfterSeconds)
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
           status: 303,
         })
       }
-      await authRateLimitRepository.clear(rateLimitRules)
+      await authRateLimitRepository.clear([accountRateLimitRule])
       return redirectWithSession(
         await sessionStore.createAuthenticatedSession(result.session)
       )

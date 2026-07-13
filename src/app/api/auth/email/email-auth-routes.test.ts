@@ -176,4 +176,28 @@ describe("email authentication routes", () => {
     expect(retryAfter).toBeLessThanOrEqual(3600)
     expect(responses[3]?.headers.get("Set-Cookie")).toBeNull()
   })
+
+  it("preserves the client limit across successful registrations", async () => {
+    // Given: one client registering distinct valid accounts.
+    const responses = []
+
+    // When: the client exceeds the registration-wide attempt budget.
+    for (let attempt = 0; attempt < 11; attempt += 1) {
+      responses.push(
+        await register(
+          createFormRequest("/api/auth/email/register", {
+            displayName: `Owner ${attempt}`,
+            email: `owner-${attempt}@example.com`,
+            password: "correct-horse-battery-staple",
+          })
+        )
+      )
+    }
+
+    // Then: successful accounts do not reset the shared client bucket.
+    expect(responses.slice(0, 10).map((response) => response.status)).toEqual(
+      Array.from({ length: 10 }, () => 303)
+    )
+    expect(responses[10]?.status).toBe(429)
+  })
 })

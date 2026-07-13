@@ -22,7 +22,7 @@ function readClientIdentifier(request: NextRequest): string {
 export function createLoginRateLimitRules(
   request: NextRequest,
   email: string
-): readonly AuthRateLimitRule[] {
+): readonly [AuthRateLimitRule, AuthRateLimitRule] {
   return [
     {
       id: `login:account:${digest(email)}`,
@@ -40,7 +40,7 @@ export function createLoginRateLimitRules(
 export function createRegistrationRateLimitRules(
   request: NextRequest,
   email: string
-): readonly AuthRateLimitRule[] {
+): readonly [AuthRateLimitRule, AuthRateLimitRule] {
   return [
     {
       id: `register:account:${digest(email)}`,
