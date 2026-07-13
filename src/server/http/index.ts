@@ -16,6 +16,7 @@ import { openDatabaseContext, resolveDatabaseConfig } from "@/server/db"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 import { createDatabaseConversationStore } from "@/server/repositories/conversation-store"
 import type { ConversationStore } from "@/server/repositories/conversation-store"
+import { createDatabaseAuthRateLimitRepository } from "@/server/repositories/auth-rate-limit"
 import { createDatabaseEmailCredentialsRepository } from "@/server/repositories/email-credentials"
 import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
 import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
@@ -46,6 +47,9 @@ export type ParsedJsonRoutePayload<TValue> =
 
 export type QueryableRouteDatabaseContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
+  readonly authRateLimitRepository: ReturnType<
+    typeof createDatabaseAuthRateLimitRepository
+  >
   readonly conversationStore: ConversationStore
   readonly emailCredentialsRepository: ReturnType<
     typeof createDatabaseEmailCredentialsRepository
@@ -184,6 +188,7 @@ export async function withQueryableRouteDatabase<TResponse extends Response>(
   try {
     return await handler({
       adapters: createIntegrationAdapters(),
+      authRateLimitRepository: createDatabaseAuthRateLimitRepository(queryable),
       conversationStore: createDatabaseConversationStore(queryable),
       emailCredentialsRepository:
         createDatabaseEmailCredentialsRepository(queryable),

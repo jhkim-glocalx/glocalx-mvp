@@ -117,6 +117,34 @@ describe("email authentication routes", () => {
     expect(response.headers.get("Set-Cookie")).toBeNull()
   })
 
+  it("rate limits repeated login attempts before password work", async () => {
+    // Given: an existing account and repeated invalid credentials from one client.
+    await registerOwner()
+    const responses = []
+
+    // When: the client exhausts the login attempt window.
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      responses.push(
+        await login(
+          createFormRequest("/api/auth/email/login", {
+            email: "owner@example.com",
+            password: "wrong-password-value",
+          })
+        )
+      )
+    }
+
+    // Then: allowed attempts stay generic and the next request is load-shed.
+    expect(responses.slice(0, 5).map((response) => response.status)).toEqual([
+      303, 303, 303, 303, 303,
+    ])
+    expect(responses[5]?.status).toBe(429)
+    const retryAfter = Number(responses[5]?.headers.get("Retry-After"))
+    expect(retryAfter).toBeGreaterThan(0)
+    expect(retryAfter).toBeLessThanOrEqual(900)
+    expect(responses[5]?.headers.get("Set-Cookie")).toBeNull()
+  })
+
   it("does not disclose duplicate registration through the redirect code", async () => {
     await registerOwner()
     const response = await registerOwner()
@@ -126,5 +154,26 @@ describe("email authentication routes", () => {
       "/register?auth_error=registration_unavailable"
     )
     expect(response.headers.get("Set-Cookie")).toBeNull()
+  })
+
+  it("rate limits repeated registration attempts before password hashing", async () => {
+    // Given: an existing address repeatedly submitted from one client.
+    await registerOwner()
+    const responses = []
+
+    // When: the client exhausts the registration attempt window.
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      responses.push(await registerOwner())
+    }
+
+    // Then: duplicate responses remain generic until further work is blocked.
+    expect(responses.slice(0, 3).map((response) => response.status)).toEqual([
+      303, 303, 303,
+    ])
+    expect(responses[3]?.status).toBe(429)
+    const retryAfter = Number(responses[3]?.headers.get("Retry-After"))
+    expect(retryAfter).toBeGreaterThan(0)
+    expect(retryAfter).toBeLessThanOrEqual(3600)
+    expect(responses[3]?.headers.get("Set-Cookie")).toBeNull()
   })
 })

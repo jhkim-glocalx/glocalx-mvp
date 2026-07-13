@@ -1,4 +1,4 @@
-import { requiredTableNames } from "../sqlite.ts"
+import { databaseTableNames } from "../sqlite.ts"
 import type { PostgresClient } from "./connection.ts"
 import {
   PostgresMigrationChecksumError,
@@ -67,7 +67,7 @@ export async function verifyPostgresDatabase(
       AND table_type = 'BASE TABLE'
   `
   const existingTableNames = new Set(tableRows.map((row) => row.name))
-  const missingTableNames = requiredTableNames.filter(
+  const missingTableNames = databaseTableNames.filter(
     (tableName) => !existingTableNames.has(tableName)
   )
 
@@ -84,7 +84,7 @@ export async function verifyPostgresDatabase(
   }
 
   console.log(
-    `Verified Postgres schema with ${requiredTableNames.length} durable tables`
+    `Verified Postgres schema with ${databaseTableNames.length} application tables`
   )
 }
 

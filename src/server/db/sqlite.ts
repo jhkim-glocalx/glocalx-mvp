@@ -29,6 +29,12 @@ export const requiredTableNames = [
   "audit_logs",
 ] as const
 
+export const operationalTableNames = ["auth_rate_limits"] as const
+export const databaseTableNames = [
+  ...requiredTableNames,
+  ...operationalTableNames,
+] as const
+
 export type RequiredTableName = (typeof requiredTableNames)[number]
 export type SqliteDatabase = Database.Database
 
@@ -62,6 +68,7 @@ const migrationPaths = [
   join(currentDirectory, "migrations", "0001_glocalx_schema.sql"),
   join(currentDirectory, "migrations", "0002_email_credentials.sql"),
   join(currentDirectory, "migrations", "0003_user_sessions.sql"),
+  join(currentDirectory, "migrations", "0004_auth_rate_limits.sql"),
 ] as const
 
 function ensureColumn(

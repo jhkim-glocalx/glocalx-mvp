@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { requiredTableNames } from "../sqlite.ts"
+import { databaseTableNames } from "../sqlite.ts"
 import {
   DatabaseUrlDirectConfigurationError,
   collectCreateTableNames,
@@ -24,7 +24,7 @@ describe("Postgres migration tooling", () => {
     const tableNames = collectCreateTableNames(migrationSql)
 
     // Then: every durable table listed by the SQLite schema boundary exists.
-    expect(tableNames).toEqual(expect.arrayContaining([...requiredTableNames]))
+    expect(tableNames).toEqual(expect.arrayContaining([...databaseTableNames]))
   })
 
   it("uses Postgres-native timestamp and JSON column types", () => {

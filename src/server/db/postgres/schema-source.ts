@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { requiredTableNames } from "../sqlite.ts"
+import { databaseTableNames } from "../sqlite.ts"
 import { PostgresSchemaVerificationError } from "./errors.ts"
 
 export type Migration = {
@@ -59,7 +59,7 @@ export function verifyPostgresMigrationSource(): void {
     .map((migration) => migration.sql)
     .join("\n")
   const createdTableNames = new Set(collectCreateTableNames(migrationSql))
-  const missingTableNames = requiredTableNames.filter(
+  const missingTableNames = databaseTableNames.filter(
     (tableName) => !createdTableNames.has(tableName)
   )
 

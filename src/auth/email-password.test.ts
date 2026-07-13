@@ -19,4 +19,22 @@ describe("email password hashing", () => {
     expect(valid).toBe(true)
     expect(invalid).toBe(false)
   })
+
+  it("load sheds password work above the bounded concurrency limit", async () => {
+    // Given: more simultaneous password work than one instance may process.
+    const passwordWork = Array.from({ length: 5 }, (_, index) =>
+      hashPassword(`concurrent-password-${String(index)}`)
+    )
+
+    // When: all work settles under load.
+    const results = await Promise.allSettled(passwordWork)
+
+    // Then: four operations complete and excess work is rejected immediately.
+    expect(
+      results.filter((result) => result.status === "fulfilled")
+    ).toHaveLength(4)
+    expect(
+      results.filter((result) => result.status === "rejected")
+    ).toHaveLength(1)
+  })
 })

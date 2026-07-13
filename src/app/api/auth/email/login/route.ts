@@ -1,8 +1,10 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
+import { createLoginRateLimitRules } from "@/auth/auth-rate-limit"
 import { parseEmailLoginForm } from "@/auth/email-credentials"
 import {
+  PasswordWorkCapacityError,
   passwordVerificationDecoyHash,
   verifyPassword,
 } from "@/auth/email-password"
@@ -25,6 +27,13 @@ function redirectWithSession({
   return response
 }
 
+function rateLimitedResponse(retryAfterSeconds: number): NextResponse {
+  return new NextResponse(null, {
+    headers: { "Retry-After": String(retryAfterSeconds) },
+    status: 429,
+  })
+}
+
 export async function POST(request: NextRequest) {
   if (!hasSameRequestOrigin(request)) {
     return new NextResponse(null, {
@@ -42,20 +51,38 @@ export async function POST(request: NextRequest) {
   }
 
   return withQueryableRouteDatabase(
-    async ({ emailCredentialsRepository, sessionStore }) => {
+    async ({
+      authRateLimitRepository,
+      emailCredentialsRepository,
+      sessionStore,
+    }) => {
+      const rateLimitRules = createLoginRateLimitRules(request, login.email)
+      const rateLimit = await authRateLimitRepository.consume(rateLimitRules)
+      if (rateLimit.kind === "blocked") {
+        return rateLimitedResponse(rateLimit.retryAfterSeconds)
+      }
       const credential = await emailCredentialsRepository.readCredential(
         login.email
       )
-      const passwordMatches = await verifyPassword(
-        login.password,
-        credential?.passwordHash ?? passwordVerificationDecoyHash
-      )
+      let passwordMatches: boolean
+      try {
+        passwordMatches = await verifyPassword(
+          login.password,
+          credential?.passwordHash ?? passwordVerificationDecoyHash
+        )
+      } catch (error) {
+        if (error instanceof PasswordWorkCapacityError) {
+          return rateLimitedResponse(1)
+        }
+        throw error
+      }
       if (!passwordMatches || credential === undefined) {
         return new NextResponse(null, {
           headers: { Location: "/login?auth_error=invalid_credentials" },
           status: 303,
         })
       }
+      await authRateLimitRepository.clear(rateLimitRules)
       return redirectWithSession(
         await sessionStore.createAuthenticatedSession(credential.session)
       )
