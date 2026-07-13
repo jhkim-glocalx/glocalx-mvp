@@ -1,7 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto"
 
 const tokenEncryptionPrefix = "v1"
-const legacyPlaceholderPrefix = "encrypted:"
 const tokenEncryptionKeyEnvVar = "TOKEN_ENCRYPTION_KEY"
 const missingTokenEncryptionKeyEnvVars = [tokenEncryptionKeyEnvVar] as const
 const base64Pattern =
@@ -88,11 +87,6 @@ export function decryptToken(
   encryptedToken: string,
   env: Readonly<Record<string, string | undefined>> = process.env
 ): string | undefined {
-  if (encryptedToken.startsWith(legacyPlaceholderPrefix)) {
-    const token = encryptedToken.slice(legacyPlaceholderPrefix.length).trim()
-    return token === "" ? undefined : token
-  }
-
   const tokenParts = encryptedToken.split(":")
   const [prefix, encodedIv, encodedAuthTag, encodedCiphertext] = tokenParts
   if (

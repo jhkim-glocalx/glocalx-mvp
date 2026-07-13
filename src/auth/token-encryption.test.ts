@@ -27,8 +27,8 @@ describe("token encryption", () => {
     ).toBe("access-token-value")
   })
 
-  it("can still read legacy placeholder tokens", () => {
-    expect(decryptToken("encrypted:legacy-token")).toBe("legacy-token")
+  it("rejects legacy placeholder tokens that contain plaintext", () => {
+    expect(decryptToken("encrypted:legacy-token")).toBeUndefined()
   })
 
   it("requires a configured encryption key in every environment", () => {
