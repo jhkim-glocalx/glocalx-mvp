@@ -37,6 +37,15 @@ describe("token encryption", () => {
     ).toBe("legacy-token")
   })
 
+  it("rejects legacy fixtures in production-like runtimes", () => {
+    expect(
+      decryptToken("encrypted:legacy-token", {
+        PLAYWRIGHT_TEST: "true",
+        VERCEL_ENV: "preview",
+      })
+    ).toBeUndefined()
+  })
+
   it("requires a configured encryption key in every environment", () => {
     expect(() => encryptToken("live-token", { NODE_ENV: "test" })).toThrow(
       "TOKEN_ENCRYPTION_KEY is required for token encryption."

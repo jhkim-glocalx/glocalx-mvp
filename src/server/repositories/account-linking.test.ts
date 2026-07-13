@@ -99,7 +99,7 @@ describe("cross-method account linking", () => {
         subjectId: "google-owner-subject",
       }
       await expect(repository.upsertOAuthIdentity(profile)).rejects.toThrow(
-        "Sign in with the existing email account"
+        "Sign in with the existing account"
       )
       const session = await repository.upsertOAuthIdentity(
         profile,

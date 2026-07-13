@@ -88,7 +88,13 @@ export function decryptToken(
   encryptedToken: string,
   env: Readonly<Record<string, string | undefined>> = process.env
 ): string | undefined {
+  const productionLike =
+    env["NODE_ENV"] === "production" ||
+    env["VERCEL"] === "1" ||
+    env["VERCEL_ENV"] === "preview" ||
+    env["VERCEL_ENV"] === "production"
   if (
+    !productionLike &&
     env["PLAYWRIGHT_TEST"] === "true" &&
     encryptedToken.startsWith(legacyPlaceholderPrefix)
   ) {

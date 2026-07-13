@@ -5,7 +5,6 @@ import type { Queryable } from "@/server/db"
 import { z } from "zod"
 
 const emailOwnerRowSchema = z.object({
-  has_email_credential: z.number().int().min(0).max(1),
   id: z.string(),
 })
 
@@ -31,22 +30,14 @@ export async function findOrCreateOAuthUser(
 ): Promise<OAuthUserCandidate> {
   const readEmailOwner = async () =>
     emailOwnerRowSchema.safeParse(
-      await queryable.queryOne(
-        `SELECT
-          users.id,
-          CASE WHEN email_credentials.user_id IS NULL THEN 0 ELSE 1 END AS has_email_credential
-        FROM users
-        LEFT JOIN email_credentials ON email_credentials.user_id = users.id
-        WHERE users.email = ?`,
-        [email]
-      )
+      await queryable.queryOne("SELECT id FROM users WHERE email = ?", [email])
     )
   const resolveEmailOwner = (
     owner: z.infer<typeof emailOwnerRowSchema>
   ): OAuthUserCandidate => {
-    if (owner.has_email_credential === 1 && linkingUserId !== owner.id) {
+    if (linkingUserId !== owner.id) {
       throw new OAuthAccountLinkRequiredError(
-        "Sign in with the existing email account before linking OAuth."
+        "Sign in with the existing account before linking OAuth."
       )
     }
     return { created: false, userId: owner.id }
