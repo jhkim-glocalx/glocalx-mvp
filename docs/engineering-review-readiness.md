@@ -38,8 +38,9 @@ The top-level product description and command surface live in `README.md:1-48`.
   `src/integrations/conversation-contracts.ts`, and
   `src/integrations/marketing-contracts.ts`.
 - Persistence: migrations `0001_glocalx_schema.sql`,
-  `0002_email_credentials.sql`, and `0003_user_sessions.sql` define durable
-  users, credential hashes, opaque sessions, stores, OAuth identities, business
+  `0002_email_credentials.sql`, `0003_user_sessions.sql`, and
+  `0004_auth_rate_limits.sql` define durable users, credential hashes, opaque
+  sessions, authentication rate limits, stores, OAuth identities, business
   profile extractions, GBP accounts and locations, post drafts, publish
   attempts, conversations, reviews, jobs, and audit logs.
 
