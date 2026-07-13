@@ -1,14 +1,15 @@
 import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 
+import { demoStoreId, demoUserId } from "./demo-identifiers.ts"
+
+export { demoStoreId, demoUserId } from "./demo-identifiers.ts"
+
 export const demoSessionCookieName = "glocalx_demo_session"
 export const demoStoreCookieName = "glocalx_demo_store"
 export const authSessionCookieName = "glocalx_session"
 export const onboardingCompleteCookieName = "glocalx_onboarding_complete"
 export const sessionMaxAgeSeconds = 60 * 60 * 24 * 7
-
-export const demoUserId = "demo-owner"
-export const demoStoreId = "demo-store"
 
 export type DemoSession = {
   readonly userId: string
