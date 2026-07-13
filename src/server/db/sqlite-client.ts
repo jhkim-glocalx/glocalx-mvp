@@ -1,4 +1,4 @@
-import { applyMigrations, openDatabase, seedDemoData } from "./sqlite.ts"
+import { applyMigrations, openDatabase } from "./sqlite.ts"
 import type { SqliteDatabase } from "./sqlite.ts"
 import type {
   DatabaseContext,
@@ -63,7 +63,6 @@ export function createSqliteQueryable(database: SqliteDatabase): Queryable {
 export function openSqliteDatabaseContext(): DatabaseContext {
   const database = openDatabase()
   applyMigrations(database)
-  seedDemoData(database)
   const queryable = createSqliteQueryable(database)
 
   return {

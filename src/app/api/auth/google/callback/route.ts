@@ -1,11 +1,7 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
-import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  sessionCookieOptions,
-} from "@/auth/session"
+import { authSessionCookieName, sessionCookieOptions } from "@/auth/session"
 import { fetchGoogleOAuthProfile } from "@/auth/oauth-providers"
 import {
   getGoogleRedirectUri,
@@ -63,9 +59,11 @@ export async function GET(request: NextRequest) {
     })
 
     return await withQueryableRouteDatabase(
-      async ({ oauthIdentityRepository }) => {
+      async ({ oauthIdentityRepository, sessionStore }) => {
         const session =
           await oauthIdentityRepository.upsertOAuthIdentity(profile)
+        const authenticatedSession =
+          await sessionStore.createAuthenticatedSession(session)
         const response = new NextResponse(null, {
           headers: {
             // New OAuth identities enter onboarding until their store is completed.
@@ -74,13 +72,8 @@ export async function GET(request: NextRequest) {
           status: 303,
         })
         response.cookies.set(
-          demoSessionCookieName,
-          session.userId,
-          sessionCookieOptions
-        )
-        response.cookies.set(
-          demoStoreCookieName,
-          session.storeId,
+          authSessionCookieName,
+          authenticatedSession.sessionId,
           sessionCookieOptions
         )
         response.cookies.set(

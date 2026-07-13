@@ -10,6 +10,9 @@ import { postDraftRequestSchema } from "@/domain/schemas"
 import type { SessionStore } from "@/server/repositories/session-store"
 
 const unusedSessionStore: SessionStore = {
+  createAuthenticatedSession: async () => {
+    throw new Error("createAuthenticatedSession should not be called")
+  },
   completeOnboarding: async () => false,
   createSession: () => {
     throw new Error("createSession should not be called")

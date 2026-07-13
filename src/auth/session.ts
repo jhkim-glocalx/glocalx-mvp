@@ -3,7 +3,9 @@ import type { SqliteDatabase } from "@/server/db/sqlite"
 
 export const demoSessionCookieName = "glocalx_demo_session"
 export const demoStoreCookieName = "glocalx_demo_store"
+export const authSessionCookieName = "glocalx_session"
 export const onboardingCompleteCookieName = "glocalx_onboarding_complete"
+export const sessionMaxAgeSeconds = 60 * 60 * 24 * 7
 
 export const demoUserId = "demo-owner"
 export const demoStoreId = "demo-store"
@@ -15,6 +17,7 @@ export type DemoSession = {
 }
 
 export type SessionCookieValues = {
+  readonly authSessionId?: string | undefined
   readonly onboardingComplete: string | undefined
   readonly storeId: string | undefined
   readonly userId: string | undefined
@@ -23,11 +26,34 @@ export type SessionCookieValues = {
 export const sessionCookieOptions = {
   // Session identifiers stay server-owned while remaining usable on local HTTP.
   httpOnly: true,
-  maxAge: 60 * 60 * 24 * 7,
+  maxAge: sessionMaxAgeSeconds,
   path: "/",
   sameSite: "lax",
   secure: process.env.NODE_ENV === "production",
 } as const
+
+function isProductionLikeEnvironment(
+  env: Readonly<Record<string, string | undefined>>
+): boolean {
+  return (
+    env["NODE_ENV"] === "production" ||
+    env["VERCEL"] === "1" ||
+    env["VERCEL_ENV"] === "preview" ||
+    env["VERCEL_ENV"] === "production"
+  )
+}
+
+export function allowsLegacyTestSessions(
+  env: Readonly<Record<string, string | undefined>> = process.env
+): boolean {
+  return !isProductionLikeEnvironment(env) && env["PLAYWRIGHT_TEST"] === "true"
+}
+
+export function allowsDemoLogin(
+  env: Readonly<Record<string, string | undefined>> = process.env
+): boolean {
+  return !isProductionLikeEnvironment(env) && env["PLAYWRIGHT_TEST"] === "true"
+}
 
 export function createDemoSession(onboardingComplete: boolean): DemoSession {
   return createSession(demoUserId, demoStoreId, onboardingComplete)

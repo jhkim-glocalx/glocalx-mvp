@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 import {
+  allowsLegacyTestSessions,
+  authSessionCookieName,
   demoSessionCookieName,
   demoStoreCookieName,
   onboardingCompleteCookieName,
@@ -10,12 +12,19 @@ import {
 import { withQueryableRouteDatabase } from "@/server/http"
 
 export async function POST(request: NextRequest) {
-  const sessionCookie = request.cookies.get(demoSessionCookieName)?.value
-  const storeCookie = request.cookies.get(demoStoreCookieName)?.value
+  const readLegacyCookies = allowsLegacyTestSessions()
+  const authSessionCookie = request.cookies.get(authSessionCookieName)?.value
+  const sessionCookie = readLegacyCookies
+    ? request.cookies.get(demoSessionCookieName)?.value
+    : undefined
+  const storeCookie = readLegacyCookies
+    ? request.cookies.get(demoStoreCookieName)?.value
+    : undefined
 
   return withQueryableRouteDatabase(async ({ sessionStore }) => {
     if (
       !(await sessionStore.completeOnboarding({
+        authSessionId: authSessionCookie,
         storeId: storeCookie,
         userId: sessionCookie,
       }))

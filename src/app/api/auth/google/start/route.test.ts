@@ -1,22 +1,9 @@
 import { NextRequest } from "next/server"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
-import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  demoStoreId,
-  onboardingCompleteCookieName,
-} from "@/auth/session"
+import { demoSessionCookieName, demoStoreCookieName } from "@/auth/session"
 import { googleOAuthStateCookieName } from "@/gbp/oauth-callback"
-import {
-  applyMigrations,
-  openDatabase,
-  resetDatabaseFile,
-  seedDemoData,
-} from "@/server/db/sqlite"
 import { POST } from "./route"
-
-type DemoStoreOnboardingStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED"
 
 const envKeys = [
   "APP_INTEGRATION_MODE",
@@ -28,7 +15,6 @@ const envKeys = [
 const originalEnv = new Map(
   envKeys.map((key) => [key, process.env[key]] as const)
 )
-const testDatabasePath = ".glocalx/google-start-route.test.db"
 
 function replaceEnv(overrides: Record<string, string | undefined>): void {
   for (const key of envKeys) {
@@ -68,29 +54,7 @@ function createGoogleStartRequest(cookieHeader?: string): NextRequest {
   })
 }
 
-function setDemoStoreOnboardingStatus(
-  onboardingStatus: DemoStoreOnboardingStatus
-): void {
-  resetDatabaseFile()
-  const database = openDatabase()
-  try {
-    applyMigrations(database)
-    seedDemoData(database)
-    database
-      .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
-      .run(onboardingStatus, demoStoreId)
-  } finally {
-    database.close()
-  }
-}
-
-beforeEach(() => {
-  vi.stubEnv("GLOCALX_DB_PATH", testDatabasePath)
-  resetDatabaseFile(testDatabasePath)
-})
-
 afterEach(() => {
-  resetDatabaseFile(testDatabasePath)
   vi.unstubAllEnvs()
   restoreEnv()
 })
@@ -122,15 +86,12 @@ describe("Google OAuth start route", () => {
     expect(authorizationUrl.searchParams.get("response_type")).toBe("code")
     expect(authorizationUrl.searchParams.get("state")).toBeTruthy()
     expect(authorizationUrl.searchParams.get("access_type")).toBe("offline")
-    expect(authorizationUrl.searchParams.get("prompt")).toBe("consent")
-    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual(
-      expect.arrayContaining([
-        "openid",
-        "email",
-        "profile",
-        "https://www.googleapis.com/auth/business.manage",
-      ])
-    )
+    expect(authorizationUrl.searchParams.get("prompt")).toBe("select_account")
+    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual([
+      "openid",
+      "email",
+      "profile",
+    ])
     expect(setCookie).toContain(
       `${googleOAuthStateCookieName}=${authorizationUrl.searchParams.get("state")}`
     )
@@ -139,66 +100,22 @@ describe("Google OAuth start route", () => {
     expect(setCookie).not.toContain(demoStoreCookieName)
   })
 
-  it("routes a not-started demo store to onboarding in stub mode", async () => {
+  it("starts Google OAuth in stub integration mode when credentials are configured", async () => {
     replaceEnv({
       APP_INTEGRATION_MODE: "stub",
       GOOGLE_CLIENT_ID: "test-client-id",
       GOOGLE_CLIENT_SECRET: "test-client-secret",
       GOOGLE_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
     })
-    setDemoStoreOnboardingStatus("NOT_STARTED")
-
     const response = await POST(createGoogleStartRequest())
     const location = response.headers.get("Location")
     const setCookie = response.headers.get("Set-Cookie")
 
     expect(response.status).toBe(303)
-    expect(location).toBe("/onboarding")
-    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
-    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
-    expect(setCookie).not.toContain(googleOAuthStateCookieName)
-  })
-
-  it("routes an in-progress demo store to onboarding in stub mode despite a stale completion cookie", async () => {
-    replaceEnv({
-      APP_INTEGRATION_MODE: "stub",
-      GOOGLE_CLIENT_ID: "test-client-id",
-      GOOGLE_CLIENT_SECRET: "test-client-secret",
-      GOOGLE_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
-    })
-    setDemoStoreOnboardingStatus("IN_PROGRESS")
-
-    const response = await POST(
-      createGoogleStartRequest(`${onboardingCompleteCookieName}=true`)
-    )
-    const location = response.headers.get("Location")
-    const setCookie = response.headers.get("Set-Cookie")
-
-    expect(response.status).toBe(303)
-    expect(location).toBe("/onboarding")
-    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
-    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
-    expect(setCookie).not.toContain(googleOAuthStateCookieName)
-  })
-
-  it("routes a completed demo store to app in stub mode", async () => {
-    replaceEnv({
-      APP_INTEGRATION_MODE: "stub",
-      GOOGLE_CLIENT_ID: "test-client-id",
-      GOOGLE_CLIENT_SECRET: "test-client-secret",
-      GOOGLE_REDIRECT_URI: "http://localhost:3000/api/auth/google/callback",
-    })
-    setDemoStoreOnboardingStatus("COMPLETED")
-
-    const response = await POST(createGoogleStartRequest())
-    const location = response.headers.get("Location")
-    const setCookie = response.headers.get("Set-Cookie")
-
-    expect(response.status).toBe(303)
-    expect(location).toBe("/app")
-    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
-    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
-    expect(setCookie).not.toContain(googleOAuthStateCookieName)
+    expect(new URL(location ?? "").origin).toBe("https://accounts.google.com")
+    expect(setCookie).toContain(googleOAuthStateCookieName)
+    expect(setCookie).not.toContain(demoSessionCookieName)
+    expect(setCookie).not.toContain(demoStoreCookieName)
   })
 
   it("uses the deployed origin when GOOGLE_REDIRECT_URI still points to localhost", async () => {
@@ -225,7 +142,7 @@ describe("Google OAuth start route", () => {
     )
   })
 
-  it("reports missing credentials in production mode", async () => {
+  it("redirects missing credentials to a visible configuration error in every integration mode", async () => {
     replaceEnv({
       APP_INTEGRATION_MODE: "production",
       GOOGLE_CLIENT_ID: undefined,
@@ -234,14 +151,8 @@ describe("Google OAuth start route", () => {
     })
 
     const response = await POST(createGoogleStartRequest())
-    const body: unknown = await response.json()
-
-    expect(response.status).toBe(500)
-    expect(body).toEqual({
-      code: "BLOCKED_BY_CREDENTIALS",
-      missingEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
-      message: "Google OAuth credentials are not configured.",
-    })
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe("/?auth_error=google_config")
   })
 
   it("treats template placeholders as missing credentials", async () => {
@@ -253,13 +164,7 @@ describe("Google OAuth start route", () => {
     })
 
     const response = await POST(createGoogleStartRequest())
-    const body: unknown = await response.json()
-
-    expect(response.status).toBe(500)
-    expect(body).toEqual({
-      code: "BLOCKED_BY_CREDENTIALS",
-      missingEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
-      message: "Google OAuth credentials are not configured.",
-    })
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe("/?auth_error=google_config")
   })
 })

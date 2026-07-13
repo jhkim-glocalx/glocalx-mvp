@@ -5,11 +5,7 @@ import {
   fetchKakaoOAuthProfile,
   OAuthProviderError,
 } from "@/auth/oauth-providers"
-import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  sessionCookieOptions,
-} from "@/auth/session"
+import { authSessionCookieName, sessionCookieOptions } from "@/auth/session"
 import {
   expiredKakaoOAuthStateCookieOptions,
   getKakaoRedirectUri,
@@ -69,9 +65,11 @@ export async function GET(request: NextRequest) {
     })
 
     return await withQueryableRouteDatabase(
-      async ({ oauthIdentityRepository }) => {
+      async ({ oauthIdentityRepository, sessionStore }) => {
         const session =
           await oauthIdentityRepository.upsertOAuthIdentity(profile)
+        const authenticatedSession =
+          await sessionStore.createAuthenticatedSession(session)
         const response = new NextResponse(null, {
           headers: {
             // First login routes through onboarding until the owned store is complete.
@@ -80,13 +78,8 @@ export async function GET(request: NextRequest) {
           status: 303,
         })
         response.cookies.set(
-          demoSessionCookieName,
-          session.userId,
-          sessionCookieOptions
-        )
-        response.cookies.set(
-          demoStoreCookieName,
-          session.storeId,
+          authSessionCookieName,
+          authenticatedSession.sessionId,
           sessionCookieOptions
         )
         response.cookies.set(

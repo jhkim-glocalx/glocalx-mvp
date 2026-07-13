@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 
 import type {
   OAuthIdentityProfile,
@@ -33,7 +33,7 @@ function stableId(prefix: string, ...parts: readonly string[]): string {
 
 function normalizeEmail(profile: OAuthIdentityProfile): string {
   const email = profile.email?.trim().toLowerCase()
-  if (email) {
+  if (email && profile.emailVerified) {
     return email
   }
 
@@ -52,42 +52,109 @@ async function findUserIdByProviderIdentity(
   return parsed.success ? parsed.data.id : undefined
 }
 
-async function findUserIdByEmail(
+async function hasUserWithEmail(
   queryable: Queryable,
   email: string
-): Promise<string | undefined> {
+): Promise<boolean> {
   const row = await queryable.queryOne("SELECT id FROM users WHERE email = ?", [
     email,
   ])
   const parsed = userRowSchema.safeParse(row)
-  return parsed.success ? parsed.data.id : undefined
+  return parsed.success
 }
 
-async function findOrCreateUser(
+async function createUnlinkedUser(
   queryable: Queryable,
   profile: OAuthIdentityProfile,
   createdAt: string
 ): Promise<string> {
-  const email = normalizeEmail(profile)
-  const existingProviderUserId = await findUserIdByProviderIdentity(
-    queryable,
-    profile
-  )
-  if (existingProviderUserId !== undefined) {
-    return existingProviderUserId
-  }
-
-  const existingEmailUserId = await findUserIdByEmail(queryable, email)
-  if (existingEmailUserId !== undefined) {
-    return existingEmailUserId
-  }
-
-  const userId = stableId("user", profile.provider, profile.subjectId)
+  const normalizedEmail = normalizeEmail(profile)
+  const email = (await hasUserWithEmail(queryable, normalizedEmail))
+    ? `${profile.provider.toLowerCase()}-${stableId("user", profile.provider, profile.subjectId)}@auth.glocalx.local`
+    : normalizedEmail
+  const userId = randomUUID()
   await queryable.execute(
     "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)",
     [userId, email, profile.displayName, "OWNER", createdAt]
   )
   return userId
+}
+
+async function updateOAuthIdentity(
+  queryable: Queryable,
+  userId: string,
+  profile: OAuthIdentityProfile,
+  updatedAt: string
+): Promise<void> {
+  await queryable.execute(
+    `UPDATE auth_identities
+    SET
+      user_id = ?,
+      email = ?,
+      display_name = ?,
+      encrypted_access_token = ?,
+      encrypted_refresh_token = COALESCE(?, encrypted_refresh_token),
+      scopes_json = ?,
+      expires_at = ?,
+      updated_at = ?
+    WHERE provider = ? AND provider_subject_id = ?`,
+    [
+      userId,
+      normalizeEmail(profile),
+      profile.displayName,
+      encryptToken(profile.accessToken),
+      profile.refreshToken === undefined
+        ? null
+        : encryptToken(profile.refreshToken),
+      JSON.stringify(profile.scopes),
+      profile.expiresAt ?? null,
+      updatedAt,
+      profile.provider,
+      profile.subjectId,
+    ]
+  )
+}
+
+async function insertOAuthIdentity(
+  queryable: Queryable,
+  userId: string,
+  profile: OAuthIdentityProfile,
+  createdAt: string
+): Promise<boolean> {
+  const result = await queryable.execute(
+    `INSERT INTO auth_identities (
+      id,
+      user_id,
+      provider,
+      provider_subject_id,
+      email,
+      display_name,
+      encrypted_access_token,
+      encrypted_refresh_token,
+      scopes_json,
+      expires_at,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(provider, provider_subject_id) DO NOTHING`,
+    [
+      stableId("auth", profile.provider, profile.subjectId),
+      userId,
+      profile.provider,
+      profile.subjectId,
+      normalizeEmail(profile),
+      profile.displayName,
+      encryptToken(profile.accessToken),
+      profile.refreshToken === undefined
+        ? null
+        : encryptToken(profile.refreshToken),
+      JSON.stringify(profile.scopes),
+      profile.expiresAt ?? null,
+      createdAt,
+      createdAt,
+    ]
+  )
+  return result.changes > 0
 }
 
 async function findOrCreatePrimaryStore(
@@ -133,61 +200,61 @@ export function createDatabaseOAuthIdentityRepository(
   return {
     async upsertOAuthIdentity(profile, now = new Date()) {
       const createdAt = now.toISOString()
-      const email = normalizeEmail(profile)
-      const userId = await findOrCreateUser(queryable, profile, createdAt)
-      const store = await findOrCreatePrimaryStore(queryable, userId, createdAt)
-      const identityId = stableId("auth", profile.provider, profile.subjectId)
+      let result: OAuthIdentitySession | undefined
 
-      await queryable.execute(
-        `INSERT INTO auth_identities (
-          id,
-          user_id,
-          provider,
-          provider_subject_id,
-          email,
-          display_name,
-          encrypted_access_token,
-          encrypted_refresh_token,
-          scopes_json,
-          expires_at,
-          created_at,
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(provider, provider_subject_id) DO UPDATE SET
-          user_id = excluded.user_id,
-          email = excluded.email,
-          display_name = excluded.display_name,
-          encrypted_access_token = excluded.encrypted_access_token,
-          encrypted_refresh_token = COALESCE(
-            excluded.encrypted_refresh_token,
-            auth_identities.encrypted_refresh_token
-          ),
-          scopes_json = excluded.scopes_json,
-          expires_at = excluded.expires_at,
-          updated_at = excluded.updated_at`,
-        [
-          identityId,
+      await queryable.transaction(async (transaction) => {
+        let userId = await findUserIdByProviderIdentity(transaction, profile)
+        if (userId === undefined) {
+          const candidateUserId = await createUnlinkedUser(
+            transaction,
+            profile,
+            createdAt
+          )
+          await findOrCreatePrimaryStore(
+            transaction,
+            candidateUserId,
+            createdAt
+          )
+          const createdIdentity = await insertOAuthIdentity(
+            transaction,
+            candidateUserId,
+            profile,
+            createdAt
+          )
+          if (createdIdentity) {
+            userId = candidateUserId
+          } else {
+            await transaction.execute("DELETE FROM users WHERE id = ?", [
+              candidateUserId,
+            ])
+            userId = await findUserIdByProviderIdentity(transaction, profile)
+            if (userId === undefined) {
+              throw new Error(
+                "OAuth identity creation lost its unique identity."
+              )
+            }
+          }
+        }
+
+        await updateOAuthIdentity(transaction, userId, profile, createdAt)
+        const store = await findOrCreatePrimaryStore(
+          transaction,
           userId,
-          profile.provider,
-          profile.subjectId,
-          email,
-          profile.displayName,
-          encryptToken(profile.accessToken),
-          profile.refreshToken === undefined
-            ? null
-            : encryptToken(profile.refreshToken),
-          JSON.stringify(profile.scopes),
-          profile.expiresAt ?? null,
-          createdAt,
-          createdAt,
-        ]
-      )
+          createdAt
+        )
+        result = {
+          onboardingComplete: store.onboarding_status === "COMPLETED",
+          storeId: store.id,
+          userId,
+        }
+      })
 
-      return {
-        onboardingComplete: store.onboarding_status === "COMPLETED",
-        storeId: store.id,
-        userId,
+      if (result === undefined) {
+        throw new Error(
+          "OAuth identity transaction completed without a session."
+        )
       }
+      return result
     },
   }
 }

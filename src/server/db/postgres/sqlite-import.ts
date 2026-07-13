@@ -91,10 +91,11 @@ export async function collectPostgresSnapshot(
   const tables = new Array<ExportSnapshot["tables"][number]>()
   for (const table of sourceSnapshot.tables) {
     const columnList = table.columns.map(quoteIdentifier).join(", ")
-    const rows = await sql.unsafe<Readonly<Record<string, unknown>>[]>(
-      `SELECT ${columnList} FROM ${quoteIdentifier(table.name)} ORDER BY id`
-    )
     const spec = tableSpecFor(table.name)
+    const primaryKeyColumn = spec.primaryKeyColumn ?? "id"
+    const rows = await sql.unsafe<Readonly<Record<string, unknown>>[]>(
+      `SELECT ${columnList} FROM ${quoteIdentifier(table.name)} ORDER BY ${quoteIdentifier(primaryKeyColumn)}`
+    )
     tables.push({
       columns: table.columns,
       name: table.name,
@@ -114,6 +115,7 @@ export async function importTable(
   table: ExportSnapshot["tables"][number]
 ): Promise<void> {
   const spec = tableSpecFor(table.name)
+  const primaryKeyColumn = spec.primaryKeyColumn ?? "id"
   const deferredColumns = new Set(spec.deferredColumns ?? [])
   const insertColumns = table.columns.filter(
     (column) => !deferredColumns.has(column)
@@ -124,7 +126,9 @@ export async function importTable(
       parameters.push(toPostgresParameter(spec, column, row))
       return placeholder(parameters.length, spec, column)
     })
-    const updateColumns = insertColumns.filter((column) => column !== "id")
+    const updateColumns = insertColumns.filter(
+      (column) => column !== primaryKeyColumn
+    )
     const updateSet = updateColumns
       .map(
         (column) =>
@@ -136,7 +140,7 @@ export async function importTable(
         .map(quoteIdentifier)
         .join(
           ", "
-        )}) VALUES (${placeholders.join(", ")}) ON CONFLICT (id) DO UPDATE SET ${updateSet}`,
+        )}) VALUES (${placeholders.join(", ")}) ON CONFLICT (${quoteIdentifier(primaryKeyColumn)}) DO UPDATE SET ${updateSet}`,
       parameters
     )
   }
@@ -148,15 +152,18 @@ async function updateDeferredColumns(
 ): Promise<void> {
   for (const table of snapshot.tables) {
     const spec = tableSpecFor(table.name)
+    const primaryKeyColumn = spec.primaryKeyColumn ?? "id"
     for (const column of spec.deferredColumns ?? []) {
       for (const row of table.rows) {
-        const id = row["id"]
-        if (typeof id !== "string") {
-          throw new MigrationInputError(`${table.name}.id must be a string`)
+        const primaryKey = row[primaryKeyColumn]
+        if (typeof primaryKey !== "string") {
+          throw new MigrationInputError(
+            `${table.name}.${primaryKeyColumn} must be a string`
+          )
         }
         await sql.unsafe(
-          `UPDATE ${quoteIdentifier(table.name)} SET ${quoteIdentifier(column)} = $1 WHERE id = $2`,
-          [toPostgresParameter(spec, column, row), id]
+          `UPDATE ${quoteIdentifier(table.name)} SET ${quoteIdentifier(column)} = $1 WHERE ${quoteIdentifier(primaryKeyColumn)} = $2`,
+          [toPostgresParameter(spec, column, row), primaryKey]
         )
       }
     }

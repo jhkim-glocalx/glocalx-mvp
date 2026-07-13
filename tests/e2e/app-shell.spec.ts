@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test"
 import { writeFileSync } from "node:fs"
 
 import { resetFirstTimeE2eDatabase } from "./db-harness"
+import { startEmailOnboarding } from "./email-auth-helpers"
 
 async function expectMarketingLanding(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/app\?nav=photo/)
@@ -41,7 +42,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 test("flow navigation keyboard changes the active step", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
   await completeOnboarding(page)
 
   const postingTab = page.getByRole("button", { name: "여러 SNS 자동홍보" })
@@ -66,7 +67,7 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
 test("bottom chat composer accepts typed text", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
   await completeOnboarding(page)
 
   await page.getByRole("button", { name: "여러 SNS 자동홍보" }).click()
@@ -84,7 +85,7 @@ test("app onboarding quick replies drive the bottom composer", async ({
 }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
   await completeOnboarding(page)
 
   await page.getByRole("button", { name: "가게 인증 및 등록" }).click()
@@ -146,7 +147,7 @@ test("app onboarding keeps Korean composition input and exposes editable store f
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
   await completeOnboarding(page)
 
   await page.getByRole("button", { name: "가게 인증 및 등록" }).click()
@@ -197,7 +198,7 @@ test("responsive browser shell keeps controls visible on mobile", async ({
   await page.setViewportSize({ width: 390, height: 900 })
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()

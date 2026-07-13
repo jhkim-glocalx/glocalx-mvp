@@ -31,28 +31,20 @@ describe("token encryption", () => {
     expect(decryptToken("encrypted:legacy-token")).toBe("legacy-token")
   })
 
-  it("keeps legacy placeholder writes outside production when no key is set", () => {
-    expect(encryptToken("dev-token", { NODE_ENV: "test" })).toBe(
-      "encrypted:dev-token"
+  it("requires a configured encryption key in every environment", () => {
+    expect(() => encryptToken("live-token", { NODE_ENV: "test" })).toThrow(
+      "TOKEN_ENCRYPTION_KEY is required for token encryption."
     )
-  })
-
-  it("requires a configured encryption key in production", () => {
-    expect(() =>
-      encryptToken("live-token", { NODE_ENV: "production" })
-    ).toThrow("TOKEN_ENCRYPTION_KEY is required in production.")
   })
 })
 
 describe("missingTokenEncryptionEnvVars", () => {
-  it("returns TOKEN_ENCRYPTION_KEY when production key is missing", () => {
+  it("returns TOKEN_ENCRYPTION_KEY when the key is missing", () => {
     const missingTokenEncryptionEnvVars = getMissingTokenEncryptionEnvVars()
 
-    expect(
-      missingTokenEncryptionEnvVars({
-        NODE_ENV: "production",
-      })
-    ).toEqual(missingTokenEncryptionKey)
+    expect(missingTokenEncryptionEnvVars({ NODE_ENV: "test" })).toEqual(
+      missingTokenEncryptionKey
+    )
   })
 
   it("returns TOKEN_ENCRYPTION_KEY when production key is blank", () => {
@@ -106,16 +98,6 @@ describe("missingTokenEncryptionEnvVars", () => {
       missingTokenEncryptionEnvVars({
         NODE_ENV: "production",
         TOKEN_ENCRYPTION_KEY: validKey,
-      })
-    ).toEqual([])
-  })
-
-  it("returns no missing env vars for the non-production fallback", () => {
-    const missingTokenEncryptionEnvVars = getMissingTokenEncryptionEnvVars()
-
-    expect(
-      missingTokenEncryptionEnvVars({
-        NODE_ENV: "test",
       })
     ).toEqual([])
   })

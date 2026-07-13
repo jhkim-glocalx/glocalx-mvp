@@ -33,6 +33,29 @@ function seededSnapshot(): ExportSnapshot {
   }
 }
 
+function seededSnapshotWithSession(): ExportSnapshot {
+  const database = new Database(":memory:")
+  try {
+    database.pragma("foreign_keys = ON")
+    applyMigrations(database)
+    seedDemoData(database)
+    database
+      .prepare(
+        "INSERT INTO user_sessions (id, user_id, store_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)"
+      )
+      .run(
+        "session-1",
+        "demo-owner",
+        "demo-store",
+        "2026-06-11T00:00:00.000Z",
+        "2026-06-04T00:00:00.000Z"
+      )
+    return collectSqliteExportSnapshot(database)
+  } finally {
+    database.close()
+  }
+}
+
 function tableNames(snapshot: ExportSnapshot): readonly string[] {
   return snapshot.tables.map((table) => table.name)
 }
@@ -48,15 +71,19 @@ function removeFirstUser(snapshot: ExportSnapshot): ExportSnapshot {
 
 type CapturingSql = {
   readonly capturedParameters: readonly (readonly unknown[])[]
+  readonly capturedQueries: readonly string[]
   readonly executor: Parameters<typeof importTable>[0]
 }
 
 function capturingSql(): CapturingSql {
   const capturedParameters: unknown[][] = []
+  const capturedQueries: string[] = []
   return {
     capturedParameters,
+    capturedQueries,
     executor: {
-      unsafe: async (_query, parameters) => {
+      unsafe: async (query, parameters) => {
+        capturedQueries.push(query)
         capturedParameters.push([...(parameters ?? [])])
       },
     },
@@ -164,5 +191,46 @@ describe("SQLite to Postgres migration export", () => {
 
     // Then: Postgres receives SQL NULL for the nullable JSON column.
     expect(sql.capturedParameters).toEqual([["draft_without_preview", null]])
+  })
+
+  it("uses the email credential primary key for conflict handling", async () => {
+    const sql = capturingSql()
+
+    await importTable(sql.executor, {
+      columns: ["user_id", "password_hash", "created_at", "updated_at"],
+      name: "email_credentials",
+      rows: [
+        {
+          created_at: "2026-06-04T00:00:00.000Z",
+          password_hash: "scrypt$fixture",
+          updated_at: "2026-06-04T00:00:00.000Z",
+          user_id: "owner-1",
+        },
+      ],
+    })
+
+    expect(sql.capturedQueries).toEqual([
+      expect.stringContaining('ON CONFLICT ("user_id") DO UPDATE SET'),
+    ])
+  })
+
+  it("exports stores before active sessions so foreign keys import safely", () => {
+    const snapshot = seededSnapshotWithSession()
+    const tableNamesInOrder = tableNames(snapshot)
+
+    expect(tableNamesInOrder.indexOf("stores")).toBeLessThan(
+      tableNamesInOrder.indexOf("user_sessions")
+    )
+    expect(
+      snapshot.tables.find((table) => table.name === "user_sessions")?.rows
+    ).toEqual([
+      {
+        created_at: "2026-06-04T00:00:00.000Z",
+        expires_at: "2026-06-11T00:00:00.000Z",
+        id: "session-1",
+        store_id: "demo-store",
+        user_id: "demo-owner",
+      },
+    ])
   })
 })

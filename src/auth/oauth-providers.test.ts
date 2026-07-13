@@ -51,6 +51,7 @@ describe("OAuth provider clients", () => {
       })
       return jsonResponse({
         email: "owner@example.com",
+        email_verified: true,
         name: "Google Owner",
         sub: "google-subject",
       })
@@ -73,6 +74,7 @@ describe("OAuth provider clients", () => {
       accessToken: "google-access",
       displayName: "Google Owner",
       email: "owner@example.com",
+      emailVerified: true,
       expiresAt: "2026-06-04T01:00:00.000Z",
       provider: "GOOGLE",
       refreshToken: "google-refresh",
@@ -108,6 +110,8 @@ describe("OAuth provider clients", () => {
         id: 123456789,
         kakao_account: {
           email: "owner@kakao.example",
+          is_email_valid: true,
+          is_email_verified: true,
           profile: {
             nickname: "Kakao Owner",
           },
@@ -128,6 +132,7 @@ describe("OAuth provider clients", () => {
       accessToken: "kakao-access",
       displayName: "Kakao Owner",
       email: "owner@kakao.example",
+      emailVerified: true,
       expiresAt: "2026-06-04T02:00:00.000Z",
       provider: "KAKAO",
       refreshToken: "kakao-refresh",

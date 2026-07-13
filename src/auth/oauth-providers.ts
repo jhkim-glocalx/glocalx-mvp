@@ -210,11 +210,13 @@ export async function fetchGoogleOAuthProfile(
     now
   )
   const email = readOptionalString(profilePayload, "email")
+  const emailVerified = profilePayload["email_verified"] === true
   const refreshToken = readOptionalString(tokenPayload, "refresh_token")
 
   return {
     accessToken,
     displayName,
+    emailVerified,
     provider: "GOOGLE",
     scopes: splitScopes(readOptionalString(tokenPayload, "scope")),
     subjectId,
@@ -277,11 +279,15 @@ export async function fetchKakaoOAuthProfile(
     now
   )
   const email = readOptionalString(accountRecord, "email")
+  const emailVerified =
+    accountRecord["is_email_valid"] === true &&
+    accountRecord["is_email_verified"] === true
   const refreshToken = readOptionalString(tokenPayload, "refresh_token")
 
   return {
     accessToken,
     displayName,
+    emailVerified,
     provider: "KAKAO",
     scopes: splitScopes(readOptionalString(tokenPayload, "scope")),
     subjectId: String(subjectValue),

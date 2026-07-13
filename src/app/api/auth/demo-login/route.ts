@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 
 import {
-  demoSessionCookieName,
-  demoStoreCookieName,
+  allowsDemoLogin,
+  authSessionCookieName,
   demoStoreId,
   demoUserId,
   sessionCookieOptions,
@@ -10,26 +10,34 @@ import {
 import { withQueryableRouteDatabase } from "@/server/http"
 
 export async function POST() {
+  if (!allowsDemoLogin()) {
+    return new NextResponse(null, { status: 404 })
+  }
+
   return withQueryableRouteDatabase(async ({ sessionStore }) => {
     const session = await sessionStore.readSessionFromCookieValues({
       onboardingComplete: undefined,
       storeId: demoStoreId,
       userId: demoUserId,
     })
-    const onboardingComplete = session?.onboardingComplete ?? false
+    if (session === undefined) {
+      return new NextResponse(null, { status: 404 })
+    }
+
+    const authenticatedSession =
+      await sessionStore.createAuthenticatedSession(session)
     const response = new NextResponse(null, {
       headers: {
-        Location: onboardingComplete ? "/app" : "/onboarding",
+        Location: session.onboardingComplete ? "/app" : "/onboarding",
       },
       status: 303,
     })
 
     response.cookies.set(
-      demoSessionCookieName,
-      demoUserId,
+      authSessionCookieName,
+      authenticatedSession.sessionId,
       sessionCookieOptions
     )
-    response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
 
     return response
   })

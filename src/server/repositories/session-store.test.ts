@@ -40,6 +40,69 @@ afterEach(() => {
 })
 
 describe("database session store", () => {
+  it("issues an opaque session that expires server-side", async () => {
+    vi.stubEnv("DATABASE_PROVIDER", "sqlite")
+    vi.stubEnv("GLOCALX_DB_PATH", createTempDatabasePath())
+    const context = await openDatabaseContext()
+
+    try {
+      await context.queryable.execute(
+        "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)",
+        [
+          "owner-1",
+          "owner-1@example.com",
+          "Owner",
+          "OWNER",
+          "2026-06-04T00:00:00.000Z",
+        ]
+      )
+      await context.queryable.execute(
+        "INSERT INTO stores (id, owner_user_id, name, address, category, onboarding_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+          "store-1",
+          "owner-1",
+          "New store",
+          "Address",
+          "Cafe",
+          "NOT_STARTED",
+          "2026-06-04T00:00:00.000Z",
+        ]
+      )
+      const sessionStore = createDatabaseSessionStore(context.queryable)
+      const authenticatedSession =
+        await sessionStore.createAuthenticatedSession({
+          onboardingComplete: false,
+          storeId: "store-1",
+          userId: "owner-1",
+        })
+
+      expect(authenticatedSession.sessionId).not.toContain("owner-1")
+      await expect(
+        sessionStore.readSessionFromCookieValues({
+          authSessionId: authenticatedSession.sessionId,
+          onboardingComplete: undefined,
+          storeId: undefined,
+          userId: undefined,
+        })
+      ).resolves.toEqual(authenticatedSession.session)
+
+      await context.queryable.execute(
+        "UPDATE user_sessions SET expires_at = ? WHERE id = ?",
+        ["2020-01-01T00:00:00.000Z", authenticatedSession.sessionId]
+      )
+      await expect(
+        sessionStore.readSessionFromCookieValues({
+          authSessionId: authenticatedSession.sessionId,
+          onboardingComplete: undefined,
+          storeId: undefined,
+          userId: undefined,
+        })
+      ).resolves.toBeUndefined()
+    } finally {
+      await context.close()
+    }
+  })
+
   it("reads session state through the queryable when cookies identify a store owner", async () => {
     // Given: a SQLite queryable with a matching owner/store row.
     vi.stubEnv("DATABASE_PROVIDER", "sqlite")

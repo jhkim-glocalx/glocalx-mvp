@@ -5,6 +5,7 @@ dist/
 coverage/
 playwright-report/
 test-results/
+.playwright-cli/
 .git/
 AGENTS.md
 02_assets/

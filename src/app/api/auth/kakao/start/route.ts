@@ -2,46 +2,13 @@ import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 import {
-  demoSessionCookieName,
-  demoStoreCookieName,
-  demoStoreId,
-  demoUserId,
-  sessionCookieOptions,
-} from "@/auth/session"
-import {
   buildKakaoOAuthAuthorizationUrl,
   getKakaoRedirectUri,
   kakaoOAuthStateCookieName,
   kakaoOAuthStateCookieOptions,
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
-import { withQueryableRouteDatabase } from "@/server/http"
-
-async function createDemoSessionRedirect(): Promise<NextResponse> {
-  return withQueryableRouteDatabase(async ({ sessionStore }) => {
-    const session = await sessionStore.readSessionFromCookieValues({
-      onboardingComplete: undefined,
-      storeId: demoStoreId,
-      userId: demoUserId,
-    })
-    const onboardingComplete = session?.onboardingComplete ?? false
-    const response = new NextResponse(null, {
-      headers: {
-        Location: onboardingComplete ? "/app" : "/onboarding",
-      },
-      status: 303,
-    })
-
-    response.cookies.set(
-      demoSessionCookieName,
-      demoUserId,
-      sessionCookieOptions
-    )
-    response.cookies.set(demoStoreCookieName, demoStoreId, sessionCookieOptions)
-
-    return response
-  })
-}
+import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
 
 function createKakaoConfigErrorRedirect(): NextResponse {
   return new NextResponse(null, {
@@ -53,13 +20,11 @@ function createKakaoConfigErrorRedirect(): NextResponse {
 }
 
 export async function POST(request: NextRequest) {
-  // Stub mode bypasses Kakao config so local demos do not depend on credentials.
-  if (process.env["APP_INTEGRATION_MODE"] === "stub") {
-    return await createDemoSessionRedirect()
-  }
-
   const missingEnvVars = missingKakaoOAuthEnvVars(process.env)
-  if (missingEnvVars.length > 0) {
+  if (
+    missingEnvVars.length > 0 ||
+    missingTokenEncryptionEnvVars(process.env).length > 0
+  ) {
     return createKakaoConfigErrorRedirect()
   }
 

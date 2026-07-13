@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 
 import type { SqliteDatabase } from "@/server/db/sqlite"
 import { encryptToken } from "./token-encryption"
@@ -9,6 +9,7 @@ export type OAuthIdentityProfile = {
   readonly provider: AuthProvider
   readonly subjectId: string
   readonly email?: string
+  readonly emailVerified: boolean
   readonly displayName: string
   readonly accessToken: string
   readonly refreshToken?: string
@@ -40,7 +41,7 @@ function stableId(prefix: string, ...parts: readonly string[]): string {
 
 function normalizeEmail(profile: OAuthIdentityProfile): string {
   const email = profile.email?.trim().toLowerCase()
-  if (email) {
+  if (email && profile.emailVerified) {
     return email
   }
 
@@ -59,14 +60,11 @@ function findUserIdByProviderIdentity(
   return row?.id
 }
 
-function findUserIdByEmail(
-  database: SqliteDatabase,
-  email: string
-): string | undefined {
+function hasUserWithEmail(database: SqliteDatabase, email: string): boolean {
   const row = database
     .prepare("SELECT id FROM users WHERE email = ?")
     .get(email) as UserRow | undefined
-  return row?.id
+  return row !== undefined
 }
 
 function findOrCreateUser(
@@ -74,18 +72,16 @@ function findOrCreateUser(
   profile: OAuthIdentityProfile,
   createdAt: string
 ): string {
-  const email = normalizeEmail(profile)
+  const normalizedEmail = normalizeEmail(profile)
   const existingProviderUserId = findUserIdByProviderIdentity(database, profile)
   if (existingProviderUserId !== undefined) {
     return existingProviderUserId
   }
 
-  const existingEmailUserId = findUserIdByEmail(database, email)
-  if (existingEmailUserId !== undefined) {
-    return existingEmailUserId
-  }
-
-  const userId = stableId("user", profile.provider, profile.subjectId)
+  const email = hasUserWithEmail(database, normalizedEmail)
+    ? `${profile.provider.toLowerCase()}-${stableId("user", profile.provider, profile.subjectId)}@auth.glocalx.local`
+    : normalizedEmail
+  const userId = randomUUID()
   database
     .prepare(
       "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)"

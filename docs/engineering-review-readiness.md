@@ -12,10 +12,9 @@ GlocalX is a Next App Router app for owner login, Naver business extraction,
 Google Business Profile setup, GBP performance review, and GBP post generation.
 The top-level product description and command surface live in `README.md:1-48`.
 
-- Entry and auth surface: `src/app/page.tsx` renders the login page and posts to
-  `src/app/api/auth/demo-login/route.ts`,
-  `src/app/api/auth/google/start/route.ts`, and
-  `src/app/api/auth/kakao/start/route.ts`.
+- Entry and auth surface: `src/app/page.tsx` links to email login/registration
+  and posts to `src/app/api/auth/google/start/route.ts` and
+  `src/app/api/auth/kakao/start/route.ts`. The demo-login route is test-gated.
 - Protected app routing: `src/app/onboarding/page.tsx` and
   `src/app/app/page.tsx` are server pages that call `getDemoSession()` from
   `src/auth/server-session.ts` and redirect based on session and onboarding
@@ -38,10 +37,11 @@ The top-level product description and command surface live in `README.md:1-48`.
   `src/integrations/gbp-contracts.ts`,
   `src/integrations/conversation-contracts.ts`, and
   `src/integrations/marketing-contracts.ts`.
-- Persistence: `src/server/db/migrations/0001_glocalx_schema.sql` defines
-  durable tables for users, stores, OAuth identities, business profile
-  extractions, GBP accounts and locations, post drafts, publish attempts,
-  conversations, reviews, jobs, and audit logs.
+- Persistence: migrations `0001_glocalx_schema.sql`,
+  `0002_email_credentials.sql`, and `0003_user_sessions.sql` define durable
+  users, credential hashes, opaque sessions, stores, OAuth identities, business
+  profile extractions, GBP accounts and locations, post drafts, publish
+  attempts, conversations, reviews, jobs, and audit logs.
 
 ## Reviewer Runbook
 
@@ -55,8 +55,9 @@ Start from a clean checkout of the branch under review.
 4. Run the local app with
    `npm run dev -- --hostname 127.0.0.1 --port 3000` and open
    `http://127.0.0.1:3000`.
-5. Use the demo/email login path for credential-free review. First login routes
-   to onboarding; completed demo sessions route to `/app`.
+5. Register a disposable email account for credential-free review. First login
+   routes to onboarding; completed sessions route to `/app`. Demo authentication
+   is enabled only by the test runner.
 6. Run the command matrix from `package.json:6-15`: `npm run typecheck`,
    `npm run lint`, `npm run test`, `npm run build`, `npm run e2e`, and
    `npm run format:check`.
@@ -93,7 +94,7 @@ Key environment variables are documented with placeholders in `.env.example`.
 Important reviewer defaults are `APP_INTEGRATION_MODE=stub`,
 `RUN_LIVE_INTEGRATION_TESTS=0`, model name variables, OAuth client variables,
 Google Business Profile identifiers, Kakao variables, and
-`TOKEN_ENCRYPTION_KEY` for production token storage.
+`TOKEN_ENCRYPTION_KEY` for OAuth token storage in every environment.
 
 `.gitignore:1-24` excludes generated dependencies, build output, local data,
 secret-bearing env files, AI tooling scratch space, and business-only folders.
@@ -134,15 +135,14 @@ requiring live integrations.
 ## Data And State
 
 SQLite is the durable local store. `src/server/db/sqlite.ts` resolves the default
-database path, opens the database, applies
-`src/server/db/migrations/0001_glocalx_schema.sql`, and keeps migration
-compatibility columns for post drafts.
+database path, opens the database, applies all ordered migration files, and keeps
+migration compatibility columns for post drafts.
 
-Session state is cookie-backed but validated against the database:
-`src/auth/session.ts` defines cookie names and options, seeds demo data, checks
-that a store belongs to the session user, and reads onboarding completion from
-the `stores` table. `src/auth/server-session.ts` uses async Next `cookies()` to
-read those cookie values on the server.
+Session state uses an opaque, database-backed session identifier with expiry.
+`src/auth/session.ts` defines cookie names and options, while
+`src/server/repositories/session-store.ts` validates the session and store
+ownership. `src/auth/server-session.ts` uses async Next `cookies()` to read it
+on the server.
 
 Owner-facing data flow:
 

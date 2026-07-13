@@ -49,10 +49,6 @@ function readConfiguredKey(
 export function missingTokenEncryptionEnvVars(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): readonly string[] {
-  if (env["NODE_ENV"] !== "production") {
-    return []
-  }
-
   const configuredValue = readConfiguredKeyValue(env)
   if (configuredValue === undefined) {
     return missingTokenEncryptionKeyEnvVars
@@ -69,11 +65,7 @@ export function encryptToken(
 ): string {
   const key = readConfiguredKey(env)
   if (key === undefined) {
-    if (env["NODE_ENV"] === "production") {
-      throw new Error("TOKEN_ENCRYPTION_KEY is required in production.")
-    }
-
-    return `${legacyPlaceholderPrefix}${token}`
+    throw new Error("TOKEN_ENCRYPTION_KEY is required for token encryption.")
   }
 
   const iv = randomBytes(12)

@@ -4,6 +4,7 @@ export type {
   ConversationStore,
 } from "./conversation-store"
 export type { GbpStore } from "./gbp-store"
+export type { EmailCredentialsRepository } from "./email-credentials"
 export type {
   JobRunRecord,
   JobRunStatus,

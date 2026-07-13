@@ -9,14 +9,28 @@ export type TableSpec = {
   readonly jsonColumns: readonly string[]
   readonly name: RequiredTableName
   readonly nullableJsonColumns?: readonly string[]
+  readonly orderByColumn?: string
+  readonly primaryKeyColumn?: string
 }
 
 export const sqliteToPostgresTableSpecs = [
   { name: "users", jsonColumns: [], idempotencyColumns: ["id", "email"] },
   {
+    name: "email_credentials",
+    jsonColumns: [],
+    idempotencyColumns: ["user_id"],
+    orderByColumn: "user_id",
+    primaryKeyColumn: "user_id",
+  },
+  {
     name: "stores",
     jsonColumns: [],
     idempotencyColumns: ["id", "owner_user_id"],
+  },
+  {
+    name: "user_sessions",
+    jsonColumns: [],
+    idempotencyColumns: ["id"],
   },
   {
     name: "auth_identities",

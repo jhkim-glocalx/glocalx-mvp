@@ -9,7 +9,9 @@ export { seedDemoData } from "./seed-demo.ts"
 
 export const requiredTableNames = [
   "users",
+  "email_credentials",
   "stores",
+  "user_sessions",
   "auth_identities",
   "business_profile_extractions",
   "oauth_connections",
@@ -32,6 +34,8 @@ export type SqliteDatabase = Database.Database
 
 export const tableCountQueries = {
   users: "SELECT COUNT(*) AS count FROM users",
+  email_credentials: "SELECT COUNT(*) AS count FROM email_credentials",
+  user_sessions: "SELECT COUNT(*) AS count FROM user_sessions",
   stores: "SELECT COUNT(*) AS count FROM stores",
   auth_identities: "SELECT COUNT(*) AS count FROM auth_identities",
   business_profile_extractions:
@@ -54,11 +58,11 @@ export const tableCountQueries = {
 
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDirectory = dirname(currentFilePath)
-const migrationPath = join(
-  currentDirectory,
-  "migrations",
-  "0001_glocalx_schema.sql"
-)
+const migrationPaths = [
+  join(currentDirectory, "migrations", "0001_glocalx_schema.sql"),
+  join(currentDirectory, "migrations", "0002_email_credentials.sql"),
+  join(currentDirectory, "migrations", "0003_user_sessions.sql"),
+] as const
 
 function ensureColumn(
   database: SqliteDatabase,
@@ -115,7 +119,9 @@ export function openDatabase(
 }
 
 export function applyMigrations(database: SqliteDatabase): void {
-  database.exec(readFileSync(migrationPath, "utf8"))
+  for (const migrationPath of migrationPaths) {
+    database.exec(readFileSync(migrationPath, "utf8"))
+  }
   ensureColumn(database, "post_drafts", "revision_of_draft_id", "TEXT")
   ensureColumn(database, "post_drafts", "marketing_preview_json", "TEXT")
 }

@@ -38,6 +38,10 @@ npm run dev -- --hostname 127.0.0.1 --port 3000
 
 Copy `.env.example` to `.env.local` and keep real credentials out of git. Stub mode is the default until Naver Developers and Google Business Profile credentials are available.
 
+For feature worktrees, use an isolated SQLite path and dev port in the ignored
+`.env.local` file, for example a worktree-specific path under `/tmp`. This keeps
+local registrations, sessions, and test data out of another checkout's database.
+
 Local development and tests may use the default SQLite fallback:
 
 ```bash
@@ -61,6 +65,24 @@ admin workflows cannot ship without a direct connection configured. The
 canonical direct variable is `DATABASE_URL_DIRECT`; Vercel-managed Neon can
 also satisfy the same role with `DATABASE_URL_UNPOOLED`, and legacy Neon/Vercel
 setups may provide `POSTGRES_URL_NON_POOLING`.
+
+## Authentication
+
+Email registration and login are available locally without provider credentials.
+Google and Kakao are real OAuth entry points: stub integration mode never creates
+a social-login demo session. Configure each provider with the exact callback URL
+for the running origin:
+
+```text
+http://127.0.0.1:3000/api/auth/google/callback
+http://127.0.0.1:3000/api/auth/kakao/callback
+```
+
+Register the corresponding HTTPS callback URLs for preview and production
+origins in both provider consoles. OAuth callbacks also require a valid
+`TOKEN_ENCRYPTION_KEY` in every environment that stores provider tokens. Generate
+one with `openssl rand -base64 32`; keep it only in deployment or local secret
+configuration.
 
 ## Integration Notes
 

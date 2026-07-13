@@ -341,10 +341,10 @@ describe("setupGoogleBusinessProfile", () => {
         )
         .get()
     )
-    expect(oauthRow).toEqual({
-      encrypted_access_token: "encrypted:valid-code",
+    expect(oauthRow).toMatchObject({
       subject_id: "production-google-oauth-placeholder",
     })
+    expect(oauthRow.encrypted_access_token).toMatch(/^v1:/)
     database.close()
   })
 })

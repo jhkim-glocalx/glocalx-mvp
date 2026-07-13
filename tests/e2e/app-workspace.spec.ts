@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
 
 import { resetFirstTimeE2eDatabase } from "./db-harness"
+import { startEmailOnboarding } from "./email-auth-helpers"
 import { uploadMarketingImageAndGenerateDraft } from "./marketing-helpers"
 
 test.beforeEach(async () => {
@@ -11,7 +12,7 @@ test.beforeEach(async () => {
 async function completeOnboarding(page: Page): Promise<void> {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
     .fill("https://naver.me/mybrunchcafe")

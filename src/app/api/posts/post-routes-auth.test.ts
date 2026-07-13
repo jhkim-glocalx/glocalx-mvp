@@ -5,7 +5,12 @@ import { join } from "node:path"
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { resetDatabaseFile } from "@/server/db/sqlite"
+import {
+  applyMigrations,
+  openDatabase,
+  resetDatabaseFile,
+  seedDemoData,
+} from "@/server/db/sqlite"
 
 import { POST as createDraft } from "./drafts/route"
 import { POST as publishDraft } from "./[draftId]/publish/route"
@@ -18,8 +23,16 @@ const tempPaths: string[] = []
 async function useTempDatabase(): Promise<void> {
   const tempPath = await mkdtemp(join(tmpdir(), "glocalx-post-routes-"))
   tempPaths.push(tempPath)
+  vi.stubEnv("PLAYWRIGHT_TEST", "true")
   vi.stubEnv("GLOCALX_DB_PATH", join(tempPath, "routes.db"))
   resetDatabaseFile()
+  const database = openDatabase()
+  try {
+    applyMigrations(database)
+    seedDemoData(database)
+  } finally {
+    database.close()
+  }
 }
 
 function createJsonRequest(

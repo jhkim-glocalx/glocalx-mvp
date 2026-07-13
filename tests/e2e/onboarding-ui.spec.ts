@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test"
 
 import { resetFirstTimeE2eDatabase } from "./db-harness"
+import { startEmailOnboarding } from "./email-auth-helpers"
 
 test.beforeEach(async () => {
   await resetFirstTimeE2eDatabase()
@@ -9,7 +10,7 @@ test.beforeEach(async () => {
 test("successful onboarding extraction and gbp setup", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
 
   await expect(
     page.getByRole("button", { name: "네이버 정보 제출" })
@@ -77,7 +78,7 @@ test("onboarding quick actions and composer submit search the store", async ({
 }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
 
   const storeInput = page.getByRole("textbox", {
     name: "네이버 정보",
@@ -111,7 +112,7 @@ test("onboarding fills missing form fields from natural-language owner text", as
 }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
 
   const storeInput = page.getByRole("textbox", {
     name: "네이버 정보",
@@ -150,7 +151,7 @@ test("onboarding fills missing form fields from natural-language owner text", as
 test("onboarding link attach button focuses the composer", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
 
   const storeInput = page.getByRole("textbox", {
     name: "네이버 정보",
@@ -167,7 +168,7 @@ test("onboarding link attach button focuses the composer", async ({ page }) => {
 test("onboarding no result manual fallback", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
-  await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await startEmailOnboarding(page)
 
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })

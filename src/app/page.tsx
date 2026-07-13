@@ -109,10 +109,10 @@ function HomeView({
             </form>
 
             <form
-              action="/api/auth/demo-login"
+              action="/login"
               aria-label="이메일 로그인"
               className="gx-login-form"
-              method="post"
+              method="get"
             >
               <button
                 className="gx-login-provider gx-login-email"
@@ -129,7 +129,7 @@ function HomeView({
           <p className="gx-login-fineprint">
             계속 진행 시 이용약관 및 개인정보처리방침에 동의합니다
             <br />
-            FT-01 회원가입 · FT-02 로그인/세션 · 최초 로그인 시 온보딩 자동 이동
+            소셜 계정 또는 이메일로 안전하게 시작할 수 있어요.
           </p>
         </section>
       </MobileShell>

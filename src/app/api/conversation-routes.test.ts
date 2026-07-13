@@ -4,7 +4,12 @@ import { join } from "node:path"
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { resetDatabaseFile } from "@/server/db/sqlite"
+import {
+  applyMigrations,
+  openDatabase,
+  resetDatabaseFile,
+  seedDemoData,
+} from "@/server/db/sqlite"
 import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url"
 
 import {
@@ -37,8 +42,16 @@ async function useTempDatabase(): Promise<void> {
   const tempPath = await mkdtemp(join(tmpdir(), "glocalx-conversation-routes-"))
   tempPaths.push(tempPath)
   vi.stubEnv("APP_INTEGRATION_MODE", "stub")
+  vi.stubEnv("PLAYWRIGHT_TEST", "true")
   vi.stubEnv("GLOCALX_DB_PATH", join(tempPath, "routes.db"))
   resetDatabaseFile()
+  const database = openDatabase()
+  try {
+    applyMigrations(database)
+    seedDemoData(database)
+  } finally {
+    database.close()
+  }
 }
 
 describe.skipIf(skipLivePostgresRoutes)("conversation API routes", () => {

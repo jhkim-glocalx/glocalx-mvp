@@ -29,6 +29,7 @@ const googleProfile: OAuthIdentityProfile = {
   accessToken: "test-google-access-token",
   displayName: "Google Owner",
   email: "owner@example.com",
+  emailVerified: true,
   expiresAt: "2026-06-04T01:00:00.000Z",
   provider: "GOOGLE",
   refreshToken: "test-google-refresh-token",

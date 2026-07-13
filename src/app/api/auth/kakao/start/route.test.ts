@@ -78,6 +78,9 @@ describe("Kakao OAuth start route", () => {
       "http://127.0.0.1:5174/api/auth/kakao/callback"
     )
     expect(authorizationUrl.searchParams.get("response_type")).toBe("code")
+    expect(authorizationUrl.searchParams.get("scope")).toBe(
+      "profile_nickname,account_email"
+    )
     expect(authorizationUrl.searchParams.get("state")).toBe("test-kakao-state")
   })
 
@@ -109,7 +112,7 @@ describe("Kakao OAuth start route", () => {
     expect(setCookie).toContain("HttpOnly")
   })
 
-  it("uses demo login in stub mode even when Kakao credentials are configured", async () => {
+  it("starts Kakao OAuth in stub integration mode when credentials are configured", async () => {
     replaceEnv({
       APP_INTEGRATION_MODE: "stub",
       KAKAO_REST_API_KEY: "test-rest-api-key",
@@ -121,10 +124,10 @@ describe("Kakao OAuth start route", () => {
     const setCookie = response.headers.get("Set-Cookie")
 
     expect(response.status).toBe(303)
-    expect(location).toMatch(/^\/(?:app|onboarding)$/)
-    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
-    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
-    expect(setCookie).not.toContain(kakaoOAuthStateCookieName)
+    expect(new URL(location ?? "").origin).toBe("https://kauth.kakao.com")
+    expect(setCookie).toContain(kakaoOAuthStateCookieName)
+    expect(setCookie).not.toContain(demoSessionCookieName)
+    expect(setCookie).not.toContain(demoStoreCookieName)
   })
 
   it("uses the deployed origin when KAKAO_REDIRECT_URI still points to localhost", async () => {
@@ -148,7 +151,7 @@ describe("Kakao OAuth start route", () => {
     )
   })
 
-  it("falls back to demo login when local Kakao credentials are missing", async () => {
+  it("redirects missing Kakao credentials to a visible configuration error in stub mode", async () => {
     replaceEnv({
       APP_INTEGRATION_MODE: "stub",
       KAKAO_REST_API_KEY: undefined,
@@ -160,10 +163,8 @@ describe("Kakao OAuth start route", () => {
     const setCookie = response.headers.get("Set-Cookie")
 
     expect(response.status).toBe(303)
-    expect(location).toMatch(/^\/(?:app|onboarding)$/)
-    expect(setCookie).toContain(`${demoSessionCookieName}=demo-owner`)
-    expect(setCookie).toContain(`${demoStoreCookieName}=demo-store`)
-    expect(setCookie).toContain("HttpOnly")
+    expect(location).toBe("/?auth_error=kakao_config")
+    expect(setCookie).toBeNull()
   })
 
   it("redirects to an auth error when local Kakao credentials are missing outside stub mode", async () => {

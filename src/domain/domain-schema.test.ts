@@ -58,7 +58,11 @@ describe("domain-schema persistence", () => {
       const countRow = countRowSchema.parse(
         database.prepare(tableCountQueries[tableName]).get()
       )
-      expect(countRow.count).toBeGreaterThan(0)
+      expect(countRow.count).toBeGreaterThanOrEqual(
+        tableName === "user_sessions" || tableName === "email_credentials"
+          ? 0
+          : 1
+      )
     }
 
     database.close()

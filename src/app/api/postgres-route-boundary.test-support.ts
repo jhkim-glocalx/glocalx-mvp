@@ -44,6 +44,9 @@ export function createSessionStore(session: DemoSession | undefined): {
   return {
     reads,
     store: {
+      async createAuthenticatedSession() {
+        return unexpectedCall("sessionStore.createAuthenticatedSession")
+      },
       async completeOnboarding() {
         return unexpectedCall("sessionStore.completeOnboarding")
       },

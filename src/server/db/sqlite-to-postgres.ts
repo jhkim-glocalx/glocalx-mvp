@@ -140,7 +140,13 @@ function collectSqliteTable(
     .map((row) => row.name)
   const rows = z
     .array(rawRowSchema)
-    .parse(database.prepare(`SELECT * FROM ${spec.name} ORDER BY id`).all())
+    .parse(
+      database
+        .prepare(
+          `SELECT * FROM ${spec.name} ORDER BY ${spec.orderByColumn ?? "id"}`
+        )
+        .all()
+    )
     .map((row) => normalizeRow(spec, columns, row))
   return { columns, name: spec.name, rows }
 }

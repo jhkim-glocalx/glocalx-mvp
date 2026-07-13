@@ -29,6 +29,7 @@ const kakaoProfile: OAuthIdentityProfile = {
   accessToken: "test-kakao-access-token",
   displayName: "Kakao Owner",
   email: "owner@example.com",
+  emailVerified: true,
   expiresAt: "2026-06-04T01:00:00.000Z",
   provider: "KAKAO",
   refreshToken: "test-kakao-refresh-token",

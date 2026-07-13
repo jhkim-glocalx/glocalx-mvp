@@ -58,6 +58,7 @@ describe("OAuth identity persistence", () => {
         accessToken: "first-access-token",
         displayName: "Google Owner",
         email: "owner@example.com",
+        emailVerified: true,
         expiresAt: "2026-06-04T01:00:00.000Z",
         provider: "GOOGLE",
         refreshToken: "first-refresh-token",
@@ -72,6 +73,7 @@ describe("OAuth identity persistence", () => {
         accessToken: "second-access-token",
         displayName: "Google Owner",
         email: "owner@example.com",
+        emailVerified: true,
         expiresAt: "2026-06-04T02:00:00.000Z",
         provider: "GOOGLE",
         scopes: ["openid", "email"],
@@ -101,17 +103,17 @@ describe("OAuth identity persistence", () => {
         )
         .get()
     )
-    expect(identityRow).toEqual({
-      encrypted_access_token: "encrypted:second-access-token",
-      encrypted_refresh_token: "encrypted:first-refresh-token",
+    expect(identityRow).toMatchObject({
       provider: "GOOGLE",
       user_id: firstSession.userId,
     })
+    expect(identityRow.encrypted_access_token).toMatch(/^v1:/)
+    expect(identityRow.encrypted_refresh_token).toMatch(/^v1:/)
 
     database.close()
   })
 
-  it("reuses an existing store by email/provider and preserves its profile", async () => {
+  it("keeps an email-only account separate from a new provider identity", async () => {
     // Given
     const database = await createDatabase()
     const createdAt = "2026-06-04T00:00:00.000Z"
@@ -126,6 +128,11 @@ describe("OAuth identity persistence", () => {
         "OWNER",
         createdAt
       )
+    database
+      .prepare(
+        "INSERT INTO email_credentials (user_id, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?)"
+      )
+      .run("returning-owner", "scrypt$fixture$fixture", createdAt, createdAt)
     database
       .prepare(
         "INSERT INTO stores (id, owner_user_id, name, address, phone, category, hours, onboarding_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -149,6 +156,7 @@ describe("OAuth identity persistence", () => {
         accessToken: "returning-access-token",
         displayName: "Returning Owner From Google",
         email: "RETURNING@example.com",
+        emailVerified: true,
         expiresAt: "2026-06-04T01:00:00.000Z",
         provider: "GOOGLE",
         refreshToken: "returning-refresh-token",
@@ -159,13 +167,14 @@ describe("OAuth identity persistence", () => {
     )
     database
       .prepare("UPDATE stores SET onboarding_status = ? WHERE id = ?")
-      .run("COMPLETED", "returning-store")
+      .run("COMPLETED", insertedSession.storeId)
     const updatedSession = upsertOAuthIdentity(
       database,
       {
         accessToken: "updated-returning-access-token",
         displayName: "Returning Owner Updated",
         email: "returning@example.com",
+        emailVerified: true,
         expiresAt: "2026-06-04T02:00:00.000Z",
         provider: "GOOGLE",
         scopes: ["openid", "email"],
@@ -175,21 +184,17 @@ describe("OAuth identity persistence", () => {
     )
 
     // Then
-    expect(insertedSession).toEqual({
-      onboardingComplete: false,
-      storeId: "returning-store",
-      userId: "returning-owner",
-    })
-    expect(updatedSession).toEqual({
-      onboardingComplete: true,
-      storeId: "returning-store",
-      userId: "returning-owner",
-    })
+    expect(insertedSession.onboardingComplete).toBe(false)
+    expect(updatedSession.onboardingComplete).toBe(true)
+    expect(updatedSession.storeId).toBe(insertedSession.storeId)
+    expect(updatedSession.userId).toBe(insertedSession.userId)
+    expect(insertedSession.userId).not.toBe("returning-owner")
+    expect(insertedSession.storeId).not.toBe("returning-store")
 
     const storeCountRow = authIdentityCountSchema.parse(
       database
         .prepare("SELECT COUNT(*) AS count FROM stores WHERE owner_user_id = ?")
-        .get("returning-owner")
+        .get(insertedSession.userId)
     )
     expect(storeCountRow.count).toBe(1)
 
@@ -206,7 +211,7 @@ describe("OAuth identity persistence", () => {
       hours: "10:00 ~ 22:00",
       id: "returning-store",
       name: "서울식당 강남점",
-      onboarding_status: "COMPLETED",
+      onboarding_status: "IN_PROGRESS",
       owner_user_id: "returning-owner",
       phone: "02-321-9876",
     })
@@ -218,12 +223,12 @@ describe("OAuth identity persistence", () => {
         )
         .get("GOOGLE", "returning-google-subject")
     )
-    expect(identityRow).toEqual({
-      encrypted_access_token: "encrypted:updated-returning-access-token",
-      encrypted_refresh_token: "encrypted:returning-refresh-token",
+    expect(identityRow).toMatchObject({
       provider: "GOOGLE",
-      user_id: "returning-owner",
+      user_id: insertedSession.userId,
     })
+    expect(identityRow.encrypted_access_token).toMatch(/^v1:/)
+    expect(identityRow.encrypted_refresh_token).toMatch(/^v1:/)
 
     database.close()
   })
@@ -236,6 +241,7 @@ describe("OAuth identity persistence", () => {
       {
         accessToken: "kakao-access-token",
         displayName: "Kakao Owner",
+        emailVerified: false,
         provider: "KAKAO",
         scopes: ["profile_nickname"],
         subjectId: "123456789",

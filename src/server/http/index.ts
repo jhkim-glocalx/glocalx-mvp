@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server"
 import type { z } from "zod"
 
 import {
+  allowsLegacyTestSessions,
+  authSessionCookieName,
   demoSessionCookieName,
   demoStoreCookieName,
   onboardingCompleteCookieName,
@@ -14,6 +16,7 @@ import { openDatabaseContext, resolveDatabaseConfig } from "@/server/db"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 import { createDatabaseConversationStore } from "@/server/repositories/conversation-store"
 import type { ConversationStore } from "@/server/repositories/conversation-store"
+import { createDatabaseEmailCredentialsRepository } from "@/server/repositories/email-credentials"
 import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
 import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
@@ -44,6 +47,9 @@ export type ParsedJsonRoutePayload<TValue> =
 export type QueryableRouteDatabaseContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
   readonly conversationStore: ConversationStore
+  readonly emailCredentialsRepository: ReturnType<
+    typeof createDatabaseEmailCredentialsRepository
+  >
   readonly gbpStore: ReturnType<typeof createDatabaseGbpStore>
   readonly legacySqliteDatabase?: SqliteDatabase
   readonly oauthIdentityRepository: ReturnType<
@@ -145,11 +151,17 @@ export async function readDatabaseSession(
   request: NextRequest,
   sessionStore: SessionStore
 ): Promise<DemoSession | undefined> {
+  const readLegacyCookies = allowsLegacyTestSessions()
   return sessionStore.readSessionFromCookieValues({
+    authSessionId: request.cookies.get(authSessionCookieName)?.value,
     onboardingComplete: request.cookies.get(onboardingCompleteCookieName)
       ?.value,
-    storeId: request.cookies.get(demoStoreCookieName)?.value,
-    userId: request.cookies.get(demoSessionCookieName)?.value,
+    storeId: readLegacyCookies
+      ? request.cookies.get(demoStoreCookieName)?.value
+      : undefined,
+    userId: readLegacyCookies
+      ? request.cookies.get(demoSessionCookieName)?.value
+      : undefined,
   })
 }
 
@@ -173,6 +185,8 @@ export async function withQueryableRouteDatabase<TResponse extends Response>(
     return await handler({
       adapters: createIntegrationAdapters(),
       conversationStore: createDatabaseConversationStore(queryable),
+      emailCredentialsRepository:
+        createDatabaseEmailCredentialsRepository(queryable),
       gbpStore: createDatabaseGbpStore(queryable),
       ...(databaseConfig.provider === "sqlite"
         ? { legacySqliteDatabase: databaseContext.legacySqliteDatabase }

@@ -6,17 +6,25 @@ test.beforeEach(async () => {
   await resetFirstTimeE2eDatabase()
 })
 
-test("First-time demo login routes to onboarding", async ({ page }) => {
+test("First-time email registration creates an account and routes to onboarding", async ({
+  page,
+}) => {
   await page.context().clearCookies()
   await page.goto("/")
 
   await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await expect(page).toHaveURL(/\/login/)
+  await page.getByRole("link", { name: "회원가입" }).click()
+  await page.getByRole("textbox", { name: "이름" }).fill("글로컬 사장님")
+  await page.getByRole("textbox", { name: "이메일" }).fill("owner@example.com")
+  await page.getByLabel("비밀번호").fill("correct-horse-battery-staple")
+  await page.getByRole("button", { name: "이메일로 회원가입" }).click()
 
   await expect(page).toHaveURL(/\/onboarding/)
   await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
 })
 
-test("Kakao login routes to onboarding in local demo mode", async ({
+test("Kakao login shows a configuration error instead of creating a demo session", async ({
   page,
 }) => {
   await page.context().clearCookies()
@@ -24,19 +32,21 @@ test("Kakao login routes to onboarding in local demo mode", async ({
 
   await page.getByRole("button", { name: "카카오로 3초 시작" }).click()
 
-  await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
+  await expect(page).toHaveURL(/auth_error=kakao_config/)
+  await expect(page.locator(".gx-auth-error")).toContainText(
+    "카카오 로그인 설정"
+  )
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(
-    true
+    false
   )
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_store")).toBe(
-    true
+    false
   )
 })
 
-test("Google login routes to onboarding in local demo mode", async ({
+test("Google login shows a configuration error instead of creating a demo session", async ({
   page,
 }) => {
   await page.context().clearCookies()
@@ -44,22 +54,27 @@ test("Google login routes to onboarding in local demo mode", async ({
 
   await page.getByRole("button", { name: "구글로 시작" }).click()
 
-  await expect(page).toHaveURL(/\/onboarding/)
-  await expect(page.getByText("네이버플레이스 링크나 상호명")).toBeVisible()
+  await expect(page).toHaveURL(/auth_error=google_config/)
+  await expect(page.locator(".gx-auth-error")).toContainText("구글 로그인 설정")
 
   const cookies = await page.context().cookies()
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_session")).toBe(
-    true
+    false
   )
   expect(cookies.some((cookie) => cookie.name === "glocalx_demo_store")).toBe(
-    true
+    false
   )
 })
 
-test("Returning demo login routes to the chat dashboard", async ({ page }) => {
+test("Returning email login routes to the chat dashboard", async ({ page }) => {
   await page.context().clearCookies()
   await page.goto("/")
   await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await page.getByRole("link", { name: "회원가입" }).click()
+  await page.getByRole("textbox", { name: "이름" }).fill("글로컬 사장님")
+  await page.getByRole("textbox", { name: "이메일" }).fill("owner@example.com")
+  await page.getByLabel("비밀번호").fill("correct-horse-battery-staple")
+  await page.getByRole("button", { name: "이메일로 회원가입" }).click()
   await page
     .getByRole("textbox", { name: "네이버 정보", exact: true })
     .fill("https://naver.me/mybrunchcafe")
@@ -89,6 +104,9 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
 
   await page.goto("/")
   await page.getByRole("button", { name: "이메일로 시작" }).click()
+  await page.getByRole("textbox", { name: "이메일" }).fill("owner@example.com")
+  await page.getByLabel("비밀번호").fill("correct-horse-battery-staple")
+  await page.getByRole("button", { name: "이메일로 로그인" }).click()
 
   await expect(page).toHaveURL(/\/app/)
   await expect(
@@ -96,7 +114,9 @@ test("Returning demo login routes to the chat dashboard", async ({ page }) => {
   ).toBeVisible()
 })
 
-test("auth placeholders do not create a demo session", async ({ page }) => {
+test("auth entry does not create a session before a form is submitted", async ({
+  page,
+}) => {
   await page.context().clearCookies()
   await page.goto("/")
 

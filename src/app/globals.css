@@ -6,6 +6,7 @@
   --ink-soft: #48424f;
   --muted: #938c9c;
   --line: #ece7ef;
+  --field-border: #8b8494;
   --canvas: #0c0b10;
   --canvas-2: #15131c;
   --accent: #ff6a3d;
@@ -307,10 +308,11 @@ a {
 .gx-login-copy,
 .gx-login-intro .gx-login-copy {
   margin-top: 10px;
-  color: var(--muted);
+  color: #74707b;
   font-size: 13.5px;
   font-weight: 650;
   line-height: 1.65;
+  word-break: keep-all;
 }
 
 .gx-login-label {
@@ -451,7 +453,7 @@ a {
 .gx-onboarding-input,
 .gx-textarea {
   width: 100%;
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--field-border);
   border-radius: 14px;
   background: #ffffff;
   color: var(--ink);
@@ -485,11 +487,19 @@ a {
 
 .gx-login-fineprint {
   margin: 18px 0 0;
-  color: #b8b0c0;
+  color: #74707b;
   font-size: 11px;
   font-weight: 650;
   line-height: 1.6;
   text-align: center;
+}
+
+.gx-login-link {
+  color: #b94623;
+  font-weight: 900;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
 }
 
 .gx-chat-feed {
@@ -1089,10 +1099,11 @@ body {
 
 .gx-login-copy {
   margin: 9px 0 0;
-  color: var(--muted);
+  color: #74707b;
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.6;
+  word-break: keep-all;
 }
 
 .gx-auth-actions {
@@ -1160,7 +1171,7 @@ body {
 
 .gx-login-fineprint {
   margin: 20px 0 0;
-  color: #c5bfce;
+  color: #74707b;
   font-size: 11px;
   font-weight: 500;
   line-height: 1.6;
