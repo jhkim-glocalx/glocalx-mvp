@@ -14,6 +14,7 @@ import {
   isValidGoogleOAuthCallback,
 } from "@/gbp/oauth-callback"
 import { withQueryableRouteDatabase } from "@/server/http"
+import { OAuthAccountLinkRequiredError } from "@/server/repositories/oauth-account-owner"
 
 function redirectToLandingClearingState(reason: string): NextResponse {
   const response = new NextResponse(null, {
@@ -60,8 +61,17 @@ export async function GET(request: NextRequest) {
 
     return await withQueryableRouteDatabase(
       async ({ oauthIdentityRepository, sessionStore }) => {
-        const session =
-          await oauthIdentityRepository.upsertOAuthIdentity(profile)
+        const linkingSession = await sessionStore.readSessionFromCookieValues({
+          authSessionId: request.cookies.get(authSessionCookieName)?.value,
+          onboardingComplete: undefined,
+          storeId: undefined,
+          userId: undefined,
+        })
+        const session = await oauthIdentityRepository.upsertOAuthIdentity(
+          profile,
+          new Date(),
+          linkingSession?.userId
+        )
         const authenticatedSession =
           await sessionStore.createAuthenticatedSession(session)
         const response = new NextResponse(null, {
@@ -85,6 +95,9 @@ export async function GET(request: NextRequest) {
       }
     )
   } catch (error) {
+    if (error instanceof OAuthAccountLinkRequiredError) {
+      return redirectToLandingClearingState("account_link_required")
+    }
     if (error instanceof Error) {
       console.error("Google OAuth callback failed", error)
     } else {

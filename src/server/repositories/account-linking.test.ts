@@ -75,19 +75,37 @@ describe("cross-method account linking", () => {
         storeId: "email-store",
         userId: "email-owner",
       })
+      await context.queryable.execute(
+        "INSERT INTO email_credentials (user_id, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        [
+          "email-owner",
+          "scrypt$fixture$fixture",
+          "2026-07-13T00:00:00.000Z",
+          "2026-07-13T00:00:00.000Z",
+        ]
+      )
 
       // When
-      const session = await createDatabaseOAuthIdentityRepository(
+      const repository = createDatabaseOAuthIdentityRepository(
         context.queryable
-      ).upsertOAuthIdentity({
+      )
+      const profile = {
         accessToken: "google-access-token",
         displayName: "Verified Google Owner",
         email: "OWNER@example.com",
         emailVerified: true,
-        provider: "GOOGLE",
+        provider: "GOOGLE" as const,
         scopes: ["openid", "email", "profile"],
         subjectId: "google-owner-subject",
-      })
+      }
+      await expect(repository.upsertOAuthIdentity(profile)).rejects.toThrow(
+        "Sign in with the existing email account"
+      )
+      const session = await repository.upsertOAuthIdentity(
+        profile,
+        new Date("2026-07-13T00:05:00.000Z"),
+        "email-owner"
+      )
 
       // Then
       expect(session).toEqual({

@@ -1,6 +1,8 @@
 import { MobileShell } from "@/app/_components/mobile-shell"
 
 const authErrorMessages: Readonly<Record<string, string>> = {
+  account_link_required:
+    "같은 이메일의 기존 계정이 있습니다. 이메일로 로그인한 뒤 소셜 계정을 다시 연결해주세요.",
   google_callback:
     "구글 로그인 처리 중 문제가 생겼습니다. 설정을 확인한 뒤 다시 시도해주세요.",
   google_config:

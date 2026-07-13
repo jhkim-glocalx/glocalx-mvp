@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto"
+import { createHash } from "node:crypto"
 
 import type {
   OAuthIdentityProfile,
@@ -8,10 +8,13 @@ import { encryptToken } from "@/auth/token-encryption"
 import type { Queryable } from "@/server/db"
 import { z } from "zod"
 
+import { findOrCreateOAuthUser } from "./oauth-account-owner"
+
 export interface OAuthIdentityRepository {
   upsertOAuthIdentity(
     profile: OAuthIdentityProfile,
-    now?: Date
+    now?: Date,
+    linkingUserId?: string
   ): Promise<OAuthIdentitySession>
 }
 
@@ -23,11 +26,6 @@ const storeRowSchema = z.object({
   id: z.string(),
   onboarding_status: z.string(),
 })
-
-type UserCandidate = {
-  readonly created: boolean
-  readonly userId: string
-}
 
 class OAuthIdentityStateError extends Error {
   readonly name = "OAuthIdentityStateError"
@@ -59,31 +57,6 @@ async function findUserIdByProviderIdentity(
   )
   const parsed = userRowSchema.safeParse(row)
   return parsed.success ? parsed.data.id : undefined
-}
-
-async function findOrCreateUser(
-  queryable: Queryable,
-  profile: OAuthIdentityProfile,
-  createdAt: string
-): Promise<UserCandidate> {
-  const email = normalizeEmail(profile)
-  const candidateUserId = randomUUID()
-  const insert = await queryable.execute(
-    "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING",
-    [candidateUserId, email, profile.displayName, "OWNER", createdAt]
-  )
-  const user = userRowSchema.safeParse(
-    await queryable.queryOne("SELECT id FROM users WHERE email = ?", [email])
-  )
-  if (!user.success) {
-    throw new OAuthIdentityStateError(
-      "OAuth user creation completed without an email owner."
-    )
-  }
-  return {
-    created: insert.changes > 0,
-    userId: user.data.id,
-  }
 }
 
 async function updateOAuthIdentity(
@@ -203,17 +176,19 @@ export function createDatabaseOAuthIdentityRepository(
   queryable: Queryable
 ): OAuthIdentityRepository {
   return {
-    async upsertOAuthIdentity(profile, now = new Date()) {
+    async upsertOAuthIdentity(profile, now = new Date(), linkingUserId) {
       const createdAt = now.toISOString()
       let result: OAuthIdentitySession | undefined
 
       await queryable.transaction(async (transaction) => {
         let userId = await findUserIdByProviderIdentity(transaction, profile)
         if (userId === undefined) {
-          const candidate = await findOrCreateUser(
+          const candidate = await findOrCreateOAuthUser(
             transaction,
             profile,
-            createdAt
+            normalizeEmail(profile),
+            createdAt,
+            linkingUserId
           )
           await insertOAuthIdentity(
             transaction,

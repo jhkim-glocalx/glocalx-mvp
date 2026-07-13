@@ -53,4 +53,19 @@ describe("login landing page", () => {
     expect(html).toContain("구글 로그인 세션이 만료되었습니다.")
     expect(html).toContain('role="alert"')
   })
+
+  it("asks email owners to authenticate before linking social login", async () => {
+    const view = await Home({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({
+        auth_error: "account_link_required",
+      }),
+    })
+    const html = renderToStaticMarkup(view)
+
+    expect(html).toContain(
+      "이메일로 로그인한 뒤 소셜 계정을 다시 연결해주세요."
+    )
+    expect(html).toContain('role="alert"')
+  })
 })
