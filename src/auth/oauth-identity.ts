@@ -60,11 +60,14 @@ function findUserIdByProviderIdentity(
   return row?.id
 }
 
-function hasUserWithEmail(database: SqliteDatabase, email: string): boolean {
+function findUserIdByEmail(
+  database: SqliteDatabase,
+  email: string
+): string | undefined {
   const row = database
     .prepare("SELECT id FROM users WHERE email = ?")
     .get(email) as UserRow | undefined
-  return row !== undefined
+  return row?.id
 }
 
 function findOrCreateUser(
@@ -78,15 +81,17 @@ function findOrCreateUser(
     return existingProviderUserId
   }
 
-  const email = hasUserWithEmail(database, normalizedEmail)
-    ? `${profile.provider.toLowerCase()}-${stableId("user", profile.provider, profile.subjectId)}@auth.glocalx.local`
-    : normalizedEmail
+  const existingEmailUserId = findUserIdByEmail(database, normalizedEmail)
+  if (existingEmailUserId !== undefined) {
+    return existingEmailUserId
+  }
+
   const userId = randomUUID()
   database
     .prepare(
       "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)"
     )
-    .run(userId, email, profile.displayName, "OWNER", createdAt)
+    .run(userId, normalizedEmail, profile.displayName, "OWNER", createdAt)
   return userId
 }
 

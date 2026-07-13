@@ -24,6 +24,15 @@ const storeRowSchema = z.object({
   onboarding_status: z.string(),
 })
 
+type UserCandidate = {
+  readonly created: boolean
+  readonly userId: string
+}
+
+class OAuthIdentityStateError extends Error {
+  readonly name = "OAuthIdentityStateError"
+}
+
 function stableId(prefix: string, ...parts: readonly string[]): string {
   const digest = createHash("sha256")
     .update(parts.join(":"))
@@ -52,32 +61,29 @@ async function findUserIdByProviderIdentity(
   return parsed.success ? parsed.data.id : undefined
 }
 
-async function hasUserWithEmail(
-  queryable: Queryable,
-  email: string
-): Promise<boolean> {
-  const row = await queryable.queryOne("SELECT id FROM users WHERE email = ?", [
-    email,
-  ])
-  const parsed = userRowSchema.safeParse(row)
-  return parsed.success
-}
-
-async function createUnlinkedUser(
+async function findOrCreateUser(
   queryable: Queryable,
   profile: OAuthIdentityProfile,
   createdAt: string
-): Promise<string> {
-  const normalizedEmail = normalizeEmail(profile)
-  const email = (await hasUserWithEmail(queryable, normalizedEmail))
-    ? `${profile.provider.toLowerCase()}-${stableId("user", profile.provider, profile.subjectId)}@auth.glocalx.local`
-    : normalizedEmail
-  const userId = randomUUID()
-  await queryable.execute(
-    "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)",
-    [userId, email, profile.displayName, "OWNER", createdAt]
+): Promise<UserCandidate> {
+  const email = normalizeEmail(profile)
+  const candidateUserId = randomUUID()
+  const insert = await queryable.execute(
+    "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING",
+    [candidateUserId, email, profile.displayName, "OWNER", createdAt]
   )
-  return userId
+  const user = userRowSchema.safeParse(
+    await queryable.queryOne("SELECT id FROM users WHERE email = ?", [email])
+  )
+  if (!user.success) {
+    throw new OAuthIdentityStateError(
+      "OAuth user creation completed without an email owner."
+    )
+  }
+  return {
+    created: insert.changes > 0,
+    userId: user.data.id,
+  }
 }
 
 async function updateOAuthIdentity(
@@ -120,8 +126,8 @@ async function insertOAuthIdentity(
   userId: string,
   profile: OAuthIdentityProfile,
   createdAt: string
-): Promise<boolean> {
-  const result = await queryable.execute(
+): Promise<void> {
+  await queryable.execute(
     `INSERT INTO auth_identities (
       id,
       user_id,
@@ -154,7 +160,6 @@ async function insertOAuthIdentity(
       createdAt,
     ]
   )
-  return result.changes > 0
 }
 
 async function findOrCreatePrimaryStore(
@@ -205,34 +210,27 @@ export function createDatabaseOAuthIdentityRepository(
       await queryable.transaction(async (transaction) => {
         let userId = await findUserIdByProviderIdentity(transaction, profile)
         if (userId === undefined) {
-          const candidateUserId = await createUnlinkedUser(
+          const candidate = await findOrCreateUser(
             transaction,
             profile,
             createdAt
           )
-          await findOrCreatePrimaryStore(
+          await insertOAuthIdentity(
             transaction,
-            candidateUserId,
-            createdAt
-          )
-          const createdIdentity = await insertOAuthIdentity(
-            transaction,
-            candidateUserId,
+            candidate.userId,
             profile,
             createdAt
           )
-          if (createdIdentity) {
-            userId = candidateUserId
-          } else {
+          userId = await findUserIdByProviderIdentity(transaction, profile)
+          if (userId === undefined) {
+            throw new OAuthIdentityStateError(
+              "OAuth identity creation lost its unique identity."
+            )
+          }
+          if (candidate.created && candidate.userId !== userId) {
             await transaction.execute("DELETE FROM users WHERE id = ?", [
-              candidateUserId,
+              candidate.userId,
             ])
-            userId = await findUserIdByProviderIdentity(transaction, profile)
-            if (userId === undefined) {
-              throw new Error(
-                "OAuth identity creation lost its unique identity."
-              )
-            }
           }
         }
 
@@ -250,7 +248,7 @@ export function createDatabaseOAuthIdentityRepository(
       })
 
       if (result === undefined) {
-        throw new Error(
+        throw new OAuthIdentityStateError(
           "OAuth identity transaction completed without a session."
         )
       }
