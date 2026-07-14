@@ -97,9 +97,7 @@ describe("Kakao OAuth start route", () => {
       "http://127.0.0.1:5174/api/auth/kakao/callback"
     )
     expect(authorizationUrl.searchParams.get("response_type")).toBe("code")
-    expect(authorizationUrl.searchParams.get("scope")).toBe(
-      "profile_nickname,account_email"
-    )
+    expect(authorizationUrl.searchParams.get("scope")).toBe("profile_nickname")
     expect(authorizationUrl.searchParams.get("state")).toBe("test-kakao-state")
   })
 

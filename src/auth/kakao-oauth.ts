@@ -7,7 +7,7 @@ import type { AdapterEnvironment } from "@/integrations/contracts"
 
 const kakaoOAuthEndpoint = "https://kauth.kakao.com/oauth/authorize"
 const kakaoOAuthEnvVars = ["KAKAO_REST_API_KEY"] as const
-export const kakaoSignInScopes = ["profile_nickname", "account_email"] as const
+export const kakaoSignInScopes = ["profile_nickname"] as const
 
 export const kakaoOAuthStateCookieName = "glocalx_kakao_oauth_state"
 export const kakaoOAuthStateCookieOptions = {
