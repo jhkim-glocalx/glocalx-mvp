@@ -9,6 +9,7 @@ import {
 import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
 import { hasSameRequestOrigin } from "@/auth/request-origin"
 import {
+  googleOAuthIntentCookieName,
   googleOAuthStateCookieName,
   googleOAuthStateCookieOptions,
 } from "@/gbp/oauth-callback"
@@ -32,8 +33,14 @@ export async function POST(request: NextRequest) {
   }
 
   const state = crypto.randomUUID()
+  const contentType = request.headers.get("content-type") ?? ""
+  const includeBusinessManage =
+    (contentType.includes("application/x-www-form-urlencoded") ||
+      contentType.includes("multipart/form-data")) &&
+    (await request.formData()).get("intent") === "gbp"
   const authorizationUrl = buildGoogleOAuthAuthorizationUrl({
     clientId: process.env["GOOGLE_CLIENT_ID"]?.trim() ?? "",
+    includeBusinessManage,
     redirectUri: getGoogleRedirectUri(request, process.env),
     state,
   })
@@ -46,6 +53,11 @@ export async function POST(request: NextRequest) {
   response.cookies.set(
     googleOAuthStateCookieName,
     state,
+    googleOAuthStateCookieOptions
+  )
+  response.cookies.set(
+    googleOAuthIntentCookieName,
+    includeBusinessManage ? "gbp" : "signin",
     googleOAuthStateCookieOptions
   )
   return response

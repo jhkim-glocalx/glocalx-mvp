@@ -153,6 +153,27 @@ export function createStubGoogleOAuth(): GoogleOAuthAdapter {
 
 export function createStubBusinessInformation(): GbpBusinessInformationAdapter {
   return {
+    async findCategory(input) {
+      return {
+        kind: "ok",
+        value: {
+          category: {
+            displayName: input.displayName,
+            name: "categories/gcid:brunch_restaurant",
+          },
+        },
+      }
+    },
+    async listAccounts() {
+      return {
+        kind: "ok",
+        value: {
+          accounts: [
+            { accountName: "Stub GBP Account", name: "accounts/stub" },
+          ],
+        },
+      }
+    },
     async searchLocations() {
       return {
         kind: "ok",
@@ -162,38 +183,23 @@ export function createStubBusinessInformation(): GbpBusinessInformationAdapter {
       }
     },
     async requestAdminRights(input) {
+      void input
       return {
         kind: "ok",
-        value: {
-          method: "GET",
-          url: input.requestAdminRightsUrl,
-          headers: {},
-          body: {
-            googleLocationId: input.googleLocationId,
-          },
-        },
+        value: undefined,
       }
     },
     async validateLocation(input) {
+      void input
       return {
         kind: "ok",
-        value: {
-          method: "POST",
-          url: "stub://gbp/locations:validate",
-          headers: {},
-          body: input.location,
-        },
+        value: undefined,
       }
     },
     async createLocation() {
       return {
         kind: "ok",
-        value: {
-          method: "POST",
-          url: "stub://gbp/locations",
-          headers: {},
-          body: { status: "VERIFICATION_PENDING" },
-        },
+        value: { googleLocationId: "locations/stub-created" },
       }
     },
   }

@@ -1,35 +1,54 @@
-import { z } from "zod"
+import { createHash } from "node:crypto"
 
-import { locationStatusSchema } from "@/domain/location-status"
-import type { LocationStatus } from "@/domain/location-status"
-import type {
-  HttpRequestSpec,
-  IntegrationAdapters,
-  SearchGoogleLocationsResult,
-} from "@/integrations/contracts"
+import type { IntegrationAdapters } from "@/integrations/contracts"
 import type { SqliteDatabase } from "@/server/db/sqlite"
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import type { StoreProfileRepository } from "@/server/repositories/store-profile"
 
 import {
-  persistClaimRequiredRecords,
+  consumeRegistrationIntent,
+  createRegistrationIntent,
   persistSetupRecords,
+  readSetupConnection,
 } from "./setup-records"
 import {
   buildGoogleLocationBody,
+  buildGoogleLocationSearchBody,
   getConfirmedGbpStoreProfile,
   stableGbpSetupRequestId,
 } from "./store-profile"
 
-const locationSpecBodySchema = z
-  .object({
-    status: locationStatusSchema,
-  })
-  .passthrough()
-
 export type GbpSetupMode = "stub" | "production"
 
+export type GbpSetupConnection = {
+  readonly accessToken: string
+  readonly expiresAt?: string
+  readonly refreshToken?: string
+  readonly scopes?: readonly string[]
+  readonly subjectId?: string
+}
+
 export type GbpSetupResult =
+  | {
+      readonly status: "REGISTRATION_REVIEW_REQUIRED"
+      readonly accountName: string
+      readonly accountDisplayName: string
+      readonly address: string
+      readonly businessName: string
+      readonly categoryDisplayName: string
+      readonly categoryName: string
+      readonly languageCode: string
+      readonly message: string
+      readonly phone: string
+      readonly reviewToken: string
+      readonly storeCode: string
+    }
+  | {
+      readonly status: "EXISTING_LOCATION_FOUND"
+      readonly googleLocationId: string
+      readonly requestAdminRightsUrl?: string
+      readonly message: string
+    }
   | {
       readonly status: "VERIFICATION_PENDING" | "VERIFIED" | "CREATE_REQUESTED"
       readonly googleLocationId: string
@@ -55,12 +74,22 @@ export type GbpSetupResult =
       readonly status: "STORE_PROFILE_REQUIRED"
       readonly message: string
     }
+  | {
+      readonly status: "GOOGLE_OAUTH_REQUIRED"
+      readonly message: string
+    }
+  | {
+      readonly status: "GOOGLE_API_ERROR"
+      readonly message: string
+    }
 
 export type SetupGoogleBusinessProfileOptions = {
   readonly adapters: IntegrationAdapters
+  readonly connection?: GbpSetupConnection
   readonly database?: SqliteDatabase
   readonly gbpStore?: GbpStore
   readonly mode: GbpSetupMode
+  readonly reviewToken?: string
   readonly storeProfileRepository?: StoreProfileRepository
   readonly storeId: string
 }
@@ -69,25 +98,15 @@ class GbpSetupConfigurationError extends Error {
   readonly name = "GbpSetupConfigurationError"
 }
 
+function registrationPayloadDigest(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex")
+}
+
 export type BuildClaimRequiredResultOptions = {
+  readonly accountDisplayName?: string
+  readonly accountName?: string
   readonly googleLocationId: string
   readonly requestAdminRightsUrl: string
-}
-
-function locationStatusFromSpecBody(body: unknown): LocationStatus {
-  // Missing or malformed Google status stays pending until verification proves a stronger state.
-  const parsed = locationSpecBodySchema.safeParse(body)
-  if (!parsed.success) {
-    return "VERIFICATION_PENDING"
-  }
-  return parsed.data.status
-}
-
-function isSearchGoogleLocationsResult(
-  value: SearchGoogleLocationsResult | HttpRequestSpec
-): value is SearchGoogleLocationsResult {
-  // Production mode can return a request spec, so only concrete search results are narrowed for claimed matches.
-  return "matches" in value
 }
 
 export function buildClaimRequiredResult(
@@ -129,8 +148,9 @@ export async function setupGoogleBusinessProfile(
     }
   }
 
-  const locationBody = buildGoogleLocationBody(storeProfileResult.profile)
-  const requestId = stableGbpSetupRequestId(storeProfileResult.profile)
+  const searchLocationBody = buildGoogleLocationSearchBody(
+    storeProfileResult.profile
+  )
   const oauthResult = options.adapters.googleOAuth.connect()
   if (oauthResult.kind === "blocked_by_credentials") {
     return {
@@ -140,10 +160,57 @@ export async function setupGoogleBusinessProfile(
     }
   }
 
+  const connection: GbpSetupConnection | undefined =
+    options.mode === "stub"
+      ? { accessToken: "stub-access-token" }
+      : (options.connection ?? (await readSetupConnection(options)))
+  if (connection === undefined) {
+    return {
+      status: "GOOGLE_OAUTH_REQUIRED",
+      message: "Google 계정을 연결하면 실제 매장 등록을 시작해요.",
+    }
+  }
+  if (
+    options.mode === "production" &&
+    connection.expiresAt !== undefined &&
+    Date.parse(connection.expiresAt) <= options.adapters.clock.now().getTime()
+  ) {
+    return {
+      status: "GOOGLE_OAUTH_REQUIRED",
+      message: "Google 연결이 만료되었습니다. 계정을 다시 연결해주세요.",
+    }
+  }
+
+  const accountsResult =
+    await options.adapters.gbpBusinessInformation.listAccounts({
+      accessToken: connection.accessToken,
+    })
+  if (accountsResult.kind === "blocked_by_credentials") {
+    return {
+      status: "BLOCKED_BY_CREDENTIALS",
+      missingEnvVars: accountsResult.missingEnvVars,
+      message: "Google Business Profile 인증 정보가 설정되지 않았습니다.",
+    }
+  }
+  if (accountsResult.value.accounts.length > 1) {
+    return {
+      status: "GOOGLE_API_ERROR",
+      message:
+        "여러 Google Business Profile 계정이 있어 자동으로 선택할 수 없습니다.",
+    }
+  }
+  const account = accountsResult.value.accounts[0]
+  if (account === undefined) {
+    return {
+      status: "GOOGLE_API_ERROR",
+      message: "Google Business Profile 계정을 찾지 못했습니다.",
+    }
+  }
+
   const searchResult =
     await options.adapters.gbpBusinessInformation.searchLocations({
-      accessToken: "stub-access-token",
-      location: locationBody,
+      accessToken: connection.accessToken,
+      location: searchLocationBody,
     })
   if (searchResult.kind === "blocked_by_credentials") {
     return {
@@ -153,32 +220,67 @@ export async function setupGoogleBusinessProfile(
     }
   }
 
-  if (isSearchGoogleLocationsResult(searchResult.value)) {
-    const claimedMatch = searchResult.value.matches.find(
-      (match) => match.requestAdminRightsUrl !== undefined
-    )
-    if (claimedMatch?.requestAdminRightsUrl !== undefined) {
-      await options.adapters.gbpBusinessInformation.requestAdminRights({
-        accessToken: "stub-access-token",
-        googleLocationId: claimedMatch.googleLocationId,
-        requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
-      })
-      // Persist before returning so owners keep the admin-rights follow-up after leaving setup.
-      await persistClaimRequiredRecords(options, {
-        googleLocationId: claimedMatch.googleLocationId,
-        requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
-      })
-      return buildClaimRequiredResult({
-        googleLocationId: claimedMatch.googleLocationId,
-        requestAdminRightsUrl: claimedMatch.requestAdminRightsUrl,
-      })
+  const existingMatch = searchResult.value.matches[0]
+  if (existingMatch !== undefined) {
+    return {
+      status: "EXISTING_LOCATION_FOUND",
+      googleLocationId: existingMatch.googleLocationId,
+      ...(existingMatch.requestAdminRightsUrl === undefined
+        ? {}
+        : { requestAdminRightsUrl: existingMatch.requestAdminRightsUrl }),
+      message:
+        "기존 Google 비즈니스 프로필 후보를 찾았습니다. 중복 생성을 막기 위해 Google에서 소유권을 먼저 확인해주세요.",
     }
   }
 
+  const categoryResult =
+    await options.adapters.gbpBusinessInformation.findCategory({
+      accessToken: connection.accessToken,
+      displayName: storeProfileResult.profile.category,
+    })
+  if (categoryResult.kind === "blocked_by_credentials") {
+    return {
+      status: "BLOCKED_BY_CREDENTIALS",
+      missingEnvVars: categoryResult.missingEnvVars,
+      message: "Google Business Profile 인증 정보가 설정되지 않았습니다.",
+    }
+  }
+  const category = categoryResult.value.category
+  if (category === undefined) {
+    return {
+      status: "GOOGLE_API_ERROR",
+      message: "Google Business Profile 업종을 찾지 못했습니다.",
+    }
+  }
+  if (category.displayName !== storeProfileResult.profile.category) {
+    return {
+      status: "GOOGLE_API_ERROR",
+      message: "Google 업종을 정확히 일치시킬 수 없습니다.",
+    }
+  }
+  const locationBody = buildGoogleLocationBody(
+    storeProfileResult.profile,
+    category.name
+  )
+  const requestId = stableGbpSetupRequestId(
+    storeProfileResult.profile,
+    category.name
+  )
+  const googleSubjectId =
+    connection.subjectId ??
+    options.connection?.subjectId ??
+    oauthResult.value.subjectId
+  const payloadDigest = registrationPayloadDigest({
+    accountName: account.name,
+    googleSubjectId,
+    location: locationBody,
+    requestId,
+  })
+
   const validationResult =
     await options.adapters.gbpBusinessInformation.validateLocation({
-      accessToken: "stub-access-token",
-      accountName: "accounts/stub",
+      accessToken: connection.accessToken,
+      accountName: account.name,
       requestId,
       location: locationBody,
     })
@@ -190,10 +292,45 @@ export async function setupGoogleBusinessProfile(
     }
   }
 
+  if (options.reviewToken === undefined) {
+    const reviewToken = await createRegistrationIntent(options, {
+      googleSubjectId,
+      payloadDigest,
+    })
+    return {
+      status: "REGISTRATION_REVIEW_REQUIRED",
+      accountName: account.name,
+      accountDisplayName: account.accountName,
+      address: storeProfileResult.profile.address,
+      businessName: storeProfileResult.profile.name,
+      categoryDisplayName: category.displayName,
+      categoryName: category.name,
+      languageCode: "ko",
+      message:
+        "고객이 이 주소로 방문하는 매장형 비즈니스인지 확인하고 등록을 승인해주세요.",
+      phone: storeProfileResult.profile.phone,
+      reviewToken,
+      storeCode: storeProfileResult.profile.storeId,
+    }
+  }
+
+  const reviewAccepted = await consumeRegistrationIntent(options, {
+    googleSubjectId,
+    id: options.reviewToken,
+    payloadDigest,
+  })
+  if (!reviewAccepted) {
+    return {
+      status: "GOOGLE_API_ERROR",
+      message:
+        "등록 검토가 만료되었거나 이미 사용되었습니다. 다시 확인해주세요.",
+    }
+  }
+
   const locationResult =
     await options.adapters.gbpBusinessInformation.createLocation({
-      accessToken: "stub-access-token",
-      accountName: "accounts/stub",
+      accessToken: connection.accessToken,
+      accountName: account.name,
       requestId,
       location: locationBody,
     })
@@ -207,7 +344,12 @@ export async function setupGoogleBusinessProfile(
 
   return persistSetupRecords(
     options,
-    locationStatusFromSpecBody(locationResult.value.body),
-    oauthResult.value.subjectId
+    {
+      accountDisplayName: account.accountName,
+      accountName: account.name,
+      googleLocationId: locationResult.value.googleLocationId,
+      status: "VERIFICATION_PENDING",
+    },
+    googleSubjectId
   )
 }

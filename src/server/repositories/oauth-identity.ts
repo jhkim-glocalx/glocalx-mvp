@@ -8,7 +8,10 @@ import { encryptToken } from "@/auth/token-encryption"
 import type { Queryable } from "@/server/db"
 import { z } from "zod"
 
-import { findOrCreateOAuthUser } from "./oauth-account-owner"
+import {
+  findOrCreateOAuthUser,
+  OAuthAccountLinkRequiredError,
+} from "./oauth-account-owner"
 
 export interface OAuthIdentityRepository {
   upsertOAuthIdentity(
@@ -182,6 +185,15 @@ export function createDatabaseOAuthIdentityRepository(
 
       await queryable.transaction(async (transaction) => {
         let userId = await findUserIdByProviderIdentity(transaction, profile)
+        if (
+          userId !== undefined &&
+          linkingUserId !== undefined &&
+          userId !== linkingUserId
+        ) {
+          throw new OAuthAccountLinkRequiredError(
+            "This OAuth identity belongs to another account."
+          )
+        }
         if (userId === undefined) {
           const candidate = await findOrCreateOAuthUser(
             transaction,

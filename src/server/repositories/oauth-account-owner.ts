@@ -47,6 +47,10 @@ export async function findOrCreateOAuthUser(
     return resolveEmailOwner(existingOwner.data)
   }
 
+  if (linkingUserId !== undefined) {
+    return { created: false, userId: linkingUserId }
+  }
+
   const candidateUserId = randomUUID()
   const insert = await queryable.execute(
     "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING",

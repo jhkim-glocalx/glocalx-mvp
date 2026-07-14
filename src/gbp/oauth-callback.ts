@@ -3,6 +3,7 @@ import type { SqliteDatabase } from "@/server/db/sqlite"
 import { encryptToken } from "@/auth/token-encryption"
 
 export const googleOAuthStateCookieName = "glocalx_google_oauth_state"
+export const googleOAuthIntentCookieName = "glocalx_google_oauth_intent"
 // Route handlers set and expire this short-lived cookie to bind the callback to the owner who started OAuth.
 export const googleOAuthStateCookieOptions = {
   httpOnly: true,

@@ -16,8 +16,12 @@ import {
 } from "./onboarding-panels"
 import { useOnboardingFlow } from "./use-onboarding-flow"
 
-export function OnboardingFlow() {
-  const onboarding = useOnboardingFlow()
+export function OnboardingFlow({
+  resumeGbpSetup = false,
+}: {
+  readonly resumeGbpSetup?: boolean
+}) {
+  const onboarding = useOnboardingFlow({ resumeGbpSetup })
   const { actions, refs, state } = onboarding
 
   return (
@@ -67,7 +71,11 @@ export function OnboardingFlow() {
           onSetup={actions.checkSetup}
           setup={state.setup}
         />
-        <SetupPanel setup={state.setup} />
+        <SetupPanel
+          onConfirmCreate={actions.confirmCreate}
+          onRetry={actions.checkSetup}
+          setup={state.setup}
+        />
       </MobileShell>
     </main>
   )

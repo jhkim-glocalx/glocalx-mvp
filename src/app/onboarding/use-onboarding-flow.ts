@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 
 import type { OnboardingInputMode } from "./onboarding-composer"
 import type { StoreProfileField } from "./onboarding-components"
@@ -22,7 +22,11 @@ import {
 import { selectedDraftFromExtraction } from "./selected-draft"
 import { useOnboardingSlotTurn } from "./use-onboarding-slot-turn"
 
-export function useOnboardingFlow() {
+export function useOnboardingFlow({
+  resumeGbpSetup = false,
+}: {
+  readonly resumeGbpSetup?: boolean
+} = {}) {
   const [extraction, setExtraction] = useState<ExtractionState>({
     kind: "idle",
   })
@@ -33,6 +37,7 @@ export function useOnboardingFlow() {
   const [inputMode, setInputMode] = useState<OnboardingInputMode>("naverLink")
   const inputRef = useRef<HTMLInputElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
+  const resumedGbpSetupRef = useRef(false)
   const [profileDraft, setProfileDraft] = useState<
     StoreProfileDraft | undefined
   >(undefined)
@@ -57,12 +62,18 @@ export function useOnboardingFlow() {
     }
 
     // Standalone onboarding scrolls only after result states change so the initial screen stays stable.
-    const frame = window.requestAnimationFrame(() => {
+    const scrollToLatest = (behavior: ScrollBehavior): void => {
       const screen = screenRef.current
-      screen?.scrollTo({ behavior: "smooth", top: screen.scrollHeight })
-    })
+      screen?.scrollTo({ behavior, top: screen.scrollHeight })
+    }
+    const frame = window.requestAnimationFrame(() => scrollToLatest("smooth"))
+    const handleResize = (): void => scrollToLatest("auto")
+    window.addEventListener("resize", handleResize)
 
-    return () => window.cancelAnimationFrame(frame)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener("resize", handleResize)
+    }
   }, [confirmation.kind, extraction.kind, setup.kind, slotTurn.state.kind])
 
   function focusStoreInput(): void {
@@ -138,7 +149,7 @@ export function useOnboardingFlow() {
 
   async function handleBottomSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const nextInput = input.trim()
+    const nextInput = (inputRef.current?.value ?? input).trim()
     if (nextInput === "") {
       focusStoreInput()
       return
@@ -181,11 +192,11 @@ export function useOnboardingFlow() {
     }
   }
 
-  async function handleSetup() {
+  const handleSetup = useCallback(async (reviewToken?: string) => {
     setSetup({ kind: "loading" })
 
     try {
-      setSetup(await requestGbpSetupState())
+      setSetup(await requestGbpSetupState(reviewToken))
     } catch (error) {
       setSetup({
         kind: "error",
@@ -195,7 +206,17 @@ export function useOnboardingFlow() {
             : "GBP 세팅 확인에 실패했습니다.",
       })
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!resumeGbpSetup || resumedGbpSetupRef.current) {
+      return
+    }
+
+    resumedGbpSetupRef.current = true
+    window.history.replaceState(window.history.state, "", "/onboarding")
+    void handleSetup()
+  }, [handleSetup, resumeGbpSetup])
 
   function handleCandidateSelect(candidate: StoreProfileDraft): void {
     setProfileDraft(candidate)
@@ -221,7 +242,8 @@ export function useOnboardingFlow() {
   return {
     actions: {
       changeDraftField: handleDraftFieldChange,
-      checkSetup: handleSetup,
+      checkSetup: () => handleSetup(),
+      confirmCreate: handleSetup,
       confirm: handleConfirmation,
       inputChange: setInput,
       naverLinkAttach: handleNaverLinkAttach,

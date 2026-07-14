@@ -84,7 +84,15 @@ export function GbpHandoffPanel({
   )
 }
 
-export function SetupPanel({ setup }: { readonly setup: SetupState }) {
+export function SetupPanel({
+  onConfirmCreate,
+  onRetry,
+  setup,
+}: {
+  readonly onConfirmCreate?: ((reviewToken: string) => void) | undefined
+  readonly onRetry?: (() => void) | undefined
+  readonly setup: SetupState
+}) {
   return (
     <>
       {setup.kind === "loading" ? (
@@ -98,6 +106,60 @@ export function SetupPanel({ setup }: { readonly setup: SetupState }) {
             status="warning"
             value={setup.requestAdminRightsUrl}
           />
+        </div>
+      ) : null}
+      {setup.kind === "existingLocation" ? (
+        <div className="grid gap-3" role="alert">
+          <ChatMessage message={setup.message} speaker="assistant" />
+          <StatusCard
+            label="기존 GBP 후보"
+            status="warning"
+            value={setup.googleLocationId}
+          />
+          {setup.requestAdminRightsUrl === undefined ? null : (
+            <a
+              className="gx-onboarding-primary text-center"
+              href={setup.requestAdminRightsUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Google에서 소유권 확인하기
+            </a>
+          )}
+        </div>
+      ) : null}
+      {setup.kind === "googleOAuthRequired" ? (
+        <div className="grid gap-3">
+          <ChatMessage message={setup.message} speaker="assistant" />
+          <form action="/api/auth/google/start" method="post">
+            <input name="intent" type="hidden" value="gbp" />
+            <button className="gx-onboarding-primary" type="submit">
+              Google 계정 연결하기
+            </button>
+          </form>
+        </div>
+      ) : null}
+      {setup.kind === "reviewRequired" ? (
+        <div className="grid gap-3">
+          <ChatMessage message={setup.message} speaker="assistant" />
+          <StatusCard label="Google 계정" value={setup.accountDisplayName} />
+          <StatusCard label="Google 계정 리소스" value={setup.accountName} />
+          <StatusCard label="매장명" value={setup.businessName} />
+          <StatusCard label="주소" value={setup.address} />
+          <StatusCard label="전화번호" value={setup.phone} />
+          <StatusCard label="업종" value={setup.categoryDisplayName} />
+          <StatusCard label="Google 업종 리소스" value={setup.categoryName} />
+          <StatusCard label="언어 코드" value={setup.languageCode} />
+          <StatusCard label="매장 코드" value={setup.storeCode} />
+          {onConfirmCreate === undefined ? null : (
+            <button
+              className="gx-onboarding-primary"
+              onClick={() => onConfirmCreate(setup.reviewToken)}
+              type="button"
+            >
+              매장형 비즈니스로 GBP 등록 승인
+            </button>
+          )}
         </div>
       ) : null}
       {setup.kind === "ready" ? (
@@ -130,8 +192,17 @@ export function SetupPanel({ setup }: { readonly setup: SetupState }) {
         </div>
       ) : null}
       {setup.kind === "error" ? (
-        <div role="alert">
+        <div className="grid gap-3" role="alert">
           <ChatMessage message={setup.message} speaker="assistant" />
+          {onRetry === undefined ? null : (
+            <button
+              className="gx-onboarding-primary"
+              onClick={onRetry}
+              type="button"
+            >
+              GBP 세팅 다시 시도
+            </button>
+          )}
         </div>
       ) : null}
     </>

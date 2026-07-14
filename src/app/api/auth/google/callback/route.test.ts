@@ -12,9 +12,17 @@ import {
 } from "@/auth/oauth-identity"
 import { fetchGoogleOAuthProfile } from "@/auth/oauth-providers"
 import type * as OAuthProvidersModule from "@/auth/oauth-providers"
-import { onboardingCompleteCookieName } from "@/auth/session"
-import { googleOAuthStateCookieName } from "@/gbp/oauth-callback"
+import {
+  authSessionCookieName,
+  onboardingCompleteCookieName,
+} from "@/auth/session"
+import {
+  googleOAuthIntentCookieName,
+  googleOAuthStateCookieName,
+} from "@/gbp/oauth-callback"
 import { applyMigrations, openDatabase } from "@/server/db/sqlite"
+import { createSqliteQueryable } from "@/server/db/sqlite-client"
+import { createDatabaseSessionStore } from "@/server/repositories/session-store"
 import { GET } from "./route"
 
 vi.mock("@/auth/oauth-providers", async (importOriginal) => {
@@ -41,8 +49,10 @@ const mockedFetchGoogleOAuthProfile = vi.mocked(fetchGoogleOAuthProfile)
 const tempPaths: string[] = []
 const originalTokenEncryptionKey = process.env["TOKEN_ENCRYPTION_KEY"]
 const countRowSchema = z.object({ count: z.number() })
+const storeIdRowSchema = z.object({ store_id: z.string() })
 const guardedTableCountQueries = {
   authIdentities: "SELECT COUNT(*) AS count FROM auth_identities",
+  oauthConnections: "SELECT COUNT(*) AS count FROM oauth_connections",
   stores: "SELECT COUNT(*) AS count FROM stores",
   users: "SELECT COUNT(*) AS count FROM users",
 } as const
@@ -137,6 +147,50 @@ function completeExistingStore(
   }
 }
 
+async function createLinkingSession(databasePath: string): Promise<{
+  readonly sessionId: string
+  readonly storeId: string
+}> {
+  const database = openDatabase(databasePath)
+  try {
+    const linkingOwner = upsertOAuthIdentity(
+      database,
+      {
+        ...googleProfile,
+        email: "linking-owner@example.com",
+        provider: "KAKAO",
+        subjectId: "kakao-linking-owner",
+      },
+      new Date("2026-06-04T00:00:00.000Z")
+    )
+    const sessionStore = createDatabaseSessionStore(
+      createSqliteQueryable(database)
+    )
+    return {
+      sessionId: (await sessionStore.createAuthenticatedSession(linkingOwner))
+        .sessionId,
+      storeId: linkingOwner.storeId,
+    }
+  } finally {
+    database.close()
+  }
+}
+
+function readGoogleConnectionStoreId(databasePath: string): string {
+  const database = openDatabase(databasePath)
+  try {
+    return storeIdRowSchema.parse(
+      database
+        .prepare(
+          "SELECT store_id FROM oauth_connections WHERE provider = 'GOOGLE'"
+        )
+        .get()
+    ).store_id
+  } finally {
+    database.close()
+  }
+}
+
 function countRows(
   databasePath: string,
   tableName: keyof typeof guardedTableCountQueries
@@ -192,6 +246,7 @@ describe("Google OAuth callback route", () => {
     expect(response.status).toBe(303)
     expect(response.headers.get("Location")).toBe("/onboarding")
     expect(mockedFetchGoogleOAuthProfile).toHaveBeenCalledTimes(1)
+    expect(countRows(databasePath, "oauthConnections")).toBe(0)
   })
 
   it("redirects existing completed identities to app", async () => {
@@ -212,6 +267,68 @@ describe("Google OAuth callback route", () => {
 
     expect(response.status).toBe(303)
     expect(response.headers.get("Location")).toBe("/app")
+  })
+
+  it("resumes GBP setup after an existing owner connects Google", async () => {
+    const databasePath = await createDatabasePath()
+    configureEnv(databasePath)
+    const linkingSession = await createLinkingSession(databasePath)
+    mockedFetchGoogleOAuthProfile.mockResolvedValue(googleProfile)
+
+    const response = await GET(
+      createGoogleCallbackRequest({
+        code: "test-code",
+        cookies: {
+          [authSessionCookieName]: linkingSession.sessionId,
+          [googleOAuthIntentCookieName]: "gbp",
+          [googleOAuthStateCookieName]: "valid-google-state",
+        },
+        state: "valid-google-state",
+      })
+    )
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe("/onboarding?resume=gbp")
+    expect(readGoogleConnectionStoreId(databasePath)).toBe(
+      linkingSession.storeId
+    )
+  })
+
+  it("rejects linking a Google identity owned by another account", async () => {
+    const databasePath = await createDatabasePath()
+    configureEnv(databasePath)
+    const database = openDatabase(databasePath)
+    try {
+      upsertOAuthIdentity(
+        database,
+        googleProfile,
+        new Date("2026-06-04T00:00:00.000Z")
+      )
+    } finally {
+      database.close()
+    }
+    const linkingSession = await createLinkingSession(databasePath)
+    mockedFetchGoogleOAuthProfile.mockResolvedValue({
+      ...googleProfile,
+      accessToken: "replacement-token-must-not-persist",
+    })
+
+    const response = await GET(
+      createGoogleCallbackRequest({
+        code: "test-code",
+        cookies: {
+          [authSessionCookieName]: linkingSession.sessionId,
+          [googleOAuthStateCookieName]: "valid-google-state",
+        },
+        state: "valid-google-state",
+      })
+    )
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe(
+      "/?auth_error=account_link_required"
+    )
+    expect(countRows(databasePath, "oauthConnections")).toBe(0)
   })
 
   it.each(unusableProductionTokenEncryptionKeys)(

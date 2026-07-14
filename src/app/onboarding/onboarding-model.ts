@@ -5,6 +5,8 @@ import {
 } from "@/app/_components/json-value"
 import type { ConfirmedStoreProfile } from "@/domain/schemas"
 
+export { toSetupState, type SetupState } from "./onboarding-setup-state"
+
 export type StoreProfileSource = "NAVER_LOCAL" | "MANUAL"
 
 export type StoreProfileDraft = {
@@ -47,24 +49,6 @@ export type ConfirmationState =
     }
   | { readonly kind: "error"; readonly message: string }
 
-export type SetupState =
-  | { readonly kind: "idle" }
-  | { readonly kind: "loading" }
-  | {
-      readonly apiStatus: string
-      readonly auditLogId: string
-      readonly followUpJobId: string | undefined
-      readonly kind: "ready"
-      readonly message: string
-    }
-  | {
-      readonly apiStatus: string
-      readonly kind: "claimRequired"
-      readonly message: string
-      readonly requestAdminRightsUrl: string
-    }
-  | { readonly kind: "error"; readonly message: string }
-
 export type OnboardingChatTurn = {
   readonly id: string
   readonly message: string
@@ -83,18 +67,6 @@ export type OnboardingSlotTurnState =
       readonly sessionId: string
     }
   | { readonly kind: "error"; readonly message: string }
-
-const setupReadyStatuses = [
-  "CREATE_REQUESTED",
-  "VERIFICATION_PENDING",
-  "VERIFIED",
-] as const
-
-function isSetupReadyStatus(
-  status: string
-): status is (typeof setupReadyStatuses)[number] {
-  return setupReadyStatuses.some((readyStatus) => readyStatus === status)
-}
 
 function readCandidate(payload: unknown): StoreProfileDraft | undefined {
   if (!isRecord(payload)) {
@@ -241,72 +213,7 @@ export function toConfirmationState(payload: unknown): ConfirmationState {
     kind: "confirmed",
     message:
       readString(payload["message"]) ??
-      "매장 정보를 확인했습니다. GBP 세팅을 진행할 수 있습니다.",
-  }
-}
-
-export function toSetupState(payload: unknown): SetupState {
-  if (!isRecord(payload)) {
-    return { kind: "error", message: "GBP 세팅 응답을 읽지 못했습니다." }
-  }
-
-  const status = readString(payload["status"])
-  if (status === undefined) {
-    return { kind: "error", message: "GBP 세팅 응답 형식이 올바르지 않습니다." }
-  }
-
-  if (status === "CLAIM_REQUIRED") {
-    const requestAdminRightsUrl = readString(payload["requestAdminRightsUrl"])
-    if (requestAdminRightsUrl === undefined) {
-      return {
-        kind: "error",
-        message: "GBP 관리자 권한 요청 링크가 없습니다.",
-      }
-    }
-
-    return {
-      apiStatus: status,
-      kind: "claimRequired",
-      message:
-        readString(payload["message"]) ??
-        "이미 소유자가 있는 Google 비즈니스 프로필입니다.",
-      requestAdminRightsUrl,
-    }
-  }
-
-  if (
-    status === "STORE_PROFILE_REQUIRED" ||
-    status === "AUTH_REQUIRED" ||
-    status === "BLOCKED_BY_CREDENTIALS" ||
-    status === "VALIDATION_ERROR"
-  ) {
-    return {
-      kind: "error",
-      message:
-        readString(payload["message"]) ?? "GBP 세팅을 진행할 수 없습니다.",
-    }
-  }
-
-  if (!isSetupReadyStatus(status)) {
-    return { kind: "error", message: "GBP 세팅 응답 형식이 올바르지 않습니다." }
-  }
-
-  const auditLogId = readString(payload["auditLogId"])
-  if (auditLogId === undefined) {
-    return {
-      kind: "error",
-      message: "GBP 세팅 응답에 감사 기록이 없습니다.",
-    }
-  }
-
-  return {
-    apiStatus: status,
-    auditLogId,
-    followUpJobId: readString(payload["followUpJobId"]),
-    kind: "ready",
-    message:
-      readString(payload["message"]) ??
-      "GBP 세팅 상태를 확인했어요. 대시보드에서 다음 작업을 이어갈 수 있어요.",
+      "매장 정보 확인 완료. GBP 설정을 이어갈게요.",
   }
 }
 

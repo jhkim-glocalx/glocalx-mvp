@@ -89,11 +89,7 @@ export function OnboardingComposer({
       <button
         aria-label="네이버 정보 제출"
         className="gx-input-send"
-        disabled={
-          extraction.kind === "loading" ||
-          slotState.kind === "loading" ||
-          input.trim() === ""
-        }
+        disabled={extraction.kind === "loading" || slotState.kind === "loading"}
         type="submit"
       >
         <span aria-hidden="true">➤</span>

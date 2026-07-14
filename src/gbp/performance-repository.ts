@@ -8,7 +8,10 @@ import { decryptToken } from "@/auth/token-encryption"
 export type GbpPerformanceConnection =
   | {
       readonly accessToken: string
+      readonly expiresAt?: string
       readonly kind: "ready"
+      readonly refreshToken?: string
+      readonly subjectId: string
     }
   | {
       readonly kind:
@@ -47,6 +50,11 @@ const storeRowSchema = z.object({ name: z.string() }).strict()
 const oauthConnectionRowSchema = z
   .object({
     encrypted_access_token: z.string(),
+    encrypted_refresh_token: z.string().nullable(),
+    expires_at: z
+      .union([z.string(), z.date().transform((value) => value.toISOString())])
+      .nullable(),
+    subject_id: z.string(),
     scopes_json: z.union([z.string(), z.array(z.string())]),
   })
   .strict()
@@ -174,7 +182,7 @@ export async function loadGbpPerformanceConnection(
   storeId: string
 ): Promise<GbpPerformanceConnection> {
   const row = await queryable.queryOne(
-    "SELECT encrypted_access_token, scopes_json FROM oauth_connections WHERE store_id = ? AND provider = 'GOOGLE' ORDER BY created_at DESC LIMIT 1",
+    "SELECT encrypted_access_token, encrypted_refresh_token, expires_at, scopes_json, subject_id FROM oauth_connections WHERE store_id = ? AND provider = 'GOOGLE' ORDER BY created_at DESC LIMIT 1",
     [storeId]
   )
   if (row === undefined) {
@@ -191,7 +199,17 @@ export async function loadGbpPerformanceConnection(
   if (accessToken === undefined) {
     return { kind: "token_unavailable" }
   }
-  return { accessToken, kind: "ready" }
+  const refreshToken =
+    parsed.encrypted_refresh_token === null
+      ? undefined
+      : decryptToken(parsed.encrypted_refresh_token)
+  return {
+    accessToken,
+    ...(parsed.expires_at === null ? {} : { expiresAt: parsed.expires_at }),
+    kind: "ready",
+    ...(refreshToken === undefined ? {} : { refreshToken }),
+    subjectId: parsed.subject_id,
+  }
 }
 
 export async function loadGbpPerformanceLocation(

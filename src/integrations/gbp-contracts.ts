@@ -7,6 +7,37 @@ export type CreateLocationInput = {
   readonly location: Readonly<Record<string, unknown>>
 }
 
+export type ListGbpAccountsInput = {
+  readonly accessToken: string
+}
+
+export type GbpAccount = {
+  readonly accountName: string
+  readonly name: string
+}
+
+export type ListGbpAccountsResult = {
+  readonly accounts: readonly GbpAccount[]
+}
+
+export type FindGbpCategoryInput = {
+  readonly accessToken: string
+  readonly displayName: string
+}
+
+export type GbpCategory = {
+  readonly displayName: string
+  readonly name: string
+}
+
+export type FindGbpCategoryResult = {
+  readonly category: GbpCategory | undefined
+}
+
+export type CreateLocationResult = {
+  readonly googleLocationId: string
+}
+
 export type SearchGoogleLocationsInput = {
   readonly accessToken: string
   readonly location: Readonly<Record<string, unknown>>
@@ -99,18 +130,22 @@ export type GbpPerformanceApiResponse = {
 }
 
 export interface GbpBusinessInformationAdapter {
+  findCategory(
+    input: FindGbpCategoryInput
+  ): Promise<AdapterResult<FindGbpCategoryResult>>
+  listAccounts(
+    input: ListGbpAccountsInput
+  ): Promise<AdapterResult<ListGbpAccountsResult>>
   searchLocations(
     input: SearchGoogleLocationsInput
-  ): Promise<AdapterResult<SearchGoogleLocationsResult | HttpRequestSpec>>
+  ): Promise<AdapterResult<SearchGoogleLocationsResult>>
   requestAdminRights(
     input: RequestAdminRightsInput
-  ): Promise<AdapterResult<HttpRequestSpec>>
-  validateLocation(
-    input: CreateLocationInput
-  ): Promise<AdapterResult<HttpRequestSpec>>
+  ): Promise<AdapterResult<void>>
+  validateLocation(input: CreateLocationInput): Promise<AdapterResult<void>>
   createLocation(
     input: CreateLocationInput
-  ): Promise<AdapterResult<HttpRequestSpec>>
+  ): Promise<AdapterResult<CreateLocationResult>>
 }
 
 export interface GbpLocalPostsAdapter {

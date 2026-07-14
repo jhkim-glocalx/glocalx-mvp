@@ -20,10 +20,11 @@ export function unexpectedCall(methodName: string): never {
 
 export function createSetupRequest(cookieHeader?: string): NextRequest {
   return new NextRequest("http://localhost:3000/api/gbp/setup", {
-    body: JSON.stringify({ mode: "stub" }),
+    body: JSON.stringify({ reviewToken: "route-boundary-review" }),
     headers: {
       ...(cookieHeader === undefined ? {} : { Cookie: cookieHeader }),
       "Content-Type": "application/json",
+      Origin: "http://localhost:3000",
     },
     method: "POST",
   })
@@ -80,6 +81,15 @@ export function createGbpStore(): {
     performanceSummaryReads,
     setupRecords,
     store: {
+      async consumeRegistrationIntent() {
+        return true
+      },
+      async createRegistrationIntent() {
+        return "route-boundary-review"
+      },
+      async persistGoogleConnection() {
+        return unexpectedCall("gbpStore.persistGoogleConnection")
+      },
       async persistClaimRequiredRecords() {
         return unexpectedCall("gbpStore.persistClaimRequiredRecords")
       },

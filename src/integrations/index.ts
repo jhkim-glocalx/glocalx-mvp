@@ -40,7 +40,7 @@ export function createIntegrationAdapters(
   const env = options.env ?? process.env
   const mode =
     env["APP_INTEGRATION_MODE"] === "production" ? "production" : "stub"
-  const now = options.now ?? new Date("2026-06-04T00:00:00.000Z")
+  const stubNow = options.now ?? new Date("2026-06-04T00:00:00.000Z")
   const fetchImpl = options.fetchImpl ?? globalThis.fetch
 
   if (mode === "production") {
@@ -52,7 +52,10 @@ export function createIntegrationAdapters(
         ? createStubNaverSearch()
         : createProductionNaverSearch(env, fetchImpl),
       googleOAuth: createProductionGoogleOAuth(env),
-      gbpBusinessInformation: createProductionBusinessInformation(env),
+      gbpBusinessInformation: createProductionBusinessInformation(
+        env,
+        fetchImpl
+      ),
       gbpLocalPosts: createProductionLocalPosts(env),
       gbpPerformance: createProductionPerformance(env),
       gbpReviews: createProductionReviews(env),
@@ -64,7 +67,10 @@ export function createIntegrationAdapters(
       ),
       postingConversation: createProductionPostingConversation(env, fetchImpl),
       translation: createStubTranslation(),
-      clock: createStubClock(now),
+      clock:
+        options.now === undefined
+          ? { now: () => new Date() }
+          : createStubClock(options.now),
       jobScheduler: createStubJobScheduler(),
     }
   }
@@ -82,7 +88,7 @@ export function createIntegrationAdapters(
     onboardingConversation: createStubOnboardingConversation(),
     postingConversation: createStubPostingConversation(),
     translation: createStubTranslation(),
-    clock: createStubClock(now),
+    clock: createStubClock(stubNow),
     jobScheduler: createStubJobScheduler(),
   }
 }

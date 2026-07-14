@@ -55,7 +55,7 @@ export const confirmedStoreProfileSchema = z
 
 export const gbpSetupRequestSchema = z
   .object({
-    mode: z.enum(["stub", "production"]),
+    reviewToken: nonEmptyStringSchema.optional(),
   })
   .strict()
 

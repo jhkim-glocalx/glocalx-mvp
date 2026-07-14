@@ -109,3 +109,31 @@ so branch previews remain usable for QA. Production deployments still require
 the live Naver credentials above.
 
 Naver's official Local Search API reliably provides store name, category, address, road address, coordinates, and a detail link. It does not reliably provide phone numbers, and it does not provide opening hours. Treat phone and opening hours as best-effort fields: the app may attempt to read them from a submitted Naver Place link, but owners should still confirm or enter them manually.
+
+### Google Business Profile Registration
+
+The API inventory, ownership semantics, onboarding field mapping, production
+guardrails, and implementation status are documented in
+[`docs/integrations/google-business-profile-apis.md`](docs/integrations/google-business-profile-apis.md).
+
+The production integration supports one guarded live-create path: a new Korean
+storefront with one accessible GBP account, one exact Google category match,
+and no duplicate-search results. It validates first, persists a short-lived
+single-use review intent bound to the exact Google payload and subject, then
+requires explicit owner approval before creation. Ambiguous accounts,
+categories, expired grants, and every existing-listing candidate stop without
+creating a duplicate. Existing-profile attachment, service-area businesses,
+verification, and live posting remain outside this path.
+
+Enable the Account Management and Business Information APIs for the OAuth
+project, configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, the registered
+callback URL, and a valid `TOKEN_ENCRYPTION_KEY`, then set:
+
+```bash
+APP_INTEGRATION_MODE=production
+```
+
+Google must approve the project for Business Profile API access. There is no
+separate sandbox: a successful production setup request creates a real listing
+in the connected owner's account. The account resource is discovered after
+OAuth; no static Google Business account ID is required.

@@ -10,6 +10,7 @@ import {
 import { missingTokenEncryptionEnvVars } from "@/auth/token-encryption"
 import {
   expiredGoogleOAuthStateCookieOptions,
+  googleOAuthIntentCookieName,
   googleOAuthStateCookieName,
   isValidGoogleOAuthCallback,
 } from "@/gbp/oauth-callback"
@@ -29,6 +30,11 @@ function redirectToLandingClearingState(reason: string): NextResponse {
     "",
     expiredGoogleOAuthStateCookieOptions
   )
+  response.cookies.set(
+    googleOAuthIntentCookieName,
+    "",
+    expiredGoogleOAuthStateCookieOptions
+  )
   return response
 }
 
@@ -37,6 +43,8 @@ export async function GET(request: NextRequest) {
   const state = request.nextUrl.searchParams.get("state") ?? ""
   const expectedState =
     request.cookies.get(googleOAuthStateCookieName)?.value ?? ""
+  const oauthIntent =
+    request.cookies.get(googleOAuthIntentCookieName)?.value ?? "signin"
 
   if (!isValidGoogleOAuthCallback({ code, expectedState, state })) {
     return redirectToLandingClearingState("google_state")
@@ -60,7 +68,7 @@ export async function GET(request: NextRequest) {
     })
 
     return await withQueryableRouteDatabase(
-      async ({ oauthIdentityRepository, sessionStore }) => {
+      async ({ gbpStore, oauthIdentityRepository, sessionStore }) => {
         const linkingSession = await sessionStore.readSessionFromCookieValues({
           authSessionId: request.cookies.get(authSessionCookieName)?.value,
           onboardingComplete: undefined,
@@ -72,12 +80,27 @@ export async function GET(request: NextRequest) {
           new Date(),
           linkingSession?.userId
         )
+        if (oauthIntent === "gbp") {
+          await gbpStore.persistGoogleConnection({
+            now: new Date(),
+            profile,
+            storeId: session.storeId,
+          })
+        }
         const authenticatedSession =
           await sessionStore.createAuthenticatedSession(session)
+        const shouldResumeGbpSetup =
+          oauthIntent === "gbp" &&
+          linkingSession !== undefined &&
+          !session.onboardingComplete
         const response = new NextResponse(null, {
           headers: {
             // New OAuth identities enter onboarding until their store is completed.
-            Location: session.onboardingComplete ? "/app" : "/onboarding",
+            Location: session.onboardingComplete
+              ? "/app"
+              : shouldResumeGbpSetup
+                ? "/onboarding?resume=gbp"
+                : "/onboarding",
           },
           status: 303,
         })
@@ -85,6 +108,11 @@ export async function GET(request: NextRequest) {
           authSessionCookieName,
           authenticatedSession.sessionId,
           sessionCookieOptions
+        )
+        response.cookies.set(
+          googleOAuthIntentCookieName,
+          "",
+          expiredGoogleOAuthStateCookieOptions
         )
         response.cookies.set(
           googleOAuthStateCookieName,

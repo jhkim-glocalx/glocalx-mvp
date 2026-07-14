@@ -55,6 +55,11 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   expect(slotCompletionBox.y).toBeLessThan(gbpSetupBox.y)
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
 
+  await expect(page.getByText("Stub GBP Account")).toBeVisible()
+  await page
+    .getByRole("button", { name: "매장형 비즈니스로 GBP 등록 승인" })
+    .click()
+
   await expect(page.getByText("VERIFICATION_PENDING")).toBeVisible()
   await expect(page.getByText("setup-gbp-audit")).toBeVisible()
   await expect(

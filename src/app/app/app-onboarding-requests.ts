@@ -21,7 +21,7 @@ export async function requestStoreProfileConfirmation(
 
 export async function requestGbpSetupState(): Promise<SetupState> {
   const response = await fetch("/api/gbp/setup", {
-    body: JSON.stringify({ mode: "stub" }),
+    body: JSON.stringify({}),
     headers: { "Content-Type": "application/json" },
     method: "POST",
   })

@@ -48,12 +48,20 @@ describe("SQLite GBP, job, and audit characterization", () => {
 
       // When
       const firstSetup = await gbpStore.persistSetupRecords({
+        accountDisplayName: "Stub GBP Account",
+        accountName: "accounts/stub",
+        googleLocationId: "locations/stub-created",
+        mode: "stub",
         now,
         status: "VERIFICATION_PENDING",
         storeId: demoStoreId,
         subjectId: "repository-google-subject",
       })
       const secondSetup = await gbpStore.persistSetupRecords({
+        accountDisplayName: "Stub GBP Account",
+        accountName: "accounts/stub",
+        googleLocationId: "locations/stub-created",
+        mode: "stub",
         now,
         status: "VERIFIED",
         storeId: demoStoreId,
@@ -108,7 +116,9 @@ describe("SQLite GBP, job, and audit characterization", () => {
         status: "RUNNING",
       })
       expect(
-        await jobStore.readJobRunByIdempotencyKey("setup-gbp-follow-up-key")
+        await jobStore.readJobRunByIdempotencyKey(
+          `${demoStoreId}:setup-gbp-follow-up`
+        )
       ).toMatchObject({
         id: "setup-gbp-follow-up",
         status: "RUNNING",
@@ -132,16 +142,36 @@ describe("SQLite GBP, job, and audit characterization", () => {
     await withRepositoryTestContext(
       async ({ adapters, database, queryable }) => {
         const gbpStore = createDatabaseGbpStore(queryable)
-        const firstSetup = await setupGoogleBusinessProfile({
+        const firstReview = await setupGoogleBusinessProfile({
           adapters,
           database,
           mode: "stub",
           storeId: demoStoreId,
         })
+        if (firstReview.status !== "REGISTRATION_REVIEW_REQUIRED") {
+          throw new Error("Expected first GBP registration review")
+        }
+        const firstSetup = await setupGoogleBusinessProfile({
+          adapters,
+          database,
+          mode: "stub",
+          reviewToken: firstReview.reviewToken,
+          storeId: demoStoreId,
+        })
+        const secondReview = await setupGoogleBusinessProfile({
+          adapters,
+          database,
+          mode: "stub",
+          storeId: demoStoreId,
+        })
+        if (secondReview.status !== "REGISTRATION_REVIEW_REQUIRED") {
+          throw new Error("Expected second GBP registration review")
+        }
         const secondSetup = await setupGoogleBusinessProfile({
           adapters,
           database,
           mode: "stub",
+          reviewToken: secondReview.reviewToken,
           storeId: demoStoreId,
         })
         const setupRows = setupRowsSchema.parse(
@@ -170,7 +200,10 @@ describe("SQLite GBP, job, and audit characterization", () => {
           gbpStore.readPerformanceConnection(demoStoreId)
         ).resolves.toEqual({
           accessToken: "demo-access-token",
+          expiresAt: "2026-06-05T00:00:00.000Z",
           kind: "ready",
+          refreshToken: "demo-refresh-token",
+          subjectId: "demo-google-subject",
         })
         await expect(
           gbpStore.readPerformanceLocation(demoStoreId)

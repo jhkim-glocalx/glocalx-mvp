@@ -61,7 +61,7 @@ test("Publish is blocked for an unverified GBP location", async ({
   request,
 }) => {
   await request.post("/api/gbp/setup", {
-    data: { mode: "stub" },
+    data: {},
     headers: { Cookie: demoCookieHeader },
   })
   const draftResponse = await request.post("/api/posts/drafts", {

@@ -1,4 +1,4 @@
-import { Buffer } from "node:buffer"
+import { createHash } from "node:crypto"
 
 import { z } from "zod"
 
@@ -61,10 +61,12 @@ export function getConfirmedGbpStoreProfile(
 }
 
 export function buildGoogleLocationBody(
-  profile: ConfirmedGbpStoreProfile
+  profile: ConfirmedGbpStoreProfile,
+  primaryCategoryName?: string
 ): Readonly<Record<string, unknown>> {
   // Google receives the confirmed store fields verbatim; storeCode ties retries back to this local store.
   return {
+    languageCode: "ko",
     title: profile.name,
     storeCode: profile.storeId,
     storefrontAddress: {
@@ -74,22 +76,46 @@ export function buildGoogleLocationBody(
     phoneNumbers: {
       primaryPhone: profile.phone,
     },
-    categories: {
-      primaryCategory: {
-        displayName: profile.category,
-      },
+    ...(primaryCategoryName === undefined
+      ? {}
+      : {
+          categories: {
+            primaryCategory: { name: primaryCategoryName },
+          },
+        }),
+  }
+}
+
+export function buildGoogleLocationSearchBody(
+  profile: ConfirmedGbpStoreProfile
+): Readonly<Record<string, unknown>> {
+  return {
+    locationName: profile.name,
+    primaryPhone: profile.phone,
+    address: {
+      regionCode: "KR",
+      addressLines: [profile.address],
     },
+    languageCode: "ko",
   }
 }
 
 export function stableGbpSetupRequestId(
-  profile: ConfirmedGbpStoreProfile
+  profile: ConfirmedGbpStoreProfile,
+  primaryCategoryName: string
 ): string {
   // Identical confirmed profile data gets the same request id so Google validate/create retries stay idempotent.
-  const encoded = Buffer.from(
-    `${profile.storeId}:${profile.name}:${profile.address}:${profile.phone}`
-  )
-    .toString("base64url")
-    .slice(0, 24)
-  return `gbp-setup-${encoded}`
+  const digest = createHash("sha256")
+    .update(
+      JSON.stringify({
+        address: profile.address,
+        primaryCategoryName,
+        name: profile.name,
+        phone: profile.phone,
+        storeId: profile.storeId,
+      })
+    )
+    .digest("hex")
+    .slice(0, 32)
+  return `gbp-setup-${digest}`
 }

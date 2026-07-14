@@ -71,9 +71,11 @@ export async function requestStoreProfileConfirmationState(
   return toConfirmationState(payload)
 }
 
-export async function requestGbpSetupState(): Promise<SetupState> {
+export async function requestGbpSetupState(
+  reviewToken?: string
+): Promise<SetupState> {
   const response = await fetch("/api/gbp/setup", {
-    body: JSON.stringify({ mode: "stub" }),
+    body: JSON.stringify(reviewToken === undefined ? {} : { reviewToken }),
     headers: { "Content-Type": "application/json" },
     method: "POST",
   })

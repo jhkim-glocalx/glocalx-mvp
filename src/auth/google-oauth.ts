@@ -4,6 +4,7 @@ import {
   resolveOAuthRedirectUri,
 } from "@/auth/oauth-redirect"
 import type { AdapterEnvironment } from "@/integrations/contracts"
+import { googleBusinessManageScope } from "@/integrations/credentials"
 
 const googleOAuthEndpoint = "https://accounts.google.com/o/oauth2/v2/auth"
 const googleOAuthEnvVars = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"] as const
@@ -11,6 +12,7 @@ export const googleSignInScopes = ["openid", "email", "profile"] as const
 
 type GoogleOAuthAuthorizationUrlOptions = {
   readonly clientId: string
+  readonly includeBusinessManage?: boolean
   readonly redirectUri: string
   readonly state: string
 }
@@ -33,10 +35,19 @@ export function buildGoogleOAuthAuthorizationUrl(
   authorizationUrl.searchParams.set("client_id", options.clientId)
   authorizationUrl.searchParams.set("redirect_uri", options.redirectUri)
   authorizationUrl.searchParams.set("response_type", "code")
-  authorizationUrl.searchParams.set("scope", googleSignInScopes.join(" "))
+  authorizationUrl.searchParams.set(
+    "scope",
+    [
+      ...googleSignInScopes,
+      ...(options.includeBusinessManage ? [googleBusinessManageScope] : []),
+    ].join(" ")
+  )
   authorizationUrl.searchParams.set("state", options.state)
-  authorizationUrl.searchParams.set("access_type", "offline")
-  authorizationUrl.searchParams.set("prompt", "select_account")
+  if (options.includeBusinessManage) {
+    authorizationUrl.searchParams.set("access_type", "offline")
+    authorizationUrl.searchParams.set("include_granted_scopes", "true")
+    authorizationUrl.searchParams.set("prompt", "consent select_account")
+  }
   return authorizationUrl
 }
 

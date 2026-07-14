@@ -190,7 +190,10 @@ describe("production request specs", () => {
   })
 
   it("builds exact Google GBP request specs", async () => {
-    const adapters = createIntegrationAdapters({ env: productionEnv })
+    const adapters = createIntegrationAdapters({
+      env: productionEnv,
+      fetchImpl: async () => Response.json({ name: "locations/456" }),
+    })
 
     const location = { title: "브런치모먼트 홍대점" }
 
@@ -201,10 +204,14 @@ describe("production request specs", () => {
       })
     ).toEqual({
       method: "POST",
-      url: "https://mybusinessbusinessinformation.googleapis.com/v1/googleLocations:search",
-      headers: { Authorization: "Bearer test-access-token" },
+      url: "https://mybusiness.googleapis.com/v4/googleLocations:search",
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer test-access-token",
+        "Content-Type": "application/json",
+      },
       requiredScopes: ["https://www.googleapis.com/auth/business.manage"],
-      body: { location },
+      body: { location, resultCount: 10 },
     })
 
     expect(
@@ -217,7 +224,11 @@ describe("production request specs", () => {
     ).toEqual({
       method: "POST",
       url: "https://mybusinessbusinessinformation.googleapis.com/v1/accounts/123/locations?requestId=request-123&validateOnly=true",
-      headers: { Authorization: "Bearer test-access-token" },
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer test-access-token",
+        "Content-Type": "application/json",
+      },
       requiredScopes: ["https://www.googleapis.com/auth/business.manage"],
       body: location,
     })
@@ -232,7 +243,11 @@ describe("production request specs", () => {
     ).toEqual({
       method: "POST",
       url: "https://mybusinessbusinessinformation.googleapis.com/v1/accounts/123/locations?requestId=request-123&validateOnly=false",
-      headers: { Authorization: "Bearer test-access-token" },
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer test-access-token",
+        "Content-Type": "application/json",
+      },
       requiredScopes: ["https://www.googleapis.com/auth/business.manage"],
       body: location,
     })
@@ -246,13 +261,7 @@ describe("production request specs", () => {
       })
     ).resolves.toEqual({
       kind: "ok",
-      value: {
-        method: "POST",
-        url: "https://mybusinessbusinessinformation.googleapis.com/v1/accounts/123/locations?requestId=request-123&validateOnly=false",
-        headers: { Authorization: "Bearer test-access-token" },
-        requiredScopes: ["https://www.googleapis.com/auth/business.manage"],
-        body: location,
-      },
+      value: { googleLocationId: "locations/456" },
     })
 
     expect(

@@ -29,7 +29,10 @@ export const requiredTableNames = [
   "audit_logs",
 ] as const
 
-export const operationalTableNames = ["auth_rate_limits"] as const
+export const operationalTableNames = [
+  "auth_rate_limits",
+  "gbp_registration_intents",
+] as const
 export const databaseTableNames = [
   ...requiredTableNames,
   ...operationalTableNames,
@@ -69,6 +72,7 @@ const migrationPaths = [
   join(currentDirectory, "migrations", "0002_email_credentials.sql"),
   join(currentDirectory, "migrations", "0003_user_sessions.sql"),
   join(currentDirectory, "migrations", "0004_auth_rate_limits.sql"),
+  join(currentDirectory, "migrations", "0005_gbp_registration_intents.sql"),
 ] as const
 
 function ensureColumn(

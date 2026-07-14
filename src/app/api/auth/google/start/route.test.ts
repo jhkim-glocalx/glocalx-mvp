@@ -39,9 +39,15 @@ function restoreEnv(): void {
   }
 }
 
-function createGoogleStartRequest(cookieHeader?: string): NextRequest {
+function createGoogleStartRequest(
+  cookieHeader?: string,
+  intent?: "gbp"
+): NextRequest {
+  const body =
+    intent === undefined ? undefined : new URLSearchParams({ intent })
   if (cookieHeader === undefined) {
     return new NextRequest("http://localhost:3000/api/auth/google/start", {
+      ...(body === undefined ? {} : { body }),
       headers: { Origin: "http://localhost:3000" },
       method: "POST",
     })
@@ -52,6 +58,7 @@ function createGoogleStartRequest(cookieHeader?: string): NextRequest {
       Cookie: cookieHeader,
       Origin: "http://localhost:3000",
     },
+    ...(body === undefined ? {} : { body }),
     method: "POST",
   })
 }
@@ -102,8 +109,11 @@ describe("Google OAuth start route", () => {
     )
     expect(authorizationUrl.searchParams.get("response_type")).toBe("code")
     expect(authorizationUrl.searchParams.get("state")).toBeTruthy()
-    expect(authorizationUrl.searchParams.get("access_type")).toBe("offline")
-    expect(authorizationUrl.searchParams.get("prompt")).toBe("select_account")
+    expect(authorizationUrl.searchParams.get("access_type")).toBeNull()
+    expect(authorizationUrl.searchParams.get("prompt")).toBeNull()
+    expect(
+      authorizationUrl.searchParams.get("include_granted_scopes")
+    ).toBeNull()
     expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toEqual([
       "openid",
       "email",
@@ -115,6 +125,24 @@ describe("Google OAuth start route", () => {
     expect(setCookie).toContain("HttpOnly")
     expect(setCookie).not.toContain(demoSessionCookieName)
     expect(setCookie).not.toContain(demoStoreCookieName)
+  })
+
+  it("requests offline business management access only for GBP connection", async () => {
+    replaceEnv({
+      GOOGLE_CLIENT_ID: "test-client-id",
+      GOOGLE_CLIENT_SECRET: "test-client-secret",
+    })
+
+    const response = await POST(createGoogleStartRequest(undefined, "gbp"))
+    const authorizationUrl = new URL(response.headers.get("Location") ?? "")
+
+    expect(authorizationUrl.searchParams.get("access_type")).toBe("offline")
+    expect(authorizationUrl.searchParams.get("prompt")).toBe(
+      "consent select_account"
+    )
+    expect(authorizationUrl.searchParams.get("scope")?.split(" ")).toContain(
+      "https://www.googleapis.com/auth/business.manage"
+    )
   })
 
   it("starts Google OAuth in stub integration mode when credentials are configured", async () => {

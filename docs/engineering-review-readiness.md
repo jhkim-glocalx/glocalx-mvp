@@ -109,10 +109,13 @@ stub adapters. Vercel preview and development environments can still use stub
 Naver search when production mode lacks Naver credentials through
 `src/integrations/runtime-diagnostics.ts`.
 
-Production adapters return request specifications or controlled
-`blocked_by_credentials` results when credentials are missing. The app should not
-print secret values. Diagnostic shape and missing credential behavior are covered
-by `src/integrations/runtime-diagnostics.test.ts` and
+Production adapters either execute their supported live operation, return a
+request specification for contract-only integrations, or return a controlled
+`blocked_by_credentials` result when credentials are missing. GBP registration
+executes Account Management and Business Information API requests after owner
+OAuth; the app should never print token or credential values. Diagnostic shape
+and missing credential behavior are covered by
+`src/integrations/runtime-diagnostics.test.ts` and
 `src/integrations/missing-credentials.test.ts`.
 
 External domains are isolated as contracts:
@@ -209,9 +212,12 @@ High-signal test areas:
   client components. Task 1 records the exact local docs inventory in
   `.omo/evidence/task-1-next-docs-read.txt`.
 - Production integrations are mostly validated through adapter contracts and
-  request-spec tests unless real credentials are deliberately supplied. Tasks 7
-  and 8 cover request-spec, missing-credential, GBP setup, and GBP performance
-  paths through `.omo/evidence/task-7-*` and `.omo/evidence/task-8-*`.
+  request-spec tests unless real credentials are deliberately supplied. GBP
+  registration additionally has an injected-HTTP integration test covering
+  account discovery, category lookup, duplicate search, validation, and live
+  creation without contacting Google. Tasks 7 and 8 cover request-spec,
+  missing-credential, GBP setup, and GBP performance paths through
+  `.omo/evidence/task-7-*` and `.omo/evidence/task-8-*`.
 - `APP_INTEGRATION_MODE=production` still keeps some adapters stubbed or
   request-spec oriented; reviewers should distinguish live side effects from
   outbound shape validation.

@@ -110,7 +110,7 @@ export function createDatabaseStoreProfileRepository(
       return {
         status: "CONFIRMED",
         extractionId,
-        message: "매장 정보를 확인했습니다. GBP 세팅을 진행할 수 있습니다.",
+        message: "매장 정보 확인 완료. GBP 설정을 이어갈게요.",
       }
     },
 

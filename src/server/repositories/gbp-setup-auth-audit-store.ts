@@ -1,14 +1,55 @@
 import { encryptToken } from "@/auth/token-encryption"
+import type { OAuthIdentityProfile } from "@/auth/oauth-identity"
 import type { LocationStatus } from "@/domain/location-status"
 import { googleBusinessManageScope } from "@/integrations/credentials"
 import type { Queryable } from "@/server/db"
 
 import {
-  setupAuditLogId,
   setupOAuthConnectionId,
   setupResultStatus,
   type PersistStubSetupGbpRecordsOptions,
 } from "./gbp-setup-record-values"
+
+export async function persistGoogleOAuthConnection(options: {
+  readonly now: Date
+  readonly profile: OAuthIdentityProfile
+  readonly queryable: Queryable
+  readonly storeId: string
+}): Promise<void> {
+  await options.queryable.execute(
+    `INSERT INTO oauth_connections (
+      id, store_id, provider, subject_id, encrypted_access_token,
+      encrypted_refresh_token, scopes_json, expires_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      subject_id = excluded.subject_id,
+      encrypted_access_token = excluded.encrypted_access_token,
+      encrypted_refresh_token = CASE
+        WHEN oauth_connections.subject_id = excluded.subject_id
+          THEN COALESCE(
+            excluded.encrypted_refresh_token,
+            oauth_connections.encrypted_refresh_token
+          )
+        ELSE excluded.encrypted_refresh_token
+      END,
+      scopes_json = excluded.scopes_json,
+      expires_at = excluded.expires_at,
+      created_at = excluded.created_at`,
+    [
+      `gbp-oauth-${options.storeId}`,
+      options.storeId,
+      "GOOGLE",
+      options.profile.subjectId,
+      encryptToken(options.profile.accessToken),
+      options.profile.refreshToken === undefined
+        ? null
+        : encryptToken(options.profile.refreshToken),
+      JSON.stringify(options.profile.scopes),
+      options.profile.expiresAt ?? null,
+      options.now.toISOString(),
+    ]
+  )
+}
 
 export async function persistStubOAuthConnection(
   options: PersistStubSetupGbpRecordsOptions & {
@@ -50,8 +91,10 @@ export async function persistStubOAuthConnection(
   )
 }
 
-export async function appendStubSetupAuditLog(options: {
+export async function appendSetupAuditLog(options: {
+  readonly auditLogId: string
   readonly createdAt: string
+  readonly mode: "stub" | "production"
   readonly queryable: Queryable
   readonly status: LocationStatus
   readonly storeId: string
@@ -65,7 +108,7 @@ export async function appendStubSetupAuditLog(options: {
       idempotency_key,
       redacted_payload_json,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, (SELECT owner_user_id FROM stores WHERE id = ?), ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       store_id = excluded.store_id,
       actor_user_id = excluded.actor_user_id,
@@ -74,11 +117,11 @@ export async function appendStubSetupAuditLog(options: {
       redacted_payload_json = excluded.redacted_payload_json,
       created_at = excluded.created_at`,
     [
-      setupAuditLogId,
+      options.auditLogId,
       options.storeId,
-      "demo-owner",
-      "gbp.setup.stub",
-      "setup-gbp-audit-key",
+      options.storeId,
+      `gbp.setup.${options.mode}`,
+      `${options.auditLogId}-key`,
       JSON.stringify({
         accessToken: "[REDACTED]",
         status: setupResultStatus(options.status),
