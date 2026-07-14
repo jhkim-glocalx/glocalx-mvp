@@ -65,6 +65,8 @@ export const marketingSuggestionModeSchema = z.enum([
   "skipped",
 ])
 
+export const marketingPlatformSchema = z.enum(["GBP", "INSTAGRAM"])
+
 export const postImageAssetSchema = z
   .object({
     dataUrl: z
@@ -89,7 +91,7 @@ export const postDraftRequestSchema = z
     storeId: nonEmptyStringSchema,
     suggestionMode: marketingSuggestionModeSchema.optional(),
     ownerIntent: nonEmptyStringSchema,
-    targetChannel: z.literal("GBP"),
+    targetChannel: marketingPlatformSchema.default("GBP"),
   })
   .strict()
 
@@ -97,6 +99,7 @@ export const postPublishRequestSchema = z
   .object({
     storeId: nonEmptyStringSchema,
     idempotencyKey: nonEmptyStringSchema.optional(),
+    targetChannel: marketingPlatformSchema.default("GBP"),
   })
   .strict()
 
@@ -131,6 +134,7 @@ export const postingDecisionRequestSchema = z
     storeId: nonEmptyStringSchema,
     suggestionMessage: nonEmptyStringSchema,
     suggestionRevisedIntent: nonEmptyStringSchema.optional(),
+    targetChannel: marketingPlatformSchema.default("GBP"),
   })
   .strict()
 

@@ -41,19 +41,37 @@ async function runPostStorePersistenceScenario(context: {
     targetChannel: "GBP",
   })
 
-  const draft = await store.readDraft("queryable-draft")
-  await store.recordSuccessfulPublishAttempt({
-    attemptNumber: await store.readNextAttemptNumber("queryable-draft"),
-    draftId: draft.id,
-    gbpPostId: "gbp-post-queryable",
+  const draft = await store.readDraft("queryable-draft", demoStoreId)
+  expect(draft).toBeDefined()
+  const reservation = await store.reservePublishAttempt({
+    draftId: "queryable-draft",
     idempotencyKey: "queryable-publish-key",
     now: new Date("2026-06-18T00:01:00.000Z"),
-    publicUrl: "https://business.google.com/local-post/gbp-post-queryable",
+    platform: "GBP",
+    storeId: demoStoreId,
   })
-  const replayedAttempt = await store.readAttemptByIdempotencyKey(
-    "queryable-publish-key"
-  )
-  const history = await store.readPublishHistory("queryable-draft")
+  expect(reservation.kind).toBe("reserved")
+  await store.completePublishAttempt({
+    draftId: "queryable-draft",
+    externalPostId: "gbp-post-queryable",
+    idempotencyKey: "queryable-publish-key",
+    platform: "GBP",
+    publicUrl: "https://business.google.com/local-post/gbp-post-queryable",
+    storeId: demoStoreId,
+  })
+  const replayedReservation = await store.reservePublishAttempt({
+    draftId: "queryable-draft",
+    idempotencyKey: "queryable-publish-key",
+    now: new Date("2026-06-18T00:02:00.000Z"),
+    platform: "GBP",
+    storeId: demoStoreId,
+  })
+  expect(replayedReservation.kind).toBe("replay")
+  const replayedAttempt =
+    replayedReservation.kind === "replay"
+      ? replayedReservation.attempt
+      : undefined
+  const history = await store.readPublishHistory("queryable-draft", "GBP")
   const row = postRowsSchema.parse(
     await context.queryable.queryOne(
       'SELECT post_drafts.status AS "draftStatus", (SELECT COUNT(*) FROM post_publish_attempts WHERE idempotency_key = ?) AS attempts FROM post_drafts WHERE id = ?',
@@ -61,14 +79,15 @@ async function runPostStorePersistenceScenario(context: {
     )
   )
 
-  expect(storedPreviewSchema.parse(draft.preview)).toEqual({
+  expect(storedPreviewSchema.parse(draft?.preview)).toEqual({
     canPublish: true,
     englishCopy: "English copy",
     koreanCopy: "한국어 카피",
   })
   expect(replayedAttempt).toEqual({
     attemptNumber: 1,
-    gbpPostId: "gbp-post-queryable",
+    externalPostId: "gbp-post-queryable",
+    platform: "GBP",
     publicUrl: "https://business.google.com/local-post/gbp-post-queryable",
     status: "SUCCEEDED",
   })
@@ -100,6 +119,8 @@ async function createPostgresPostPersistenceFixture(
       idempotency_key text NOT NULL UNIQUE,
       attempt_number integer NOT NULL,
       status text NOT NULL,
+      platform text NOT NULL DEFAULT 'GBP',
+      external_post_id text,
       gbp_post_id text,
       public_url text,
       error_code text,

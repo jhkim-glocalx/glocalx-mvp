@@ -1,16 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import {
+  createIdlePublishStates,
   parseDraftState,
   parsePostingDecisionTurnState,
   parsePublishState,
   previewKeyForDraft,
   type DraftState,
+  type MarketingPlatform,
   type PostingChatTurn,
   type PostingDecisionTurnState,
-  type PublishState,
+  type PublishStates,
 } from "./app-workspace-model"
 import { readAppJsonResponse } from "./app-workspace-response"
 import { imageAssetRequestPayloads } from "./image-asset-request-payloads"
@@ -35,7 +37,10 @@ export function usePostingWorkspace({
   const [postingDecision, setPostingDecision] =
     useState<PostingDecisionTurnState>({ kind: "idle" })
   const [postingSessionId, setPostingSessionId] = useState<string>()
-  const [publish, setPublish] = useState<PublishState>({ kind: "idle" })
+  const [publishByPlatform, setPublishByPlatform] = useState<PublishStates>(
+    createIdlePublishStates
+  )
+  const publishInFlightRef = useRef(false)
   const { handleImageFiles, imageAssets } = useImageAssets({
     onImagesSelected: () => {
       // Media changes alter the draft payload hash, so posting state is reset with the selection.
@@ -43,7 +48,7 @@ export function usePostingWorkspace({
       setPostingChatTurns([])
       setPostingDecision({ kind: "idle" })
       setPostingSessionId(undefined)
-      setPublish({ kind: "idle" })
+      setPublishByPlatform(createIdlePublishStates())
     },
     onInvalidImage: (message) => {
       setDraft({ kind: "error", message })
@@ -66,7 +71,7 @@ export function usePostingWorkspace({
 
     setDraft({ kind: "loading" })
     setPostingDecision({ kind: "idle" })
-    setPublish({ kind: "idle" })
+    setPublishByPlatform(createIdlePublishStates())
     try {
       const response = await fetch("/api/posts/drafts", {
         body: JSON.stringify({
@@ -123,7 +128,7 @@ export function usePostingWorkspace({
       },
     ])
     setPostingDecision({ kind: "loading" })
-    setPublish({ kind: "idle" })
+    setPublishByPlatform(createIdlePublishStates())
 
     try {
       const response = await fetch("/api/posts/conversation/decision", {
@@ -141,6 +146,7 @@ export function usePostingWorkspace({
           storeId,
           suggestionMessage: draft.suggestion.message,
           suggestionRevisedIntent: draft.suggestion.revisedIntent,
+          targetChannel: activePreviewKey === "INSTAGRAM" ? "INSTAGRAM" : "GBP",
         }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
@@ -192,21 +198,33 @@ export function usePostingWorkspace({
     await replyToSuggestion("그냥 진행할게")
   }
 
-  async function publishDraft() {
+  async function publishDraft(targetChannel: MarketingPlatform) {
+    const channelPublish = publishByPlatform[targetChannel]
+    if (publishInFlightRef.current || channelPublish.kind === "published") {
+      return
+    }
     if (draft.kind !== "ready") {
       // The client blocks empty publishes; the route owns idempotency and retry-limit enforcement.
-      setPublish({
-        kind: "blocked",
-        message:
-          "먼저 사진과 알리고 싶은 말이나 단어를 분석해 게시물 초안을 만들어주세요.",
-      })
+      setPublishByPlatform((current) => ({
+        ...current,
+        [targetChannel]: {
+          kind: "blocked",
+          message:
+            "먼저 사진과 알리고 싶은 말이나 단어를 분석해 게시물 초안을 만들어주세요.",
+          targetChannel,
+        },
+      }))
       return
     }
 
-    setPublish({ kind: "loading" })
+    publishInFlightRef.current = true
+    setPublishByPlatform((current) => ({
+      ...current,
+      [targetChannel]: { kind: "loading", targetChannel },
+    }))
     try {
       const response = await fetch(`/api/posts/${draft.draftId}/publish`, {
-        body: JSON.stringify({ storeId }),
+        body: JSON.stringify({ storeId, targetChannel }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       })
@@ -214,16 +232,29 @@ export function usePostingWorkspace({
         response,
         publishNetworkErrorMessage
       )
-      setPublish(parsePublishState(payload))
+      setPublishByPlatform((current) => ({
+        ...current,
+        [targetChannel]: parsePublishState(payload, targetChannel),
+      }))
     } catch (error) {
       if (!(error instanceof Error)) {
         throw error
       }
-      setPublish({
-        kind: "blocked",
-        message: publishNetworkErrorMessage,
-      })
+      setPublishByPlatform((current) => ({
+        ...current,
+        [targetChannel]: {
+          kind: "blocked",
+          message: publishNetworkErrorMessage,
+          targetChannel,
+        },
+      }))
+    } finally {
+      publishInFlightRef.current = false
     }
+  }
+
+  function selectPreview(previewKey: string) {
+    setActivePreviewKey(previewKey)
   }
 
   return {
@@ -235,10 +266,11 @@ export function usePostingWorkspace({
     intent,
     postingChatTurns,
     postingDecision,
-    publish,
+    publish:
+      publishByPlatform[activePreviewKey === "INSTAGRAM" ? "INSTAGRAM" : "GBP"],
     publishDraft,
     replyToSuggestion,
-    setActivePreviewKey,
+    setActivePreviewKey: selectPreview,
     setIntent,
     skipSuggestion,
     submitDraft,

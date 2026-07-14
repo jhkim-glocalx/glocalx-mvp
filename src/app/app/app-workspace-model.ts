@@ -3,6 +3,7 @@ import {
   readString,
   readStringArray,
 } from "@/app/_components/json-value"
+import type { MarketingPlatform } from "./app-workspace-draft-types"
 
 export {
   platformPreviewKey,
@@ -49,9 +50,23 @@ export function appNavIdFromSearchParam(
 
 export type PublishState =
   | { readonly kind: "idle" }
-  | { readonly kind: "loading" }
-  | { readonly kind: "published"; readonly message: string }
-  | { readonly kind: "blocked"; readonly message: string }
+  | { readonly kind: "loading"; readonly targetChannel: MarketingPlatform }
+  | {
+      readonly kind: "published"
+      readonly message: string
+      readonly targetChannel: MarketingPlatform
+    }
+  | {
+      readonly kind: "blocked"
+      readonly message: string
+      readonly targetChannel: MarketingPlatform
+    }
+
+export type PublishStates = Record<MarketingPlatform, PublishState>
+
+export function createIdlePublishStates(): PublishStates {
+  return { GBP: { kind: "idle" }, INSTAGRAM: { kind: "idle" } }
+}
 
 export type PerformanceMetric = {
   readonly caption: string
@@ -154,21 +169,31 @@ export function parseGbpPerformanceState(payload: unknown): PerformanceState {
   }
 }
 
-export function parsePublishState(payload: unknown): PublishState {
+export function parsePublishState(
+  payload: unknown,
+  targetChannel: MarketingPlatform
+): PublishState {
   if (!isRecord(payload)) {
-    return { kind: "blocked", message: "게시 응답을 읽지 못했습니다." }
+    return {
+      kind: "blocked",
+      message: "게시 응답을 읽지 못했습니다.",
+      targetChannel,
+    }
   }
 
   // Only the route's PUBLISHED contract becomes success; every other status stays retry/block UI.
   const status = readString(payload["status"])
   if (status === "PUBLISHED") {
-    return { kind: "published", message: "게시 완료" }
+    return { kind: "published", message: "게시 완료", targetChannel }
   }
 
   return {
     kind: "blocked",
     message:
       readString(payload["message"]) ??
-      "Google 비즈니스 프로필 상태를 확인해주세요.",
+      (targetChannel === "GBP"
+        ? "Google 비즈니스 프로필 상태를 확인해주세요."
+        : "Instagram 비즈니스 계정 연결 상태를 확인해주세요."),
+    targetChannel,
   }
 }

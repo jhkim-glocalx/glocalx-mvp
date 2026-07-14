@@ -68,6 +68,12 @@ The 4px base unit is used throughout. Account screens remain inside `MobileShell
 - **States:** configuration, validation, and sign-in failure messages.
 - **Accessibility:** uses `role="alert"` only for newly surfaced errors.
 
+### ChannelPublishAction
+
+- **Structure:** selected GBP or Instagram preview, channel-specific action label, and non-overlapping inline publish status below the preview.
+- **States:** idle, publishing, published, connection blocked, and manual follow-up after repeated failures.
+- **Accessibility:** the action names its destination channel; changing preview tabs clears status from the previous channel.
+
 ## 6. Motion & Interaction
 
 Interactive hover and focus changes use the existing 160ms `--ease-out` transitions. Press states use a small transform only. Respect `prefers-reduced-motion`, which already suppresses non-essential animation.

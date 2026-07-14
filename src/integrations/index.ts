@@ -32,6 +32,10 @@ import {
   createStubReviews,
   createStubTranslation,
 } from "./stub"
+import {
+  createProductionInstagramPosts,
+  createStubInstagramPosts,
+} from "./instagram"
 import { createStubPerformance } from "./stub-performance"
 
 export function createIntegrationAdapters(
@@ -53,9 +57,10 @@ export function createIntegrationAdapters(
         : createProductionNaverSearch(env, fetchImpl),
       googleOAuth: createProductionGoogleOAuth(env),
       gbpBusinessInformation: createProductionBusinessInformation(env),
-      gbpLocalPosts: createProductionLocalPosts(env),
+      gbpLocalPosts: createProductionLocalPosts(env, fetchImpl),
       gbpPerformance: createProductionPerformance(env),
       gbpReviews: createProductionReviews(env),
+      instagramPosts: createProductionInstagramPosts(env, fetchImpl),
       contentGeneration: createStubContentGeneration(),
       marketingGeneration: createProductionMarketingGeneration(env, fetchImpl),
       onboardingConversation: createProductionOnboardingConversation(
@@ -77,6 +82,7 @@ export function createIntegrationAdapters(
     gbpLocalPosts: createStubLocalPosts(),
     gbpPerformance: createStubPerformance(),
     gbpReviews: createStubReviews(),
+    instagramPosts: createStubInstagramPosts(),
     contentGeneration: createStubContentGeneration(),
     marketingGeneration: createStubMarketingGeneration(),
     onboardingConversation: createStubOnboardingConversation(),

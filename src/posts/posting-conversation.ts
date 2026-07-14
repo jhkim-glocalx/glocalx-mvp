@@ -156,6 +156,10 @@ export async function processPostingDecision(
       activeSuggestionId: options.request.activeSuggestionId,
       currentState: sessionStateForAdapter(session.state),
       draftSummary: options.request.draftSummary,
+      imageAssets: (options.request.imageAssets ?? []).map((asset) => ({
+        id: asset.id,
+        name: asset.name,
+      })),
       ownerMessage: options.request.ownerMessage,
       suggestionMessage: options.request.suggestionMessage,
     })

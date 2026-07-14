@@ -50,6 +50,7 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
               draftId,
               postStore,
               storeId: session.storeId,
+              targetChannel: parsed.value.targetChannel,
             })
           : await publishPostDraft({
               adapters,
@@ -57,12 +58,15 @@ export async function POST(request: NextRequest, context: PublishRouteContext) {
               idempotencyKey: parsed.value.idempotencyKey,
               postStore,
               storeId: session.storeId,
+              targetChannel: parsed.value.targetChannel,
             })
       const status =
-        result.status === "BLOCKED" ||
-        result.status === "MANUAL_PUBLISH_REQUIRED"
-          ? 409
-          : 200
+        result.status === "BLOCKED" && result.code === "DRAFT_NOT_FOUND"
+          ? 404
+          : result.status === "BLOCKED" ||
+              result.status === "MANUAL_PUBLISH_REQUIRED"
+            ? 409
+            : 200
       return Response.json(result, { status })
     }
   )

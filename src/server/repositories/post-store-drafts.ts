@@ -1,10 +1,13 @@
 import { locationStatusSchema } from "@/domain/location-status"
 import type {
   CurrentLocation,
+  GbpPublishingCredentials,
   PostPreview,
   StoredPostDraft,
   StoreProfile,
 } from "@/posts/post-types"
+import { decryptToken } from "@/auth/token-encryption"
+import type { MarketingPlatform } from "@/integrations/contracts"
 import type { Queryable } from "@/server/db"
 import { z } from "zod"
 
@@ -15,7 +18,7 @@ type UpsertStoredPostDraftOptions = {
   readonly preview: PostPreview
   readonly revisionOfDraftId?: string
   readonly storeId: string
-  readonly targetChannel: "GBP"
+  readonly targetChannel: MarketingPlatform
 }
 
 const storeRowSchema = z.object({
@@ -27,6 +30,47 @@ const locationRowSchema = z.object({
   googleLocationId: z.string().nullable(),
   status: locationStatusSchema,
 })
+
+const publishingCredentialsRowSchema = z.object({
+  accountName: z.string(),
+  encryptedAccessToken: z.string(),
+  googleLocationId: z.string(),
+})
+
+export async function readGbpPublishingCredentials(
+  queryable: Queryable,
+  storeId: string
+): Promise<GbpPublishingCredentials | undefined> {
+  const row = await queryable.queryOne(
+    `SELECT account.account_name AS "accountName",
+      connection.encrypted_access_token AS "encryptedAccessToken",
+      location.google_location_id AS "googleLocationId"
+    FROM gbp_locations AS location
+    JOIN gbp_accounts AS account
+      ON account.id = location.gbp_account_id AND account.store_id = location.store_id
+    JOIN oauth_connections AS connection
+      ON connection.store_id = location.store_id AND connection.provider = 'GOOGLE'
+    WHERE location.store_id = ? AND location.status = 'VERIFIED'
+      AND location.google_location_id IS NOT NULL
+    ORDER BY connection.created_at DESC, location.updated_at DESC
+    LIMIT 1`,
+    [storeId]
+  )
+  if (row === undefined) {
+    return undefined
+  }
+  const parsed = publishingCredentialsRowSchema.parse(row)
+  const accessToken = decryptToken(parsed.encryptedAccessToken)
+  if (accessToken === undefined) {
+    return undefined
+  }
+  return {
+    accessToken,
+    parent: parsed.googleLocationId.startsWith("accounts/")
+      ? parsed.googleLocationId
+      : `${parsed.accountName}/${parsed.googleLocationId}`,
+  }
+}
 
 const postPreviewSchema = z
   .object({
@@ -80,16 +124,41 @@ export async function readPostCurrentLocation(
 
 export async function readStoredPostDraft(
   queryable: Queryable,
-  draftId: string
-): Promise<StoredPostDraft> {
-  const parsed = draftRowSchema.parse(
-    await queryable.queryOne(
-      `SELECT id, korean_copy AS "koreanCopy", english_copy AS "englishCopy",
+  draftId: string,
+  storeId: string
+): Promise<StoredPostDraft | undefined> {
+  const row = await queryable.queryOne(
+    `SELECT id, korean_copy AS "koreanCopy", english_copy AS "englishCopy",
         marketing_preview_json AS "marketingPreview"
-        FROM post_drafts WHERE id = ?`,
-      [draftId]
-    )
+        FROM post_drafts WHERE id = ? AND store_id = ?`,
+    [draftId, storeId]
   )
+  if (row === undefined) {
+    return undefined
+  }
+  const parsed = draftRowSchema.parse(row)
+  return {
+    englishCopy: parsed.englishCopy,
+    id: parsed.id,
+    koreanCopy: parsed.koreanCopy,
+    preview: parsed.marketingPreview,
+  }
+}
+
+export async function readStoredPostDraftMedia(
+  queryable: Queryable,
+  draftId: string
+): Promise<StoredPostDraft | undefined> {
+  const row = await queryable.queryOne(
+    `SELECT id, korean_copy AS "koreanCopy", english_copy AS "englishCopy",
+      marketing_preview_json AS "marketingPreview"
+    FROM post_drafts WHERE id = ?`,
+    [draftId]
+  )
+  if (row === undefined) {
+    return undefined
+  }
+  const parsed = draftRowSchema.parse(row)
   return {
     englishCopy: parsed.englishCopy,
     id: parsed.id,

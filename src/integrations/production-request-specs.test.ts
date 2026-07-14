@@ -190,7 +190,14 @@ describe("production request specs", () => {
   })
 
   it("builds exact Google GBP request specs", async () => {
-    const adapters = createIntegrationAdapters({ env: productionEnv })
+    const adapters = createIntegrationAdapters({
+      env: productionEnv,
+      fetchImpl: async () =>
+        Response.json({
+          name: "accounts/123/locations/456/localPosts/789",
+          searchUrl: "https://www.google.com/search?post=789",
+        }),
+    })
 
     const location = { title: "브런치모먼트 홍대점" }
 
@@ -255,20 +262,18 @@ describe("production request specs", () => {
       },
     })
 
-    expect(
+    await expect(
       adapters.gbpLocalPosts.createLocalPost({
         accessToken: "test-access-token",
+        mediaUrls: ["https://example.com/brunch.jpg"],
         parent: "accounts/123/locations/456",
         summary: "주말 브런치 신메뉴",
       })
-    ).toEqual({
+    ).resolves.toEqual({
       kind: "ok",
       value: {
-        method: "POST",
-        url: "https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts",
-        headers: { Authorization: "Bearer test-access-token" },
-        requiredScopes: ["https://www.googleapis.com/auth/business.manage"],
-        body: { summary: "주말 브런치 신메뉴" },
+        externalPostId: "accounts/123/locations/456/localPosts/789",
+        publicUrl: "https://www.google.com/search?post=789",
       },
     })
 

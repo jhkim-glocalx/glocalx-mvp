@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { ReferenceFlowScreens } from "./reference-flow-screens"
 import type {
@@ -157,7 +157,9 @@ describe("reference flow screens", () => {
     expect(screen.getByText("제안 반영 완료")).toBeInTheDocument()
   })
 
-  it("shows translations below Instagram preview without GBP verification errors", () => {
+  it("publishes the selected Instagram preview without showing GBP errors", () => {
+    const onPublish = vi.fn()
+    const onPreviewChange = vi.fn()
     const draft = readyDraft([
       {
         aspectRatio: "4:3",
@@ -192,9 +194,12 @@ describe("reference flow screens", () => {
           activePreviewKey: "INSTAGRAM",
           draft,
         })}
+        onPublish={onPublish}
+        onPreviewChange={onPreviewChange}
         publish={{
           kind: "blocked",
           message: "Google 비즈니스 프로필 인증이 필요합니다.",
+          targetChannel: "GBP",
         }}
       />
     )
@@ -206,6 +211,13 @@ describe("reference flow screens", () => {
       "aria-selected",
       "true"
     )
+    expect(screen.getByRole("tabpanel")).toHaveStyle({
+      aspectRatio: "1 / 1",
+    })
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Instagram 피드" }), {
+      key: "ArrowLeft",
+    })
+    expect(onPreviewChange).toHaveBeenCalledWith("GBP")
     expect(
       screen.getByText("이번 주말 브런치 신메뉴를 인스타그램에서 소개하세요.")
     ).toBeInTheDocument()
@@ -214,7 +226,10 @@ describe("reference flow screens", () => {
     expect(
       screen.getByText("週末ブランチの新メニューをお楽しみください。")
     ).toBeInTheDocument()
-    expect(screen.getByText("인스타그램 연동 준비 중")).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole("button", { name: "Instagram에 게시하기" })
+    )
+    expect(onPublish).toHaveBeenCalledWith("INSTAGRAM")
     expect(
       screen.queryByText("Google 비즈니스 프로필 인증이 필요합니다.")
     ).not.toBeInTheDocument()

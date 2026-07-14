@@ -93,6 +93,51 @@ function ensureColumn(
   }
 }
 
+function ensureSocialPostDraftChannels(database: SqliteDatabase): void {
+  const row = database
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get("post_drafts") as { readonly sql?: string } | undefined
+  if (row?.sql?.includes("'INSTAGRAM'") === true) {
+    return
+  }
+
+  database.pragma("foreign_keys = OFF")
+  try {
+    database.exec(`
+      BEGIN;
+      CREATE TABLE post_drafts_social_upgrade (
+        id TEXT PRIMARY KEY,
+        store_id TEXT NOT NULL REFERENCES stores(id),
+        owner_intent TEXT NOT NULL,
+        target_channel TEXT NOT NULL CHECK (target_channel IN ('GBP', 'INSTAGRAM')),
+        status TEXT NOT NULL CHECK (status IN ('DRAFT', 'APPROVED', 'PUBLISHED', 'FAILED')),
+        korean_copy TEXT NOT NULL,
+        english_copy TEXT NOT NULL,
+        revision_of_draft_id TEXT REFERENCES post_drafts_social_upgrade(id),
+        marketing_preview_json TEXT,
+        created_at TEXT NOT NULL
+      );
+      INSERT INTO post_drafts_social_upgrade (
+        id, store_id, owner_intent, target_channel, status, korean_copy,
+        english_copy, revision_of_draft_id, marketing_preview_json, created_at
+      )
+      SELECT id, store_id, owner_intent, target_channel, status, korean_copy,
+        english_copy, revision_of_draft_id, marketing_preview_json, created_at
+      FROM post_drafts;
+      DROP TABLE post_drafts;
+      ALTER TABLE post_drafts_social_upgrade RENAME TO post_drafts;
+      COMMIT;
+    `)
+  } catch (error) {
+    if (database.inTransaction) {
+      database.exec("ROLLBACK")
+    }
+    throw error
+  } finally {
+    database.pragma("foreign_keys = ON")
+  }
+}
+
 export function resolveDefaultDatabasePath(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): string {
@@ -131,4 +176,15 @@ export function applyMigrations(database: SqliteDatabase): void {
   }
   ensureColumn(database, "post_drafts", "revision_of_draft_id", "TEXT")
   ensureColumn(database, "post_drafts", "marketing_preview_json", "TEXT")
+  ensureSocialPostDraftChannels(database)
+  ensureColumn(
+    database,
+    "post_publish_attempts",
+    "platform",
+    "TEXT NOT NULL DEFAULT 'GBP'"
+  )
+  ensureColumn(database, "post_publish_attempts", "external_post_id", "TEXT")
+  database.exec(
+    "UPDATE post_publish_attempts SET external_post_id = gbp_post_id WHERE external_post_id IS NULL AND gbp_post_id IS NOT NULL"
+  )
 }

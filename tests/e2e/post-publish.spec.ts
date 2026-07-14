@@ -46,7 +46,8 @@ test("Stub post draft and publish returns deterministic GBP history", async ({
   const publishBody = await publishResponse.json()
   expect(publishBody).toMatchObject({
     status: "PUBLISHED",
-    gbpPostId: "stub-gbp-post",
+    externalPostId: "stub-gbp-post",
+    platform: "GBP",
     publicUrl: "https://business.google.com/local-post/stub-gbp-post",
     history: [
       {

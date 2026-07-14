@@ -20,13 +20,14 @@ describe("missing-credentials", () => {
     })
   })
 
-  it("reports missing Google credentials without printing secret values", () => {
+  it("reports missing Google credentials without printing secret values", async () => {
     const adapters = createIntegrationAdapters({
       env: { APP_INTEGRATION_MODE: "production" },
     })
 
-    const result = adapters.gbpLocalPosts.createLocalPost({
+    const result = await adapters.gbpLocalPosts.createLocalPost({
       accessToken: "",
+      mediaUrls: ["https://example.com/image.jpg"],
       parent: "accounts/demo/locations/demo",
       summary: "주말 브런치 신메뉴",
     })

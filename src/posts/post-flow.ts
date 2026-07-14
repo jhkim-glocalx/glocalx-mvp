@@ -1,8 +1,7 @@
-import { z } from "zod"
-
 import { canUseLiveGbpActions } from "@/gbp/state-machine"
 
 import { stableId } from "./post-repository"
+import { createPostMediaUrl } from "./post-media"
 import { buildMarketingPreview } from "./post-marketing-preview"
 import type {
   CreatePostDraftOptions,
@@ -22,12 +21,84 @@ export type {
   RevisePostDraftOptions,
 } from "./post-types"
 
-const localPostBodySchema = z
-  .object({
-    gbpPostId: z.string(),
-    publicUrl: z.url(),
+type PublishedPostBody = {
+  readonly externalPostId: string
+  readonly publicUrl: string
+}
+
+function publishingNotConfigured(
+  targetChannel: PublishPostDraftOptions["targetChannel"]
+): PublishPostResult {
+  return targetChannel === "GBP"
+    ? {
+        status: "BLOCKED",
+        code: "GBP_PUBLISH_NOT_CONFIGURED",
+        message: "Google 비즈니스 프로필 게시 연결 정보를 확인해주세요.",
+      }
+    : {
+        status: "BLOCKED",
+        code: "INSTAGRAM_PUBLISH_NOT_CONFIGURED",
+        message: "Instagram 비즈니스 계정 연결 정보를 확인해주세요.",
+      }
+}
+
+async function publishBodyForDraft(
+  options: PublishPostDraftOptions,
+  draft: NonNullable<
+    Awaited<ReturnType<PublishPostDraftOptions["postStore"]["readDraft"]>>
+  >
+): Promise<PublishedPostBody | PublishPostResult> {
+  const preview = draft.preview?.platformPreviews?.find(
+    (item) => item.platform === options.targetChannel
+  )
+  const summary = preview?.copy ?? draft.koreanCopy
+  const sourceImages = draft.preview?.sourceImages ?? []
+  const mediaUrls =
+    options.adapters.mode === "stub"
+      ? sourceImages.length === 0
+        ? ["https://stub.invalid/social-post.jpg"]
+        : sourceImages.map(
+            (asset) => `https://stub.invalid/${encodeURIComponent(asset.id)}`
+          )
+      : sourceImages
+          .map((asset) => createPostMediaUrl(draft.id, asset.id))
+          .filter((url): url is string => url !== undefined)
+
+  if (
+    options.adapters.mode === "production" &&
+    (sourceImages.length === 0 || mediaUrls.length !== sourceImages.length)
+  ) {
+    return publishingNotConfigured(options.targetChannel)
+  }
+
+  if (options.targetChannel === "GBP") {
+    const credentials = await options.postStore.readGbpPublishingCredentials(
+      options.storeId
+    )
+    if (credentials === undefined) {
+      return publishingNotConfigured("GBP")
+    }
+    const adapterResult = await options.adapters.gbpLocalPosts.createLocalPost({
+      accessToken: credentials.accessToken,
+      mediaUrls,
+      parent: credentials.parent,
+      summary,
+    })
+    if (adapterResult.kind === "blocked_by_credentials") {
+      return publishingNotConfigured("GBP")
+    }
+    return adapterResult.value
+  }
+
+  const adapterResult = await options.adapters.instagramPosts.createPost({
+    caption: summary,
+    mediaUrls,
   })
-  .passthrough()
+  if (adapterResult.kind === "blocked_by_credentials") {
+    return publishingNotConfigured("INSTAGRAM")
+  }
+  return adapterResult.value
+}
 
 export async function createPostDraft(
   options: CreatePostDraftOptions
@@ -36,7 +107,7 @@ export async function createPostDraft(
   const eligibility = canUseLiveGbpActions(location.status)
   const preview = await buildMarketingPreview(
     options,
-    eligibility.kind === "allowed"
+    options.targetChannel === "INSTAGRAM" || eligibility.kind === "allowed"
   )
   // Draft ids hash deterministic inputs so identical client retries reuse the same review surface.
   const draftId = stableId(
@@ -92,78 +163,150 @@ export async function revisePostDraft(
 export async function publishPostDraft(
   options: PublishPostDraftOptions
 ): Promise<PublishPostResult> {
-  const location = await options.postStore.readCurrentLocation(options.storeId)
-  const eligibility = canUseLiveGbpActions(location.status)
-  if (eligibility.kind === "blocked") {
-    return {
-      status: "BLOCKED",
-      code: eligibility.code,
-      message: eligibility.message,
+  if (options.targetChannel === "GBP") {
+    const location = await options.postStore.readCurrentLocation(
+      options.storeId
+    )
+    const eligibility = canUseLiveGbpActions(location.status)
+    if (eligibility.kind === "blocked") {
+      return {
+        status: "BLOCKED",
+        code: eligibility.code,
+        message: eligibility.message,
+      }
     }
   }
 
-  const draft = await options.postStore.readDraft(options.draftId)
-  // Publish retries default to one key per draft, preventing duplicate GBP posts after success.
-  const idempotencyKey = options.idempotencyKey ?? `publish-${options.draftId}`
-  const existingAttempt =
-    await options.postStore.readAttemptByIdempotencyKey(idempotencyKey)
+  const draft = await options.postStore.readDraft(
+    options.draftId,
+    options.storeId
+  )
+  if (draft === undefined) {
+    return {
+      status: "BLOCKED",
+      code: "DRAFT_NOT_FOUND",
+      message: "게시물 초안을 찾을 수 없습니다.",
+    }
+  }
+
+  const failedAttemptCount = await options.postStore.countFailedAttempts(
+    options.draftId,
+    options.targetChannel
+  )
+  const idempotencyKey =
+    options.idempotencyKey ??
+    `publish-${options.targetChannel.toLowerCase()}-${options.draftId}-${failedAttemptCount + 1}`
+
+  if (failedAttemptCount >= 3) {
+    return {
+      status: "MANUAL_PUBLISH_REQUIRED",
+      code: "POST_PUBLISH_RETRY_LIMIT",
+      message: `게시 시도가 3회 실패했습니다. ${
+        options.targetChannel === "GBP"
+          ? "Google Business Profile"
+          : "Instagram"
+      }에서 직접 게시하고 상태를 확인해주세요.`,
+    }
+  }
+
+  const reservation = await options.postStore.reservePublishAttempt({
+    draftId: options.draftId,
+    idempotencyKey,
+    now: options.adapters.clock.now(),
+    platform: options.targetChannel,
+    storeId: options.storeId,
+  })
+  if (reservation.kind === "not_found") {
+    return {
+      status: "BLOCKED",
+      code: "DRAFT_NOT_FOUND",
+      message: "게시물 초안을 찾을 수 없습니다.",
+    }
+  }
+  if (reservation.kind === "conflict") {
+    return {
+      status: "BLOCKED",
+      code: "IDEMPOTENCY_KEY_CONFLICT",
+      message: "같은 게시 요청 키가 다른 게시물에 이미 사용되었습니다.",
+    }
+  }
+  if (reservation.kind === "in_progress") {
+    return {
+      status: "BLOCKED",
+      code: "PUBLISH_IN_PROGRESS",
+      message: "같은 게시 요청이 이미 진행 중입니다.",
+    }
+  }
   if (
-    existingAttempt?.status === "SUCCEEDED" &&
-    existingAttempt.gbpPostId !== null &&
-    existingAttempt.publicUrl !== null
+    reservation.kind === "replay" &&
+    reservation.attempt.externalPostId !== null &&
+    reservation.attempt.publicUrl !== null
   ) {
     return {
       status: "PUBLISHED",
       draftId: options.draftId,
-      gbpPostId: existingAttempt.gbpPostId,
-      publicUrl: existingAttempt.publicUrl,
-      attemptNumber: existingAttempt.attemptNumber,
-      history: await options.postStore.readPublishHistory(options.draftId),
+      externalPostId: reservation.attempt.externalPostId,
+      platform: options.targetChannel,
+      publicUrl: reservation.attempt.publicUrl,
+      attemptNumber: reservation.attempt.attemptNumber,
+      history: await options.postStore.readPublishHistory(
+        options.draftId,
+        options.targetChannel
+      ),
     }
   }
-
-  // After repeated failures, automated publish stops before another adapter call mutates state.
-  if ((await options.postStore.countFailedAttempts(options.draftId)) >= 3) {
+  if (reservation.kind !== "reserved") {
     return {
-      status: "MANUAL_PUBLISH_REQUIRED",
-      code: "POST_PUBLISH_RETRY_LIMIT",
-      message:
-        "게시 시도가 3회 실패했습니다. Google Business Profile에서 직접 게시하고 상태를 확인해주세요.",
+      status: "BLOCKED",
+      code: "PUBLISH_IN_PROGRESS",
+      message: "같은 게시 요청이 이미 진행 중입니다.",
     }
   }
 
-  const attemptNumber = await options.postStore.readNextAttemptNumber(
-    options.draftId
-  )
-  const adapterResult = options.adapters.gbpLocalPosts.createLocalPost({
-    accessToken: "stub-access-token",
-    parent: "accounts/stub/locations/stub-created",
-    summary: draft.koreanCopy,
-  })
-  // Local adapter failures still produce stub evidence while live success bodies are schema-checked.
-  const body =
-    adapterResult.kind === "ok"
-      ? localPostBodySchema.parse(adapterResult.value.body)
-      : {
-          gbpPostId: "stub-gbp-post",
-          publicUrl: "https://business.google.com/local-post/stub-gbp-post",
-        }
+  let body: PublishedPostBody | PublishPostResult
+  try {
+    body = await publishBodyForDraft(options, draft)
+  } catch {
+    await options.postStore.failPublishAttempt({
+      draftId: options.draftId,
+      idempotencyKey,
+      platform: options.targetChannel,
+    })
+    return {
+      status: "BLOCKED",
+      code: "PUBLISH_FAILED",
+      message:
+        "게시 채널에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.",
+    }
+  }
+  if ("status" in body) {
+    await options.postStore.releasePublishAttempt({
+      draftId: options.draftId,
+      idempotencyKey,
+      platform: options.targetChannel,
+    })
+    return body
+  }
 
-  await options.postStore.recordSuccessfulPublishAttempt({
-    attemptNumber,
+  await options.postStore.completePublishAttempt({
     draftId: options.draftId,
-    gbpPostId: body.gbpPostId,
+    externalPostId: body.externalPostId,
     idempotencyKey,
-    now: options.adapters.clock.now(),
+    platform: options.targetChannel,
     publicUrl: body.publicUrl,
+    storeId: options.storeId,
   })
 
   return {
     status: "PUBLISHED",
     draftId: options.draftId,
-    gbpPostId: body.gbpPostId,
+    externalPostId: body.externalPostId,
+    platform: options.targetChannel,
     publicUrl: body.publicUrl,
-    attemptNumber,
-    history: await options.postStore.readPublishHistory(options.draftId),
+    attemptNumber: reservation.attempt.attemptNumber,
+    history: await options.postStore.readPublishHistory(
+      options.draftId,
+      options.targetChannel
+    ),
   }
 }

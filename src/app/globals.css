@@ -1253,6 +1253,8 @@ body {
   font-size: 14px;
   font-weight: 650;
   line-height: 1.58;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 
 .gx-bubble[data-speaker="assistant"] {
@@ -1680,9 +1682,6 @@ body {
 }
 
 .gx-publish-actions {
-  position: sticky;
-  z-index: 2;
-  bottom: 0;
   display: grid;
   justify-content: stretch;
   margin-top: 0;
@@ -1721,6 +1720,8 @@ body {
   font-size: 13px;
   font-weight: 650;
   line-height: 1.65;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 
 .gx-post-caption-stack {

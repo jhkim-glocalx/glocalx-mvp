@@ -1,4 +1,5 @@
 import type { AdapterResult, HttpRequestSpec } from "./contracts"
+import type { PublishedSocialPost } from "./social-publishing-contracts"
 
 export type CreateLocationInput = {
   readonly accessToken: string
@@ -29,6 +30,7 @@ export type RequestAdminRightsInput = {
 
 export type CreateLocalPostInput = {
   readonly accessToken: string
+  readonly mediaUrls: readonly string[]
   readonly parent: string
   readonly summary: string
 }
@@ -114,7 +116,9 @@ export interface GbpBusinessInformationAdapter {
 }
 
 export interface GbpLocalPostsAdapter {
-  createLocalPost(input: CreateLocalPostInput): AdapterResult<HttpRequestSpec>
+  createLocalPost(
+    input: CreateLocalPostInput
+  ): Promise<AdapterResult<PublishedSocialPost>>
 }
 
 export interface GbpReviewsAdapter {

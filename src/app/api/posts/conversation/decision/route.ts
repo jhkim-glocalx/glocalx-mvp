@@ -52,7 +52,7 @@ function createPostingDraftWriter(
           postStore: options.postStore,
           storeId: options.storeId,
           suggestionMode: "accepted",
-          targetChannel: "GBP",
+          targetChannel: options.request.targetChannel,
         })
       case "skipped":
         return createPostDraft({
@@ -62,7 +62,7 @@ function createPostingDraftWriter(
           postStore: options.postStore,
           storeId: options.storeId,
           suggestionMode: "skipped",
-          targetChannel: "GBP",
+          targetChannel: options.request.targetChannel,
         })
       case "revision_requested":
         return revisePostDraft({
@@ -73,7 +73,7 @@ function createPostingDraftWriter(
           postStore: options.postStore,
           storeId: options.storeId,
           suggestionMode: "skipped",
-          targetChannel: "GBP",
+          targetChannel: options.request.targetChannel,
         })
       case "question":
         return undefined

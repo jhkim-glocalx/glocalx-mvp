@@ -7,6 +7,7 @@ import type {
   GbpReviewsAdapter,
 } from "./gbp-contracts"
 import type { MarketingGenerationAdapter } from "./marketing-contracts"
+import type { InstagramPostsAdapter } from "./instagram-contracts"
 import type {
   OnboardingConversationAdapter,
   PostingConversationAdapter,
@@ -34,6 +35,11 @@ export type {
   SearchGoogleLocationsResult,
   UpdateReplyInput,
 } from "./gbp-contracts"
+export type {
+  CreateInstagramPostInput,
+  InstagramPostsAdapter,
+} from "./instagram-contracts"
+export type { PublishedSocialPost } from "./social-publishing-contracts"
 export { gbpPerformanceDailyMetrics } from "./gbp-contracts"
 export type {
   MarketingGenerationAdapter,
@@ -159,6 +165,7 @@ export type IntegrationAdapters = {
   readonly gbpLocalPosts: GbpLocalPostsAdapter
   readonly gbpPerformance: GbpPerformanceAdapter
   readonly gbpReviews: GbpReviewsAdapter
+  readonly instagramPosts: InstagramPostsAdapter
   readonly contentGeneration: ContentGenerationAdapter
   readonly marketingGeneration: MarketingGenerationAdapter
   readonly onboardingConversation: OnboardingConversationAdapter

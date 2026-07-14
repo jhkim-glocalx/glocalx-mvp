@@ -15,7 +15,9 @@ import type {
   HttpRequestSpec,
   RequestAdminRightsInput,
   SearchGoogleLocationsInput,
+  ExternalFetch,
 } from "./contracts"
+import { z } from "zod"
 
 export {
   buildNaverLocalSearchRequest,
@@ -190,23 +192,50 @@ export function createProductionBusinessInformation(
 }
 
 export function createProductionLocalPosts(
-  env: AdapterEnvironment
+  env: AdapterEnvironment,
+  fetchImpl: ExternalFetch
 ): GbpLocalPostsAdapter {
   return {
-    createLocalPost(input) {
+    async createLocalPost(input) {
       const blocked = googleBlockedResult(env)
       if (blocked.kind === "blocked_by_credentials") {
         return blocked
       }
 
+      const response = await fetchImpl(
+        `https://mybusiness.googleapis.com/v4/${input.parent}/localPosts`,
+        {
+          body: JSON.stringify({
+            languageCode: "ko",
+            media: input.mediaUrls.map((sourceUrl) => ({
+              mediaFormat: "PHOTO",
+              sourceUrl,
+            })),
+            summary: input.summary,
+            topicType: "STANDARD",
+          }),
+          headers: {
+            ...googleHeaders(input.accessToken),
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+          signal: AbortSignal.timeout(20_000),
+        }
+      )
+      if (!response.ok) {
+        throw new Error(
+          `GBP local-post publishing failed with ${response.status}.`
+        )
+      }
+      const published = z
+        .object({ name: z.string().min(1), searchUrl: z.url() })
+        .passthrough()
+        .parse(await response.json())
       return {
         kind: "ok",
         value: {
-          method: "POST",
-          url: `https://mybusiness.googleapis.com/v4/${input.parent}/localPosts`,
-          headers: googleHeaders(input.accessToken),
-          requiredScopes: [googleBusinessManageScope],
-          body: { summary: input.summary },
+          externalPostId: published.name,
+          publicUrl: published.searchUrl,
         },
       }
     },

@@ -35,6 +35,10 @@ export type PostingOwnerReplyInput = {
     "awaiting_suggestion_decision" | "question_answered"
   >
   readonly draftSummary: string
+  readonly imageAssets?: readonly {
+    readonly id: string
+    readonly name: string
+  }[]
   readonly ownerMessage: string
   readonly suggestionMessage: string
 }

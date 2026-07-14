@@ -135,6 +135,7 @@ async function buildFallbackMarketingPreview(
             revisedIntent: `${options.ownerIntent} · 대표 메뉴 첫 장 강조`,
             title: "대표 메뉴 첫 장 강조",
           },
+    sourceImages: imageAssets,
   }
 }
 
@@ -188,5 +189,6 @@ export async function buildMarketingPreview(
     koreanCopy: gbpPreview?.copy ?? basePreview.koreanCopy,
     platformPreviews: result.value.platformPreviews,
     suggestion: result.value.suggestion,
+    sourceImages: imageAssets,
   }
 }

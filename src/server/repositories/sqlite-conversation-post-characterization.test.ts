@@ -99,6 +99,7 @@ describe("SQLite conversation and post characterization", () => {
           idempotencyKey: "repository-publish-key",
           postStore,
           storeId: demoStoreId,
+          targetChannel: "GBP",
         })
         const secondPublish = await publishPostDraft({
           adapters,
@@ -106,6 +107,7 @@ describe("SQLite conversation and post characterization", () => {
           idempotencyKey: "repository-publish-key",
           postStore,
           storeId: demoStoreId,
+          targetChannel: "GBP",
         })
         const row = draftRowSchema.parse(
           database
@@ -119,15 +121,17 @@ describe("SQLite conversation and post characterization", () => {
         expect(firstPublish).toEqual({
           attemptNumber: 1,
           draftId: draft.draftId,
-          gbpPostId: "stub-gbp-post",
+          externalPostId: "stub-gbp-post",
           history: [
             {
               attemptNumber: 1,
-              gbpPostId: "stub-gbp-post",
+              externalPostId: "stub-gbp-post",
+              platform: "GBP",
               publicUrl: "https://business.google.com/local-post/stub-gbp-post",
               status: "SUCCEEDED",
             },
           ],
+          platform: "GBP",
           publicUrl: "https://business.google.com/local-post/stub-gbp-post",
           status: "PUBLISHED",
         })

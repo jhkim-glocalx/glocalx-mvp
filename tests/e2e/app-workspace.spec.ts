@@ -47,6 +47,29 @@ async function expectDashboardLanding(page: Page): Promise<void> {
   ).not.toHaveAttribute("aria-current", "page")
 }
 
+async function captureCompletePostingFlow(
+  page: Page,
+  path: string
+): Promise<void> {
+  await page.locator(".gx-route-page").evaluate((routePage) => {
+    const shell = routePage.querySelector<HTMLElement>(".gx-shell")
+    const screen = routePage.querySelector<HTMLElement>(".gx-screen")
+
+    routePage.style.display = "block"
+    routePage.style.minHeight = "0"
+    if (shell) {
+      shell.style.height = "auto"
+      shell.style.overflow = "visible"
+    }
+    if (screen) {
+      screen.style.flex = "none"
+      screen.style.height = "auto"
+      screen.style.overflow = "visible"
+    }
+  })
+  await page.screenshot({ fullPage: true, path })
+}
+
 test("app posting preview matches the reference flow", async ({ page }) => {
   await completeOnboarding(page)
 
@@ -79,10 +102,23 @@ test("app posting preview matches the reference flow", async ({ page }) => {
     page.getByText("今週末はブランチモーメント弘大店の新メニュー")
   ).toBeVisible()
   await expect(page.getByText("#홍대브런치")).toBeVisible()
-  await page.screenshot({
-    fullPage: true,
-    path: ".omo/evidence/task-8-post-draft.png",
-  })
+  await page.getByRole("button", { name: "Instagram에 게시하기" }).click()
+  await expect(page.getByText("게시 요청이 완료됐습니다.")).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "Instagram에 게시하기" })
+  ).toBeDisabled()
+  await page.getByRole("tab", { name: "Google 비즈니스 프로필" }).click()
+  await expect(
+    page.getByRole("button", { name: "GBP에 게시하기" })
+  ).toBeEnabled()
+  await page.getByRole("tab", { name: "Instagram 피드" }).click()
+  await expect(
+    page.getByRole("button", { name: "Instagram에 게시하기" })
+  ).toBeDisabled()
+  await captureCompletePostingFlow(
+    page,
+    ".omo/evidence/social-posts-instagram-desktop.png"
+  )
 })
 
 test("app publish blocked when location unverified", async ({ page }) => {
@@ -96,16 +132,37 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await page.getByRole("button", { name: "홍보 콘텐츠 넣기" }).click()
   await uploadMarketingImageAndGenerateDraft(page)
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
-  await page.getByRole("button", { name: /게시물 발행/ }).click()
+  await page.getByRole("button", { name: "GBP에 게시하기" }).click()
 
   await expect(
     page.getByText("Google 비즈니스 프로필 인증이 완료되어야")
   ).toBeVisible()
   await expect(page.getByText("게시 완료")).toHaveCount(0)
-  await page.screenshot({
-    fullPage: true,
-    path: ".omo/evidence/task-8-post-blocked.png",
-  })
+  await captureCompletePostingFlow(
+    page,
+    ".omo/evidence/social-posts-gbp-blocked-desktop.png"
+  )
+})
+
+test("mobile Instagram publishing keeps the selected channel state", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 844, width: 390 })
+  await completeOnboarding(page)
+  await page.getByRole("button", { name: "홍보 콘텐츠 넣기" }).click()
+  await uploadMarketingImageAndGenerateDraft(page)
+  await page.getByRole("button", { name: "제안 없이 진행" }).click()
+  await page.getByRole("tab", { name: "Instagram 피드" }).click()
+  await page.getByRole("button", { name: "Instagram에 게시하기" }).click()
+
+  await expect(page.getByText("게시 요청이 완료됐습니다.")).toBeVisible()
+  await expect(
+    page.getByText("Google 비즈니스 프로필 인증이 완료되어야")
+  ).toHaveCount(0)
+  await captureCompletePostingFlow(
+    page,
+    ".omo/evidence/social-posts-instagram-mobile.png"
+  )
 })
 
 test("app report and dashboard screens render reference metrics", async ({

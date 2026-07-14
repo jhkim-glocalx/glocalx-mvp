@@ -103,7 +103,7 @@ test("full unified stub happy path", async ({ page }) => {
   await uploadMarketingImageAndGenerateDraft(page)
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
-  await page.getByRole("button", { name: /게시물 발행/ }).click()
+  await page.getByRole("button", { name: "GBP에 게시하기" }).click()
   await expect(
     page.getByText("Google 비즈니스 프로필 인증이 완료되어야")
   ).toBeVisible()

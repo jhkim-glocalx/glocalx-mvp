@@ -201,18 +201,12 @@ export function createStubBusinessInformation(): GbpBusinessInformationAdapter {
 
 export function createStubLocalPosts(): GbpLocalPostsAdapter {
   return {
-    createLocalPost(input) {
+    async createLocalPost() {
       return {
         kind: "ok",
         value: {
-          method: "POST",
-          url: "stub://gbp/localPosts",
-          headers: {},
-          body: {
-            summary: input.summary,
-            gbpPostId: "stub-gbp-post",
-            publicUrl: "https://business.google.com/local-post/stub-gbp-post",
-          },
+          externalPostId: "stub-gbp-post",
+          publicUrl: "https://business.google.com/local-post/stub-gbp-post",
         },
       }
     },

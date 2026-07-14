@@ -17,6 +17,7 @@ import type {
   PostingChatTurn,
   PostingDecisionTurnState,
   PublishState,
+  MarketingPlatform,
 } from "./app-workspace-model"
 import { OnboardingSnapshot } from "./onboarding-snapshot"
 import { PhotoScreen } from "./reference-flow-photo-screen"
@@ -55,7 +56,7 @@ export type ReferenceFlowScreensProps = {
     value: string
   ) => void
   readonly onOnboardingSetup: () => void
-  readonly onPublish: () => void
+  readonly onPublish: (platform: MarketingPlatform) => void
   readonly onSelect: (navId: AppNavId) => void
   readonly onSuggestionAccept: () => void
   readonly onSuggestionSkip: () => void

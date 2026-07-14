@@ -51,6 +51,11 @@ function buildPostingPrompt(input: PostingOwnerReplyInput): string {
     `Suggestion id: ${input.activeSuggestionId}`,
     `Suggestion: ${input.suggestionMessage}`,
     `Draft: ${input.draftSummary}`,
+    `Images: ${
+      (input.imageAssets ?? [])
+        .map((asset, index) => `${index + 1}. ${asset.name} (${asset.id})`)
+        .join(", ") || "none"
+    }`,
     `Owner message: ${input.ownerMessage}`,
   ].join("\n")
 }

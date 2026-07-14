@@ -15,7 +15,7 @@ export function AppWorkspaceTopBar() {
           </small>
         </div>
       </div>
-      <span aria-label="더보기" className="gx-app-menu" role="img">
+      <span aria-hidden="true" className="gx-app-menu">
         ⋮
       </span>
     </>

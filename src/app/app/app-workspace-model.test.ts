@@ -1,8 +1,27 @@
 import { describe, expect, it } from "vitest"
 
-import { parseDraftState, platformPreviewKey } from "./app-workspace-model"
+import {
+  parseDraftState,
+  parsePublishState,
+  platformPreviewKey,
+} from "./app-workspace-model"
 
 describe("app workspace draft parser", () => {
+  it("uses an Instagram-specific fallback for malformed publish errors", () => {
+    // Given
+    const payload = { status: "FAILED" }
+
+    // When
+    const state = parsePublishState(payload, "INSTAGRAM")
+
+    // Then
+    expect(state).toEqual({
+      kind: "blocked",
+      message: "Instagram 비즈니스 계정 연결 상태를 확인해주세요.",
+      targetChannel: "INSTAGRAM",
+    })
+  })
+
   it("parses a text-only ready draft without image-led preview fields", () => {
     // Given
     const payload = {

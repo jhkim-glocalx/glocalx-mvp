@@ -60,10 +60,12 @@ export function FlowCard({
 
 export function ChoiceButton({
   children,
+  disabled = false,
   onClick,
   tone = "primary",
 }: {
   readonly children: ReactNode
+  readonly disabled?: boolean
   readonly onClick?: () => void
   readonly tone?: "primary" | "ghost"
 }) {
@@ -71,6 +73,7 @@ export function ChoiceButton({
     <button
       className="gx-choice-chip"
       data-tone={tone}
+      disabled={disabled}
       onClick={onClick}
       type="button"
     >

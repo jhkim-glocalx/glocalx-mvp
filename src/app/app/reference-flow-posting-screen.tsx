@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react"
+import { useRef, useState, type KeyboardEvent } from "react"
 
 import { ChatMessage } from "@/app/_components/chat-message"
 
@@ -24,30 +24,27 @@ function tabLabel(preview: PlatformPostPreview): string {
 
 function statusMessageForPreview(options: {
   readonly activePreview: PlatformPostPreview | undefined
-  readonly publishKind: ReferenceFlowScreensProps["publish"]["kind"]
+  readonly publish: ReferenceFlowScreensProps["publish"]
 }): string | null {
   if (options.activePreview === undefined) {
     return null
   }
-  if (options.activePreview.platform !== "GBP") {
-    return `${tabLabel(options.activePreview)} 문구가 준비됐습니다. 복사해서 채널에 맞게 올릴 수 있어요.`
+  if (
+    options.publish.kind !== "idle" &&
+    options.publish.targetChannel !== options.activePreview.platform
+  ) {
+    return null
   }
-  if (options.publishKind === "loading") {
-    return "GBP 게시 상태를 확인하는 중"
+  if (options.publish.kind === "loading") {
+    return `${tabLabel(options.activePreview)} 게시 상태를 확인하는 중`
   }
-  if (options.publishKind === "blocked") {
-    return "게시 전 Google 비즈니스 프로필 인증이 필요합니다."
+  if (options.publish.kind === "blocked") {
+    return options.publish.message
   }
-  if (options.publishKind === "published") {
+  if (options.publish.kind === "published") {
     return "게시 요청이 완료됐습니다."
   }
-  return null
-}
-
-function isGbpPublishPreview(
-  preview: PlatformPostPreview | undefined
-): boolean {
-  return preview?.platform === "GBP"
+  return `${tabLabel(options.activePreview)} 게시물이 준비됐습니다.`
 }
 
 function previewActionLabel(preview: PlatformPostPreview | undefined): string {
@@ -55,9 +52,9 @@ function previewActionLabel(preview: PlatformPostPreview | undefined): string {
     return "게시물 발행"
   }
   if (preview.platform === "INSTAGRAM") {
-    return "인스타그램 연동 준비 중"
+    return "Instagram에 게시하기"
   }
-  return "게시물 발행"
+  return "GBP에 게시하기"
 }
 
 function translationForLocale(
@@ -88,6 +85,7 @@ export function PostingScreen({
 >) {
   const [activeTranslationLocale, setActiveTranslationLocale] =
     useState<MarketingTranslationLocale | null>("en")
+  const previewTabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   if (draft.kind !== "ready") {
     return (
@@ -101,14 +99,20 @@ export function PostingScreen({
     )
   }
 
+  const platformPreviews = draft.platformPreviews
   const selectedPreview =
-    draft.platformPreviews.find(
+    platformPreviews.find(
       (preview) => platformPreviewKey(preview) === activePreviewKey
-    ) ?? draft.platformPreviews[0]
+    ) ?? platformPreviews[0]
   const selectedPreviewKey =
     selectedPreview === undefined
       ? activePreviewKey
       : platformPreviewKey(selectedPreview)
+  const publishLocked =
+    selectedPreview !== undefined &&
+    (publish.kind === "loading" ||
+      (publish.kind === "published" &&
+        publish.targetChannel === selectedPreview.platform))
   const selectedImage =
     selectedPreview === undefined
       ? undefined
@@ -122,9 +126,8 @@ export function PostingScreen({
   const imageSrc = selectedImage?.editedDataUrl ?? selectedAsset?.dataUrl
   const publishStatusMessage = statusMessageForPreview({
     activePreview: selectedPreview,
-    publishKind: publish.kind,
+    publish,
   })
-  const canPublishSelectedPreview = isGbpPublishPreview(selectedPreview)
   const selectedTranslation = translationForLocale(
     selectedPreview?.translations ?? [],
     activeTranslationLocale
@@ -136,29 +139,65 @@ export function PostingScreen({
     )
   }
 
+  function handlePreviewKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number
+  ) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+      return
+    }
+    event.preventDefault()
+    const offset = event.key === "ArrowRight" ? 1 : -1
+    const nextIndex =
+      (index + offset + platformPreviews.length) % platformPreviews.length
+    const nextPreview = platformPreviews[nextIndex]
+    if (nextPreview !== undefined) {
+      onPreviewChange(platformPreviewKey(nextPreview))
+      previewTabRefs.current[nextIndex]?.focus()
+    }
+  }
+
   return (
     <>
       <ChatDivider>STEP 3 · 여러 SNS 자동홍보</ChatDivider>
       <ChatMessage speaker="assistant">
-        사진 보정과 문구 생성이 끝났습니다. 업로드 전에 채널과 언어별 미리보기를
-        확인해주세요.
+        사진 보정과 문구 생성이 끝났습니다. 채널과 언어별 미리보기를 확인한 뒤
+        업로드해주세요.
       </ChatMessage>
       <FlowCard title="완성된 게시물을 확인해주세요">
         <div className="gx-post-tabs" role="tablist">
-          {draft.platformPreviews.map((preview) => (
+          {platformPreviews.map((preview, index) => (
             <button
+              aria-controls="post-preview-panel"
               aria-label={preview.label}
               aria-selected={platformPreviewKey(preview) === selectedPreviewKey}
+              id={`post-preview-tab-${platformPreviewKey(preview)}`}
               key={platformPreviewKey(preview)}
+              onKeyDown={(event) => handlePreviewKeyDown(event, index)}
               onClick={() => onPreviewChange(platformPreviewKey(preview))}
+              ref={(element) => {
+                previewTabRefs.current[index] = element
+              }}
               role="tab"
+              tabIndex={
+                platformPreviewKey(preview) === selectedPreviewKey ? 0 : -1
+              }
               type="button"
             >
               {tabLabel(preview)}
             </button>
           ))}
         </div>
-        <div className="gx-post-image gx-post-image-live">
+        <div
+          aria-labelledby={`post-preview-tab-${selectedPreviewKey}`}
+          className="gx-post-image gx-post-image-live"
+          id="post-preview-panel"
+          role="tabpanel"
+          style={{
+            aspectRatio:
+              selectedPreview?.aspectRatio === "4:3" ? "4 / 3" : "1 / 1",
+          }}
+        >
           {imageSrc === undefined ? (
             <span>{selectedPreview?.aspectRatio ?? "1:1"}</span>
           ) : (
@@ -213,28 +252,17 @@ export function PostingScreen({
           ))}
         </div>
       </FlowCard>
-      {canPublishSelectedPreview && publish.kind === "loading" ? (
-        <ChatMessage
-          message="GBP 게시 상태를 확인하는 중"
-          speaker="assistant"
-        />
-      ) : null}
-      {canPublishSelectedPreview && publish.kind === "blocked" ? (
-        <ChatMessage message={publish.message} speaker="assistant" />
-      ) : null}
-      {canPublishSelectedPreview && publish.kind === "published" ? (
-        <ChatMessage message={publish.message} speaker="assistant" />
-      ) : null}
       <div className="gx-actions-row gx-publish-actions">
         {publishStatusMessage === null ? null : (
-          <p className="gx-publish-status">{publishStatusMessage}</p>
+          <p aria-live="polite" className="gx-publish-status" role="status">
+            {publishStatusMessage}
+          </p>
         )}
-        {canPublishSelectedPreview ? (
-          <ChoiceButton onClick={onPublish}>
-            {previewActionLabel(selectedPreview)}
-          </ChoiceButton>
-        ) : (
-          <ChoiceButton tone="ghost">
+        {selectedPreview === undefined ? null : (
+          <ChoiceButton
+            disabled={publishLocked}
+            onClick={() => onPublish(selectedPreview.platform)}
+          >
             {previewActionLabel(selectedPreview)}
           </ChoiceButton>
         )}
