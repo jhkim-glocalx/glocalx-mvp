@@ -130,7 +130,14 @@ export function decryptToken(
       decipher.update(Buffer.from(encodedCiphertext, "base64url")),
       decipher.final(),
     ]).toString("utf8")
-  } catch {
+  } catch (error) {
+    // Log the cipher library's own error only (never the key or ciphertext) so a
+    // wrong key, a rotated key, and tampered ciphertext stay distinguishable in
+    // production logs instead of collapsing into a silent `undefined`.
+    console.error(
+      "Token decryption failed",
+      error instanceof Error ? error.message : error
+    )
     return undefined
   }
 }
