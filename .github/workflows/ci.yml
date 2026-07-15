@@ -29,3 +29,8 @@ jobs:
       - run: npm run test
       - run: npm run format:check
       - run: npm run build
+
+      - name: Install Playwright Chrome
+        run: npx playwright install --with-deps chrome
+
+      - run: npm run e2e
