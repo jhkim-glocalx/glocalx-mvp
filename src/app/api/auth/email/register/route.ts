@@ -5,30 +5,11 @@ import { createRegistrationRateLimitRules } from "@/auth/auth-rate-limit"
 import { parseEmailRegistrationForm } from "@/auth/email-credentials"
 import { hashPassword, PasswordWorkCapacityError } from "@/auth/email-password"
 import { hasSameRequestOrigin } from "@/auth/request-origin"
-import { authSessionCookieName, sessionCookieOptions } from "@/auth/session"
-import { withQueryableRouteDatabase } from "@/server/http"
-import type { AuthenticatedSession } from "@/server/repositories/session-store"
-
-function redirectWithSession({
-  session,
-  sessionId,
-}: AuthenticatedSession): NextResponse {
-  const response = new NextResponse(null, {
-    headers: {
-      Location: session.onboardingComplete ? "/app" : "/onboarding",
-    },
-    status: 303,
-  })
-  response.cookies.set(authSessionCookieName, sessionId, sessionCookieOptions)
-  return response
-}
-
-function rateLimitedResponse(retryAfterSeconds: number): NextResponse {
-  return new NextResponse(null, {
-    headers: { "Retry-After": String(retryAfterSeconds) },
-    status: 429,
-  })
-}
+import {
+  rateLimitedResponse,
+  redirectWithSession,
+  withQueryableRouteDatabase,
+} from "@/server/http"
 
 export async function POST(request: NextRequest) {
   if (!hasSameRequestOrigin(request)) {

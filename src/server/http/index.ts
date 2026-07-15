@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 import type { z } from "zod"
 
 import {
@@ -7,6 +8,7 @@ import {
   demoSessionCookieName,
   demoStoreCookieName,
   onboardingCompleteCookieName,
+  sessionCookieOptions,
 } from "@/auth/session"
 import type { DemoSession } from "@/auth/session"
 import { parseRoutePayload } from "@/domain/schemas"
@@ -23,7 +25,10 @@ import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oau
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
 import { createDatabasePostStore } from "@/server/repositories/post-store"
 import { createDatabaseSessionStore } from "@/server/repositories/session-store"
-import type { SessionStore } from "@/server/repositories/session-store"
+import type {
+  AuthenticatedSession,
+  SessionStore,
+} from "@/server/repositories/session-store"
 import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
 
 type JsonPayloadResult =
@@ -149,6 +154,27 @@ export function forbiddenStoreResponse(): Response {
     },
     { status: 403 }
   )
+}
+
+export function redirectWithSession({
+  session,
+  sessionId,
+}: AuthenticatedSession): NextResponse {
+  const response = new NextResponse(null, {
+    headers: {
+      Location: session.onboardingComplete ? "/app" : "/onboarding",
+    },
+    status: 303,
+  })
+  response.cookies.set(authSessionCookieName, sessionId, sessionCookieOptions)
+  return response
+}
+
+export function rateLimitedResponse(retryAfterSeconds: number): NextResponse {
+  return new NextResponse(null, {
+    headers: { "Retry-After": String(retryAfterSeconds) },
+    status: 429,
+  })
 }
 
 export async function readDatabaseSession(
