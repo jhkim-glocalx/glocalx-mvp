@@ -7,21 +7,29 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <!-- BEGIN:git-rules -->
 # Git workflow
 
-## Branch strategy (trunk-based)
+## Branch strategy (GitHub Flow / trunk-based)
+
+`main` is the only long-lived branch and is always deployable. There is
+deliberately no persistent `dev`/staging branch — that pattern let `dev`
+drift 17 commits ahead of `main` (including security fixes) before anyone
+noticed, which defeats the point of `main` being the source of truth.
 
 | Branch | Purpose | Deploys to |
 |--------|---------|-----------|
 | `main` | Production — always deployable | Vercel production (`glocalx-mvp-tawny.vercel.app`) |
-| `dev` | Staging — integration branch for ongoing work | Vercel preview (stable URL) |
-| `feat/<name>` | Short-lived feature branches | Vercel preview (per-push URL) |
-| `fix/<name>` | Short-lived bug fix branches | Vercel preview (per-push URL) |
+| `feat/<name>` | Short-lived feature branches, branched off `main` | Vercel preview (per-push URL) |
+| `fix/<name>` | Short-lived bug fix branches, branched off `main` | Vercel preview (per-push URL) |
 
 ## Rules
 
-- **Never commit directly to `main`.** All changes go through `dev` or a PR.
-- Branch off `dev`, not `main`. Merge back to `dev` when done.
-- `main` is updated only by merging `dev` (or a hotfix PR) once staging is verified.
-- Use fast-forward merges when possible; no merge commits on `dev`.
+- **Never commit directly to `main`.** All changes go through a PR.
+- Branch off `main` for every feature/fix. Each push gets its own Vercel
+  preview URL — that preview is the staging environment for the change,
+  there's no separate branch to keep in sync.
+- CI (lint, typecheck, test, e2e, build) must pass before merging.
+- Merge via PR once CI is green and the preview looks right. Merging to
+  `main` deploys to production immediately, so keep branches short-lived
+  (hours to a couple of days) to keep that low-risk.
 - Delete feature/fix branches after merging.
 
 ## Commit conventions (Conventional Commits)
