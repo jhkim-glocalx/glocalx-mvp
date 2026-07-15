@@ -71,12 +71,28 @@ const migrationPaths = [
   join(currentDirectory, "migrations", "0004_auth_rate_limits.sql"),
 ] as const
 
+const sqlIdentifierPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
+
+// Callers only ever pass hardcoded migration literals, never request-derived
+// values, but the table/column names below are interpolated straight into
+// DDL text rather than bound as parameters (SQLite doesn't support
+// parameterizing identifiers). Assert the shape so this stays true if a
+// future caller is tempted to pass through anything less trusted.
 function ensureColumn(
   database: SqliteDatabase,
   tableName: string,
   columnName: string,
   definition: string
 ): void {
+  if (
+    !sqlIdentifierPattern.test(tableName) ||
+    !sqlIdentifierPattern.test(columnName)
+  ) {
+    throw new Error(
+      `ensureColumn: unsafe identifier "${tableName}"."${columnName}"`
+    )
+  }
+
   const rows = database.prepare(`PRAGMA table_info(${tableName})`).all()
   const hasColumn = rows.some(
     (row) =>
