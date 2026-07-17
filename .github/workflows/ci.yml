@@ -12,7 +12,24 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+
+    # Throwaway Postgres so schema drift fails the pipeline: migrations are
+    # applied and verified on every run (docs/deployment/migration-runbook.md).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: glocalx
+          POSTGRES_PASSWORD: glocalx
+          POSTGRES_USER: glocalx
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U glocalx -d glocalx"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
 
     steps:
       - uses: actions/checkout@v4
@@ -27,9 +44,21 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run format:check
+
+      - name: Verify Postgres migrations
+        env:
+          DATABASE_PROVIDER: postgres
+          DATABASE_URL: postgres://glocalx:glocalx@127.0.0.1:54329/glocalx
+          DATABASE_URL_DIRECT: postgres://glocalx:glocalx@127.0.0.1:54329/glocalx
+        run: |
+          npm run db:pg:migrate
+          npm run db:pg:verify
+
       - run: npm run build
+      - run: npm run build -w apps/admin
 
       - name: Install Playwright Chrome
         run: npx playwright install --with-deps chrome
 
       - run: npm run e2e
+      - run: npm run e2e:cross

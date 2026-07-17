@@ -18,14 +18,16 @@
     "db:reset": "npm run db:reset -w apps/owner-app",
     "db:seed": "npm run db:seed -w apps/owner-app",
     "lint": "eslint .",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "tsc --noEmit -p tsconfig.json && npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "e2e": "npm run e2e -w apps/owner-app",
+    "e2e:cross": "playwright test",
     "e2e:postgres": "npm run e2e:postgres -w apps/owner-app",
     "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@eslint/eslintrc": "latest",
+    "@playwright/test": "latest",
     "eslint": "latest",
     "eslint-config-next": "latest",
     "prettier": "latest",
