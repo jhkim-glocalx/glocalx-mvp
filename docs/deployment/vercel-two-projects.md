@@ -6,28 +6,30 @@ per app. Repo-side configuration (the ignore scripts) is committed;
 the dashboard steps below are operator actions and must be performed
 once by a project admin.
 
-## First: disconnect the duplicate project
+## Project layout (decided 2026-07-17)
 
-The repo is currently connected to TWO Vercel projects in the
-`admin-10456072s-projects` team — `glocalx-mvp-private` (canonical) and
-`glocalx-mvp` (duplicate). Every push builds both and PRs carry two
-Vercel checks. In the duplicate `glocalx-mvp` project: Settings → Git →
-disconnect the repository (or delete the project). The unrelated
-`glocalx-mvp` project in the `glocal-x` team (`glocalx-mvp-v1.vercel.app`)
-is the frozen v1 snapshot — leave it alone.
+Three Vercel projects exist; only ONE deploys from this repo:
 
-## Owner app — existing project (`glocalx-mvp-private`)
+| Project               | Team                       | Role                                                                                                          |
+| --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `glocalx-mvp`         | `admin-10456072s-projects` | **Repo-connected.** Deploys `main` → `glocalx-mvp.vercel.app` and per-PR previews.                            |
+| `glocalx-mvp-private` | `admin-10456072s-projects` | Git-disconnected. Holds the purchased customer domain; promote builds to it deliberately, not on every merge. |
+| `glocalx-mvp`         | `glocal-x`                 | Frozen v1 snapshot (`glocalx-mvp-v1.vercel.app`). Leave alone.                                                |
+
+## Owner app — repo-connected project (`glocalx-mvp`)
 
 1. Project → Settings → Build and Deployment → **Root Directory** →
    set to `apps/owner-app`. Leave "Include files outside the root
    directory" **enabled** (the app imports `packages/*` source).
 2. Same screen → **Ignored Build Step** → Custom:
    `bash vercel-ignore-step.sh`
-3. Environment variables: unchanged — the project already carries the
-   Postgres (`DATABASE_PROVIDER`, `DATABASE_URL`, `DATABASE_URL_DIRECT`)
-   and integration variables. Nothing moves.
-4. Redeploy `main` once after re-rooting and verify the production URL
-   serves the app.
+3. Environment variables: confirm the Postgres (`DATABASE_PROVIDER`,
+   `DATABASE_URL`, `DATABASE_URL_DIRECT`) and integration variables are
+   present on THIS project — they were originally configured when
+   `glocalx-mvp-private` was the deploy target, so copy over anything
+   missing.
+4. Redeploy `main` once after re-rooting and verify
+   `glocalx-mvp.vercel.app` serves the app.
 
 ## Admin — new project (`glocalx-admin`)
 
