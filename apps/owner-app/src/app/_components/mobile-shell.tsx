@@ -5,6 +5,9 @@ type ResponsiveShellProps = {
   readonly bottomNav?: ReactNode
   readonly children: ReactNode
   readonly className?: string
+  // Rendered inside the shell's positioning context, above the scroll area —
+  // for overlays like the chat widget that anchor to the phone, not the page.
+  readonly overlay?: ReactNode
   readonly screenClassName?: string
   readonly screenRef?: Ref<HTMLDivElement>
   readonly testId?: string
@@ -16,6 +19,7 @@ export function ResponsiveShell({
   bottomNav,
   children,
   className,
+  overlay,
   screenClassName,
   screenRef,
   testId,
@@ -35,6 +39,7 @@ export function ResponsiveShell({
       </div>
       {bottomBar}
       {bottomNav}
+      {overlay}
     </div>
   )
 }
