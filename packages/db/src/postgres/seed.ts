@@ -1,4 +1,4 @@
-import { demoStoreId, demoUserId } from "../../../auth/demo-identifiers.ts"
+import { demoStoreId, demoUserId } from "../demo-identifiers.ts"
 
 import type { PostgresClient } from "./connection.ts"
 

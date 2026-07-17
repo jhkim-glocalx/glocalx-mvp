@@ -5,8 +5,8 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { openDatabaseContext } from "@/server/db"
-import type { DatabaseContext } from "@/server/db"
+import { openDatabaseContext } from "@glocalx/db"
+import type { DatabaseContext } from "@glocalx/db"
 
 import { createDatabaseEmailCredentialsRepository } from "./email-credentials"
 import { createDatabaseOAuthIdentityRepository } from "./oauth-identity"

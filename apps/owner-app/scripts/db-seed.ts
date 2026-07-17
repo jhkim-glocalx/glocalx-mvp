@@ -1,6 +1,6 @@
 import {
   runProviderAwareDatabaseCli,
   seedDatabaseForProvider,
-} from "../src/server/db/reset-seed.ts"
+} from "@glocalx/db/reset-seed"
 
 await runProviderAwareDatabaseCli(seedDatabaseForProvider)

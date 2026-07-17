@@ -4,7 +4,7 @@ import {
   readDatabaseUrlDirect,
   runPostgresCli,
   seedPostgresDemoData,
-} from "../src/server/db/postgres/migrations.ts"
+} from "@glocalx/db/postgres/migrations"
 
 await runPostgresCli(async () => {
   const sql = openPostgresDatabase(readDatabaseUrlDirect())

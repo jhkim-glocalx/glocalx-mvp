@@ -9,8 +9,8 @@ import {
   openDatabase,
   resetDatabaseFile,
   seedDemoData,
-} from "@/server/db/sqlite"
-import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url"
+} from "@glocalx/db/sqlite"
+import { hasConfiguredPostgresDirectUrl } from "@glocalx/db/postgres/direct-url"
 
 import {
   createJsonRequest,

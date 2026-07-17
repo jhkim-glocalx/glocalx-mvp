@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import type { DemoSession } from "@/auth/session"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 export type EmailCredential = {

@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 
 export type AuthRateLimitRule = {
   readonly id: string

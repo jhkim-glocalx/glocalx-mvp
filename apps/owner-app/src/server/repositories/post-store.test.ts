@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
 import { demoStoreId } from "@/auth/session"
-import { openDatabaseContext, type Queryable } from "@/server/db"
-import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
+import { openDatabaseContext, type Queryable } from "@glocalx/db"
+import { hasConfiguredPostgresDirectUrl } from "@glocalx/db/postgres/direct-url"
 
 import { createDatabasePostStore } from "./post-store"
 import { withRepositoryTestContext } from "./sqlite-characterization-support"

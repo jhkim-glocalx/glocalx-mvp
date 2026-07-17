@@ -10,7 +10,7 @@ import {
   openDatabase,
   resetDatabaseFile,
   seedDemoData,
-} from "@/server/db/sqlite"
+} from "@glocalx/db/sqlite"
 
 import { POST as onboardingSlotTurn } from "./onboarding/conversation/slots/route"
 

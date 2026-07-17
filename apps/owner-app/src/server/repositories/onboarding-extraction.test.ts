@@ -5,8 +5,8 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { openDatabaseContext } from "@/server/db"
-import type { Queryable } from "@/server/db"
+import { openDatabaseContext } from "@glocalx/db"
+import type { Queryable } from "@glocalx/db"
 import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
 
 import { createDatabaseOnboardingExtractionRepository } from "./onboarding-extraction"

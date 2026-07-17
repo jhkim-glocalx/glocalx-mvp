@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer"
 
 import { z } from "zod"
 
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
 const confirmedStoreRowSchema = z.object({
   id: z.string(),

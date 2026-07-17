@@ -5,9 +5,9 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { openDatabaseContext, type Queryable } from "@/server/db"
-import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
-import { applyMigrations, seedDemoData } from "@/server/db/sqlite"
+import { openDatabaseContext, type Queryable } from "@glocalx/db"
+import { hasConfiguredPostgresDirectUrl } from "@glocalx/db/postgres/direct-url"
+import { applyMigrations, seedDemoData } from "@glocalx/db/sqlite"
 
 import { createDatabaseConversationStore } from "./conversation-store"
 

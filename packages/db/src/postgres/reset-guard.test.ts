@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { runPostgresCli } from "@/server/db/postgres/migrations.ts"
+import { runPostgresCli } from "@glocalx/db/postgres/migrations"
 import {
   ProductionDatabaseResetError,
   assertPostgresResetAllowed,
-} from "@/server/db/postgres/reset-guard.ts"
+} from "@glocalx/db/postgres/reset-guard"
 
 afterEach(() => {
   process.exitCode = undefined

@@ -8,12 +8,12 @@ import {
   DatabaseConfigurationError,
   openDatabaseContext,
   resolveDatabaseConfig,
-} from "@/server/db"
+} from "@glocalx/db"
 import {
   buildPostgresRuntimeOptions,
   openPostgresDatabaseContext,
-} from "@/server/db/postgres/runtime-client.ts"
-import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
+} from "@glocalx/db/postgres/runtime-client"
+import { hasConfiguredPostgresDirectUrl } from "@glocalx/db/postgres/direct-url"
 
 const tempDirectories: string[] = []
 

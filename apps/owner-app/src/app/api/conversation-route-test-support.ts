@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 
-import { openDatabase } from "@/server/db/sqlite"
+import { openDatabase } from "@glocalx/db/sqlite"
 
 export type ConversationRows = Readonly<
   Record<"assistantMessages" | "events" | "messages" | "slots", number>

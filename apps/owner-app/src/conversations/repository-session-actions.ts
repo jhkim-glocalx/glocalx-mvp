@@ -1,4 +1,4 @@
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
 import { requireActiveSession, requireSession } from "./repository-storage"
 import type {

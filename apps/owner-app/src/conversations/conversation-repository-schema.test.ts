@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { z } from "zod"
 
-import { applyMigrations, openDatabase } from "@/server/db/sqlite"
+import { applyMigrations, openDatabase } from "@glocalx/db/sqlite"
 
 const textRowSchema = z.object({
   value: z.string(),

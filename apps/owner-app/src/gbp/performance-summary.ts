@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
 import type { GbpPerformanceSummaryData } from "./performance-repository"
 import { resolveGbpStore, type GbpStoreSource } from "./performance-store"

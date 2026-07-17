@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   resetAndSeedDatabaseForProvider,
   runProviderAwareDatabaseCli,
-} from "@/server/db/reset-seed.ts"
+} from "@glocalx/db/reset-seed"
 
 afterEach(() => {
   process.exitCode = undefined

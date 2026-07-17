@@ -1,5 +1,5 @@
 import { googleBusinessManageScope } from "@/integrations/credentials"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import { encryptToken } from "@/auth/token-encryption"
 
 export const googleOAuthStateCookieName = "glocalx_google_oauth_state"

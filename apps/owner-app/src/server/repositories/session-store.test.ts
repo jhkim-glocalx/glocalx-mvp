@@ -5,9 +5,9 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { demoStoreId, demoUserId } from "@/auth/session"
-import { openDatabaseContext } from "@/server/db"
-import type { Queryable } from "@/server/db"
-import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
+import { openDatabaseContext } from "@glocalx/db"
+import type { Queryable } from "@glocalx/db"
+import { hasConfiguredPostgresDirectUrl } from "@glocalx/db/postgres/direct-url"
 
 import { createDatabaseSessionStore } from "./session-store"
 

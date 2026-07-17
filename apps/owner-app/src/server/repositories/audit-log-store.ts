@@ -1,4 +1,4 @@
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 export type AuditLogRecord = {

@@ -7,7 +7,7 @@ import {
   missingKakaoOAuthEnvVars,
 } from "@/auth/kakao-oauth"
 import { demoSessionCookieName, demoStoreCookieName } from "@/auth/session"
-import { resetDatabaseFile } from "@/server/db/sqlite"
+import { resetDatabaseFile } from "@glocalx/db/sqlite"
 import { POST } from "./route"
 
 const envKeys = [

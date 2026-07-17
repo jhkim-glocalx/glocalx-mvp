@@ -8,7 +8,7 @@ import type {
 } from "@/posts/post-types"
 import { decryptToken } from "@/auth/token-encryption"
 import type { MarketingPlatform } from "@/integrations/contracts"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 type UpsertStoredPostDraftOptions = {

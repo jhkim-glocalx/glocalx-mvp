@@ -9,7 +9,7 @@ import {
   openDatabase,
   seedDemoData,
   type SqliteDatabase,
-} from "@/server/db/sqlite"
+} from "@glocalx/db/sqlite"
 
 import {
   readConversationReplay,

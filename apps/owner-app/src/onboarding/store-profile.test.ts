@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
 import { createIntegrationAdapters } from "@/integrations"
-import { openDatabaseContext } from "@/server/db"
-import { applyMigrations, seedDemoData } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@glocalx/db"
+import { applyMigrations, seedDemoData } from "@glocalx/db/sqlite"
 import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
 
 import { confirmStoreProfile } from "./store-profile"

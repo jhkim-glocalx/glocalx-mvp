@@ -1,5 +1,5 @@
-import type { SqliteDatabase } from "@/server/db/sqlite"
-import { createSqliteQueryable } from "@/server/db/sqlite-client"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
+import { createSqliteQueryable } from "@glocalx/db/sqlite-client"
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
 

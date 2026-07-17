@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import type { OAuthIdentityProfile } from "@/auth/oauth-identity"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 const emailOwnerRowSchema = z.object({

@@ -1,4 +1,4 @@
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 export type JobRunType = "GBP_FOLLOW_UP" | "POST_PUBLISH_RETRY" | "REVIEW_SYNC"

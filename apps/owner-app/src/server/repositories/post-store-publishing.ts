@@ -4,7 +4,7 @@ import type {
   PublishAttemptReservation,
   PublishHistoryItem,
 } from "@/posts/post-types"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 type ReservePostPublishAttemptOptions = {

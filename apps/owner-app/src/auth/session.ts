@@ -1,9 +1,9 @@
-import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
-import { demoStoreId, demoUserId } from "./demo-identifiers.ts"
+import { demoStoreId, demoUserId } from "@glocalx/db/demo-identifiers"
 
-export { demoStoreId, demoUserId } from "./demo-identifiers.ts"
+export { demoStoreId, demoUserId } from "@glocalx/db/demo-identifiers"
 
 export const demoSessionCookieName = "glocalx_demo_session"
 export const demoStoreCookieName = "glocalx_demo_store"

@@ -5,7 +5,7 @@ import {
   type ConfirmStoreProfileResult,
 } from "@/onboarding/store-profile"
 import type { ConfirmedGbpStoreProfileResult } from "@/gbp/store-profile"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 export interface StoreProfileRepository {

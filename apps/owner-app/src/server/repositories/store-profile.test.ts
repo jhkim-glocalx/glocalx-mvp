@@ -6,9 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
 import type { ConfirmedStoreProfile } from "@/domain/schemas"
-import { openDatabaseContext } from "@/server/db"
-import type { Queryable } from "@/server/db"
-import { hasConfiguredPostgresDirectUrl } from "@/server/db/postgres/direct-url.ts"
+import { openDatabaseContext } from "@glocalx/db"
+import type { Queryable } from "@glocalx/db"
+import { hasConfiguredPostgresDirectUrl } from "@glocalx/db/postgres/direct-url"
 
 import { createDatabaseStoreProfileRepository } from "./store-profile"
 

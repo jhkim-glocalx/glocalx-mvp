@@ -7,8 +7,8 @@ import { z } from "zod"
 
 import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
 import { createIntegrationAdapters } from "@/integrations"
-import { openDatabaseContext } from "@/server/db"
-import { applyMigrations, seedDemoData } from "@/server/db/sqlite"
+import { openDatabaseContext } from "@glocalx/db"
+import { applyMigrations, seedDemoData } from "@glocalx/db/sqlite"
 import { createDatabaseConversationStore } from "@/server/repositories/conversation-store"
 
 import { processOnboardingSlotTurn } from "./conversation"

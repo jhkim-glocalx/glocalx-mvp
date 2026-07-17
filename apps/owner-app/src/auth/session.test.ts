@@ -5,8 +5,8 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
 import {
   completeLegacyStoredSessionOnboarding,

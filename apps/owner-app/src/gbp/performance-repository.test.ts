@@ -5,7 +5,7 @@ import type {
   DatabaseRow,
   DatabaseStatementParameters,
   Queryable,
-} from "@/server/db"
+} from "@glocalx/db"
 import { loadGbpPerformanceSummaryData } from "./performance-repository"
 
 class PerformanceSummaryQueryable implements Queryable {

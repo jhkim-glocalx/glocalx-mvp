@@ -3,8 +3,8 @@ import {
   readDatabaseUrlDirect,
   resetPostgresDatabase,
   runPostgresCli,
-} from "../src/server/db/postgres/migrations.ts"
-import { assertPostgresResetAllowed } from "../src/server/db/postgres/reset-guard.ts"
+} from "@glocalx/db/postgres/migrations"
+import { assertPostgresResetAllowed } from "@glocalx/db/postgres/reset-guard"
 
 await runPostgresCli(async () => {
   const databaseUrl = readDatabaseUrlDirect()

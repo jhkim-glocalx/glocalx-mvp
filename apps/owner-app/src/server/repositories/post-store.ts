@@ -8,7 +8,7 @@ import type {
   StoreProfile,
 } from "@/posts/post-types"
 import type { MarketingPlatform } from "@/integrations/contracts"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 
 import {
   readPostCurrentLocation,

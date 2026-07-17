@@ -6,7 +6,7 @@ import {
   sessionMaxAgeSeconds,
 } from "@/auth/session"
 import type { DemoSession, SessionCookieValues } from "@/auth/session"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 export interface SessionStore {

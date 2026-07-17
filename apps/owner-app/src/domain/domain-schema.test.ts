@@ -12,7 +12,7 @@ import {
   resolveDefaultDatabasePath,
   seedDemoData,
   tableCountQueries,
-} from "@/server/db/sqlite"
+} from "@glocalx/db/sqlite"
 import { locationStatusValues } from "./location-status"
 
 const tableNameRowSchema = z.object({

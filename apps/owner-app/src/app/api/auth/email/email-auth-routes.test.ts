@@ -10,7 +10,7 @@ import {
   applyMigrations,
   openDatabase,
   resetDatabaseFile,
-} from "@/server/db/sqlite"
+} from "@glocalx/db/sqlite"
 
 import { POST as login } from "./login/route"
 import { POST as register } from "./register/route"

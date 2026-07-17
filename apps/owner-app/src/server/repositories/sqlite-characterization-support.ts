@@ -6,12 +6,12 @@ import { vi } from "vitest"
 
 import { createIntegrationAdapters } from "@/integrations"
 import type { IntegrationAdapters } from "@/integrations/contracts"
-import { openDatabaseContext, type Queryable } from "@/server/db"
+import { openDatabaseContext, type Queryable } from "@glocalx/db"
 import {
   applyMigrations,
   seedDemoData,
   type SqliteDatabase,
-} from "@/server/db/sqlite"
+} from "@glocalx/db/sqlite"
 
 export type RepositoryTestContext = {
   readonly adapters: IntegrationAdapters

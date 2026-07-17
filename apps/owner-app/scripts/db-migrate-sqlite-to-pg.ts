@@ -2,33 +2,33 @@ import {
   applyMigrations,
   openDatabase,
   resolveDefaultDatabasePath,
-} from "../src/server/db/sqlite.ts"
+} from "@glocalx/db/sqlite"
 import {
   MigrationInputError,
   collectSqliteExportSnapshot,
   readExportSnapshot,
   writeExportSnapshot,
-} from "../src/server/db/sqlite-to-postgres.ts"
+} from "@glocalx/db/sqlite-to-postgres"
 import {
   MigrationReconciliationError,
   formatReconciliationSummary,
   reconcileSnapshots,
-} from "../src/server/db/sqlite-to-postgres-reconcile.ts"
+} from "@glocalx/db/sqlite-to-postgres-reconcile"
 import {
   DatabaseUrlDirectConfigurationError,
   openPostgresDatabase,
   readDatabaseUrlDirect,
-} from "../src/server/db/postgres/migrations.ts"
+} from "@glocalx/db/postgres/migrations"
 import {
   ProductionDatabaseResetError,
   assertPostgresResetAllowed,
-} from "../src/server/db/postgres/reset-guard.ts"
+} from "@glocalx/db/postgres/reset-guard"
 import {
   MigrationSafetyError,
   assertSafePostgresImportTarget,
   describePostgresTarget,
   importSnapshotToPostgres,
-} from "../src/server/db/postgres/sqlite-import.ts"
+} from "@glocalx/db/postgres/sqlite-import"
 
 type CliOptions = {
   readonly confirmedNonProduction: boolean

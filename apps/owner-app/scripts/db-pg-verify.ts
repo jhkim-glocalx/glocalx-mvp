@@ -4,7 +4,7 @@ import {
   runPostgresCli,
   verifyPostgresDatabase,
   verifyPostgresMigrationSource,
-} from "../src/server/db/postgres/migrations.ts"
+} from "@glocalx/db/postgres/migrations"
 
 await runPostgresCli(async () => {
   verifyPostgresMigrationSource()

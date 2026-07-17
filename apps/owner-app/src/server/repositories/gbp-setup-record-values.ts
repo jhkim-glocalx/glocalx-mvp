@@ -3,7 +3,7 @@ import type {
   BuildClaimRequiredResultOptions,
   GbpSetupResult,
 } from "@/gbp/setup"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 
 export type PersistClaimRequiredGbpRecordsOptions = {
   readonly claim: BuildClaimRequiredResultOptions

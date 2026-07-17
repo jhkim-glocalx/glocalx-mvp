@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
 import { parsePublicResponse, supportEventRowSchema } from "./repository-codec"
 import { readConversationDraft } from "./repository-commands"

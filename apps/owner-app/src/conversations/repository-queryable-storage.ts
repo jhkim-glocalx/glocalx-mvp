@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 
 import { z } from "zod"
 
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 
 import {
   messageRowSchema,

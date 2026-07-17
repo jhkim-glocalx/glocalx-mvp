@@ -13,7 +13,7 @@ import {
   openDatabase,
   resetDatabaseFile,
   seedDemoData,
-} from "@/server/db/sqlite"
+} from "@glocalx/db/sqlite"
 import { POST } from "./route"
 
 const testDatabasePath = ".glocalx/onboarding-complete-route.test.db"

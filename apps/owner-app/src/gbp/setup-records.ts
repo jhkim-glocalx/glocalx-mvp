@@ -1,6 +1,6 @@
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
-import { createSqliteQueryable } from "@/server/db/sqlite-client"
+import { createSqliteQueryable } from "@glocalx/db/sqlite-client"
 
 import type {
   BuildClaimRequiredResultOptions,

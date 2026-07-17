@@ -5,9 +5,9 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { z } from "zod"
 
-import { applyMigrations, openDatabase } from "@/server/db/sqlite"
+import { applyMigrations, openDatabase } from "@glocalx/db/sqlite"
 import { upsertOAuthIdentity } from "./oauth-identity"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
 const authIdentityCountSchema = z.object({
   count: z.number(),

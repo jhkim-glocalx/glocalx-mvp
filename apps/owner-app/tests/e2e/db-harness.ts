@@ -1,17 +1,17 @@
 import {
   DatabaseConfigurationError,
   resolveDatabaseConfig,
-} from "../../src/server/db/config"
-import type { DatabaseConfig } from "../../src/server/db/config"
+} from "@glocalx/db/config"
+import type { DatabaseConfig } from "@glocalx/db/config"
 import {
   openPostgresDatabase,
   readDatabaseUrlDirect,
-} from "../../src/server/db/postgres/migrations"
+} from "@glocalx/db/postgres/migrations"
 import {
   openDatabase,
   resolveDefaultDatabasePath,
-} from "../../src/server/db/sqlite"
-import { resetAndSeedDatabaseForProvider } from "../../src/server/db/reset-seed"
+} from "@glocalx/db/sqlite"
+import { resetAndSeedDatabaseForProvider } from "@glocalx/db/reset-seed"
 
 type DatabaseEnvironment = Readonly<Record<string, string | undefined>>
 

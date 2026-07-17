@@ -6,9 +6,9 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import { createIntegrationAdapters } from "@/integrations"
 import type { IntegrationAdapters } from "@/integrations/contracts"
-import { createSqliteQueryable } from "@/server/db/sqlite-client"
-import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import { createSqliteQueryable } from "@glocalx/db/sqlite-client"
+import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import { createDatabasePostStore } from "@/server/repositories/post-store"
 
 import { createPostDraft } from "./post-flow"

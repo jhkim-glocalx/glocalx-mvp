@@ -8,7 +8,7 @@ import {
   onboardingCompleteCookieName,
 } from "./session"
 import type { DemoSession } from "./session"
-import { openDatabaseContext } from "@/server/db"
+import { openDatabaseContext } from "@glocalx/db"
 import { createDatabaseSessionStore } from "@/server/repositories/session-store"
 
 export async function getDemoSession(): Promise<DemoSession | undefined> {

@@ -7,7 +7,7 @@ import { z } from "zod"
 
 import { createIntegrationAdapters } from "@/integrations"
 import type { IntegrationAdapters } from "@/integrations/contracts"
-import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
+import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
 
 import { handleGoogleOAuthCallback } from "./oauth-callback"
 import { buildClaimRequiredResult, setupGoogleBusinessProfile } from "./setup"

@@ -5,7 +5,7 @@ import type {
   OAuthIdentitySession,
 } from "@/auth/oauth-identity"
 import { encryptToken } from "@/auth/token-encryption"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
 import { findOrCreateOAuthUser } from "./oauth-account-owner"

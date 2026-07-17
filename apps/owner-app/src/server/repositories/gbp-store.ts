@@ -13,7 +13,7 @@ import type {
   BuildClaimRequiredResultOptions,
   GbpSetupResult,
 } from "@/gbp/setup"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import {
   persistClaimRequiredGbpRecords,
   persistStubSetupGbpRecords,

@@ -1,5 +1,5 @@
 import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import type {
   GbpBusinessInformationAdapter,
   GbpLocalPostsAdapter,

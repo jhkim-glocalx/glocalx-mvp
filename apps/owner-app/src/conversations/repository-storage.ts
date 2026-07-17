@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 
 import { z } from "zod"
 
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
 import {
   messageRowSchema,

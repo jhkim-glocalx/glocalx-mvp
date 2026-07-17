@@ -2,7 +2,7 @@ import type {
   AdapterBusinessProfileCandidate,
   MissingBusinessField,
 } from "@/domain/schemas"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 
 export interface OnboardingExtractionRepository {
   persistCandidatesFound(options: {

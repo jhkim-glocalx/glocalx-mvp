@@ -11,7 +11,7 @@ import {
 } from "@/conversations/repository-queryable-storage"
 import { sessionRowSchema, toSession } from "@/conversations/repository-codec"
 import type { RecordConversationTurnResult } from "@/conversations/repository"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 
 import type { ConversationStore } from "./conversation-store"
 

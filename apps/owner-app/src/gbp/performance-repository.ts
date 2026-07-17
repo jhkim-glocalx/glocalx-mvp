@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import { locationStatusSchema } from "@/domain/location-status"
 import { googleBusinessManageScope } from "@/integrations/credentials"
-import type { Queryable } from "@/server/db"
+import type { Queryable } from "@glocalx/db"
 import { decryptToken } from "@/auth/token-encryption"
 
 export type GbpPerformanceConnection =

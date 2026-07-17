@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 
-import type { SqliteDatabase } from "@/server/db/sqlite"
+import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import { encryptToken } from "./token-encryption"
 
 export type AuthProvider = "GOOGLE" | "KAKAO"

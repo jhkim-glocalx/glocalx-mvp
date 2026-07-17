@@ -12,7 +12,7 @@ import {
   demoStoreId,
   demoUserId,
 } from "@/auth/session"
-import { applyMigrations, openDatabase, seedDemoData } from "@/server/db/sqlite"
+import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
 import { POST } from "./route"
 
 const extractionRowSchema = z.object({

@@ -14,7 +14,7 @@ import {
 import { fetchKakaoOAuthProfile } from "@/auth/oauth-providers"
 import type * as OAuthProvidersModule from "@/auth/oauth-providers"
 import { onboardingCompleteCookieName } from "@/auth/session"
-import { applyMigrations, openDatabase } from "@/server/db/sqlite"
+import { applyMigrations, openDatabase } from "@glocalx/db/sqlite"
 import { GET } from "./route"
 
 vi.mock("@/auth/oauth-providers", async (importOriginal) => {
