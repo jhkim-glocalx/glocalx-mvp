@@ -25,7 +25,11 @@ export const csConversationStatusSchema = z.enum(["open", "resolved"])
 export type CsConversationStatus = z.infer<typeof csConversationStatusSchema>
 
 export const csMessageBodyMaxLength = 4000
-export const csMessageBodySchema = z.string().trim().min(1).max(csMessageBodyMaxLength)
+export const csMessageBodySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(csMessageBodyMaxLength)
 
 // The screen the owner was on when they sent a message, plus the recent-action
 // trail — this is what lets an operator diagnose without asking (architecture
@@ -46,7 +50,9 @@ export const csMessageCreateRequestSchema = z
     context: csMessageContextSchema,
   })
   .strict()
-export type CsMessageCreateRequest = z.infer<typeof csMessageCreateRequestSchema>
+export type CsMessageCreateRequest = z.infer<
+  typeof csMessageCreateRequestSchema
+>
 
 // Owner-facing message DTO: deliberately omits author_kind/author_admin_id so
 // no owner-facing read can ever reveal whether a human or the AI replied.

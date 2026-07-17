@@ -98,9 +98,9 @@ describe("conversation store", () => {
       now: at(2),
     })
     expect(second.id).not.toBe(first.id)
-    expect(await conversations.getOpenConversationForStore(storeId)).toMatchObject(
-      { id: second.id }
-    )
+    expect(
+      await conversations.getOpenConversationForStore(storeId)
+    ).toMatchObject({ id: second.id })
   })
 
   it("scopes conversation lookups to the owning store", async () => {
@@ -384,6 +384,8 @@ describe("message cursor", () => {
 
   it("treats a malformed cursor as no cursor", () => {
     expect(decodeMessageCursor("not-base64-json")).toBeUndefined()
-    expect(decodeMessageCursor(Buffer.from("42").toString("base64url"))).toBeUndefined()
+    expect(
+      decodeMessageCursor(Buffer.from("42").toString("base64url"))
+    ).toBeUndefined()
   })
 })

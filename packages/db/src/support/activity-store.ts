@@ -95,9 +95,7 @@ export function createDatabaseActivityEventStore(
 
     async listEventsForStore(storeId, limit) {
       const effectiveLimit =
-        limit === undefined || limit <= 0
-          ? activityTimelineDefaultLimit
-          : limit
+        limit === undefined || limit <= 0 ? activityTimelineDefaultLimit : limit
       const rows = await queryable.query(
         `SELECT ${activityEventProjection}
            FROM activity_events

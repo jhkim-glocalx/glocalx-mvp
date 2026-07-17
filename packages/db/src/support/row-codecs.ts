@@ -9,9 +9,7 @@ export const timestampSchema = z
 
 export const nullableTimestampSchema = z
   .union([z.string(), z.date(), z.null()])
-  .transform((value) =>
-    value instanceof Date ? value.toISOString() : value
-  )
+  .transform((value) => (value instanceof Date ? value.toISOString() : value))
 
 function parseJsonColumn(value: unknown): unknown {
   if (typeof value !== "string") {
