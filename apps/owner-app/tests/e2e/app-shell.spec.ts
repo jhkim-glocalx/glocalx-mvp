@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
+
+import { evidencePath } from "./evidence"
 import { writeFileSync } from "node:fs"
 
 import { resetFirstTimeE2eDatabase } from "./db-harness"
@@ -59,7 +61,7 @@ test("flow navigation keyboard changes the active step", async ({ page }) => {
   ).toBeVisible()
 
   writeFileSync(
-    ".omo/evidence/task-3-bottom-nav-keyboard.txt",
+    evidencePath("task-3-bottom-nav-keyboard.txt"),
     `active=${await postingTab.getAttribute("aria-current")}\n`
   )
 })
@@ -216,7 +218,7 @@ test("responsive browser shell keeps controls visible on mobile", async ({
   }))
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-3-responsive-mobile-shell.png",
+    path: evidencePath("task-3-responsive-mobile-shell.png"),
   })
 
   expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth)

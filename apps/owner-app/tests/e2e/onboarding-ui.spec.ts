@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test"
 
+import { evidencePath } from "./evidence"
+
 import { resetFirstTimeE2eDatabase } from "./db-harness"
 import { startEmailOnboarding } from "./email-auth-helpers"
 
@@ -62,7 +64,7 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   ).toBeVisible()
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-5-onboarding-success.png",
+    path: evidencePath("task-5-onboarding-success.png"),
   })
 
   await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
@@ -181,6 +183,6 @@ test("onboarding no result manual fallback", async ({ page }) => {
   await expect(page).toHaveURL(/\/onboarding/)
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-5-onboarding-fallback.png",
+    path: evidencePath("task-5-onboarding-fallback.png"),
   })
 })

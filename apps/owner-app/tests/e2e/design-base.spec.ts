@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
+
+import { evidencePath } from "./evidence"
 import { writeFileSync } from "node:fs"
 
 const prototypeChromePatterns = [
@@ -71,7 +73,7 @@ test("design base desktop uses a native browser shell without prototype chrome",
   await expectNoPrototypeChrome(page)
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/task-2-native-browser-desktop.png",
+    path: evidencePath("task-2-native-browser-desktop.png"),
   })
 
   const shellBox = await page.getByTestId("entry-device").boundingBox()
@@ -95,7 +97,7 @@ test("design base mobile overflow stays within viewport", async ({ page }) => {
   ).toHaveCount(0)
   const metrics = await readOverflowMetrics(page)
   writeFileSync(
-    ".omo/evidence/task-2-mobile-overflow.json",
+    evidencePath("task-2-mobile-overflow.json"),
     JSON.stringify(metrics, null, 2)
   )
 

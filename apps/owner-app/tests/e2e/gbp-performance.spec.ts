@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test"
 
+import { evidencePath } from "./evidence"
+
 import { resetE2eDatabase } from "./db-harness"
 
 async function addDemoSessionCookies(page: Page): Promise<void> {
@@ -111,7 +113,7 @@ test("app dashboard shows core GBP stats and keeps posting flow available", asyn
   const dashboardMetrics = await readOverflowMetrics(page)
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/gbp-performance-dashboard-mobile.png",
+    path: evidencePath("gbp-performance-dashboard-mobile.png"),
   })
   expect(dashboardMetrics.documentScrollWidth).toBeLessThanOrEqual(
     dashboardMetrics.innerWidth

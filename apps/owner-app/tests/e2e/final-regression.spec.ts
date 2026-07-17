@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test"
+
+import { evidencePath } from "./evidence"
 import { writeFileSync } from "node:fs"
 
 import { resetFirstTimeE2eDatabase } from "./db-harness"
@@ -108,7 +110,7 @@ test("full unified stub happy path", async ({ page }) => {
     page.getByText("Google 비즈니스 프로필 인증이 완료되어야")
   ).toBeVisible()
   writeFileSync(
-    ".omo/evidence/task-13-full-happy-path.txt",
+    evidencePath("task-13-full-happy-path.txt"),
     "PASS: demo login -> onboarding extraction -> GBP setup -> app post draft -> publish blocked recovery\n"
   )
 })
@@ -120,7 +122,7 @@ test("final responsive regression", async ({ page }) => {
   await expectNoPrototypeChrome(page)
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/design-unification-desktop.png",
+    path: evidencePath("design-unification-desktop.png"),
   })
 
   await page.setViewportSize({ width: 390, height: 900 })
@@ -128,12 +130,12 @@ test("final responsive regression", async ({ page }) => {
   await expectNoPrototypeChrome(page)
   await page.screenshot({
     fullPage: true,
-    path: ".omo/evidence/design-unification-mobile.png",
+    path: evidencePath("design-unification-mobile.png"),
   })
 
   const metrics = await readOverflowMetrics(page)
   writeFileSync(
-    ".omo/evidence/design-unification-overflow.json",
+    evidencePath("design-unification-overflow.json"),
     JSON.stringify(metrics, null, 2)
   )
 

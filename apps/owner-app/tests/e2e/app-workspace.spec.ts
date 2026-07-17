@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test"
+
+import { evidencePath } from "./evidence"
 import type { Page } from "@playwright/test"
 
 import { resetFirstTimeE2eDatabase } from "./db-harness"
@@ -117,7 +119,7 @@ test("app posting preview matches the reference flow", async ({ page }) => {
   ).toBeDisabled()
   await captureCompletePostingFlow(
     page,
-    ".omo/evidence/social-posts-instagram-desktop.png"
+    evidencePath("social-posts-instagram-desktop.png")
   )
 })
 
@@ -140,7 +142,7 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await expect(page.getByText("게시 완료")).toHaveCount(0)
   await captureCompletePostingFlow(
     page,
-    ".omo/evidence/social-posts-gbp-blocked-desktop.png"
+    evidencePath("social-posts-gbp-blocked-desktop.png")
   )
 })
 
@@ -161,7 +163,7 @@ test("mobile Instagram publishing keeps the selected channel state", async ({
   ).toHaveCount(0)
   await captureCompletePostingFlow(
     page,
-    ".omo/evidence/social-posts-instagram-mobile.png"
+    evidencePath("social-posts-instagram-mobile.png")
   )
 })
 
