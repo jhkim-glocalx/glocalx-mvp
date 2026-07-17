@@ -25,7 +25,7 @@ glocalx-mvp/
 
 | Property              | owner-app                                              | admin                                                    |
 | --------------------- | ------------------------------------------------------ | -------------------------------------------------------- |
-| Vercel project        | existing (`glocalx-mvp-private`)                         | new (`glocalx-admin`)                                    |
+| Vercel project        | existing (`glocalx-mvp-private`)                       | new (`glocalx-admin`)                                    |
 | Vercel root directory | `apps/owner-app`                                       | `apps/admin`                                             |
 | Branch mapping        | GitHub Flow: `main` → prod, per-PR previews as staging | same flow, own URLs                                      |
 | Audience              | store owners (public)                                  | operators only (invite-gated)                            |
