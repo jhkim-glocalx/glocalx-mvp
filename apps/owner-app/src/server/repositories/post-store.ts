@@ -7,7 +7,7 @@ import type {
   StoredPostDraft,
   StoreProfile,
 } from "@/posts/post-types"
-import type { MarketingPlatform } from "@/integrations/contracts"
+import type { MarketingPlatform } from "@glocalx/integrations/contracts"
 import type { Queryable } from "@glocalx/db"
 
 import {

@@ -1,5 +1,5 @@
 import type { ConfirmedStoreProfile } from "@glocalx/domain"
-import type { IntegrationAdapters } from "@/integrations/contracts"
+import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import type { StoreProfileRepository } from "@/server/repositories/store-profile"
 
 export type ConfirmStoreProfileOptions = {

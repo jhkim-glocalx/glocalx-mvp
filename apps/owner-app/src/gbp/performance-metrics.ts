@@ -4,7 +4,7 @@ import {
   gbpPerformanceDailyMetrics,
   type GbpPerformanceApiResponse,
   type GbpPerformanceDailyMetric,
-} from "@/integrations/contracts"
+} from "@glocalx/integrations/contracts"
 
 import { formatGbpPerformanceDate } from "./performance-dates"
 

@@ -5,7 +5,7 @@ import {
   postingDecisionRequestSchema,
   type PostingDecisionRequest,
 } from "@glocalx/domain"
-import type { IntegrationAdapters } from "@/integrations/contracts"
+import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import { createPostDraft, revisePostDraft } from "@/posts/post-flow"
 import {
   processPostingDecision,

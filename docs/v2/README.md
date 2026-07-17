@@ -8,12 +8,12 @@ contract.
 
 ## Document set
 
-| Document | Audience | Purpose |
-| --- | --- | --- |
-| This file | Everyone | Vision, scope, operating model, success criteria |
-| [architecture.md](architecture.md) | Engineering | Deployment topology, data model, API contracts, security |
-| [delivery-plan.md](delivery-plan.md) | Engineering / PM | Phased milestones, task breakdown, acceptance criteria |
-| Pitch deck (`01_documents/glocalx-v2-pitch.pptx`) | Investors | Narrative version of this program |
+| Document                                          | Audience         | Purpose                                                  |
+| ------------------------------------------------- | ---------------- | -------------------------------------------------------- |
+| This file                                         | Everyone         | Vision, scope, operating model, success criteria         |
+| [architecture.md](architecture.md)                | Engineering      | Deployment topology, data model, API contracts, security |
+| [delivery-plan.md](delivery-plan.md)              | Engineering / PM | Phased milestones, task breakdown, acceptance criteria   |
+| Pitch deck (`01_documents/glocalx-v2-pitch.pptx`) | Investors        | Narrative version of this program                        |
 
 ## 1. What changes in v2
 
@@ -144,10 +144,10 @@ Out of scope (explicitly):
 
 ## 7. Risks and mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Monorepo restructure destabilizes the working v1 app | Phase 0 moves code with zero behavior change, gated by the full existing test suite + e2e before anything new lands |
+| Risk                                                   | Mitigation                                                                                                                             |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo restructure destabilizes the working v1 app   | Phase 0 moves code with zero behavior change, gated by the full existing test suite + e2e before anything new lands                    |
 | GBP manager-access grants stall (Google-side friction) | Dashboard tracks request state explicitly; operators chase via chat; state machine treats "pending" as a first-class, long-lived state |
-| Operator load grows past one person | Queues expose per-stage timing from day one; the automation dial (AI chat, later auto-enhancement) is the designed relief valve |
-| Chat polling costs / latency disappoint | Message store is transport-agnostic; swapping polling for managed realtime is a client change, not a schema change |
-| Owner-app telemetry raises privacy concerns | Trail records screen/stage/action names only — never keystrokes, message bodies, or credentials; documented in architecture.md §7 |
+| Operator load grows past one person                    | Queues expose per-stage timing from day one; the automation dial (AI chat, later auto-enhancement) is the designed relief valve        |
+| Chat polling costs / latency disappoint                | Message store is transport-agnostic; swapping polling for managed realtime is a client change, not a schema change                     |
+| Owner-app telemetry raises privacy concerns            | Trail records screen/stage/action names only — never keystrokes, message bodies, or credentials; documented in architecture.md §7      |

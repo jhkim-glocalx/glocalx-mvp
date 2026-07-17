@@ -1,33 +1,5 @@
 @import "tailwindcss";
-
-:root {
-  color-scheme: dark;
-  --ink: #191720;
-  --ink-soft: #48424f;
-  --muted: #938c9c;
-  --line: #ece7ef;
-  --field-border: #8b8494;
-  --canvas: #0c0b10;
-  --canvas-2: #15131c;
-  --accent: #ff6a3d;
-  --accent-press: #e8542a;
-  --accent-soft: #fff1ec;
-  --mint: #15bd97;
-  --mint-soft: #e6f8f2;
-  --blue: #3d6bff;
-  --phone-bg: #fbf9f6;
-  --card: #ffffff;
-  --shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.55);
-  --r: 22px;
-  --background: var(--canvas);
-  --foreground: #ffffff;
-  --surface: var(--card);
-  --border: rgba(255, 255, 255, 0.12);
-  --primary: var(--accent);
-  --primary-strong: var(--accent-press);
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-}
+@import "@glocalx/ui/tokens.css";
 
 * {
   box-sizing: border-box;

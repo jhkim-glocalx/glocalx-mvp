@@ -13,7 +13,7 @@ import {
 import type { DemoSession } from "@/auth/session"
 import { parseRoutePayload } from "@glocalx/domain"
 import type { ParsedValidationIssue } from "@glocalx/domain"
-import { createIntegrationAdapters } from "@/integrations"
+import { createIntegrationAdapters } from "@glocalx/integrations"
 import { openDatabaseContext, resolveDatabaseConfig } from "@glocalx/db"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import { createDatabaseConversationStore } from "@/server/repositories/conversation-store"

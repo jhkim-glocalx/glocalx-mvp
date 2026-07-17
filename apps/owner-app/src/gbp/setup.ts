@@ -6,7 +6,7 @@ import type {
   HttpRequestSpec,
   IntegrationAdapters,
   SearchGoogleLocationsResult,
-} from "@/integrations/contracts"
+} from "@glocalx/integrations/contracts"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import type { StoreProfileRepository } from "@/server/repositories/store-profile"

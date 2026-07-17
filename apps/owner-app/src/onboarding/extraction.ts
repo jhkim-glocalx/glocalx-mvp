@@ -8,8 +8,8 @@ import type {
   HttpRequestSpec,
   IntegrationAdapters,
   NaverSearchResult,
-} from "@/integrations/contracts"
-import { NaverSearchUnavailableError } from "@/integrations/contracts"
+} from "@glocalx/integrations/contracts"
+import { NaverSearchUnavailableError } from "@glocalx/integrations/contracts"
 import type { OnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
 
 import type { RetrievalError } from "./input-normalization"

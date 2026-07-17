@@ -4,7 +4,7 @@ import type {
   OnboardingConversationState,
   PostingConversationDecision,
   PostingConversationState,
-} from "@/conversations/contracts"
+} from "@glocalx/domain/conversation/contracts"
 import type { AdapterResult } from "./contracts"
 
 export type OnboardingSlotExtractionInput = {

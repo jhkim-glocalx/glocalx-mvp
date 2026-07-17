@@ -5,8 +5,8 @@ export default function InboxPage() {
       <div className="ops-empty">
         <strong>No conversations yet</strong>
         <p>
-          Owner chat conversations land here with per-message activity
-          context. Built in Phase 1.
+          Owner chat conversations land here with per-message activity context.
+          Built in Phase 1.
         </p>
       </div>
     </>

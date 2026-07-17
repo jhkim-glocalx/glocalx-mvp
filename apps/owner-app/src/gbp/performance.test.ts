@@ -4,7 +4,7 @@ import { join } from "node:path"
 
 import { afterEach, describe, expect, it } from "vitest"
 
-import { createIntegrationAdapters } from "@/integrations"
+import { createIntegrationAdapters } from "@glocalx/integrations"
 import {
   applyMigrations,
   openDatabase,

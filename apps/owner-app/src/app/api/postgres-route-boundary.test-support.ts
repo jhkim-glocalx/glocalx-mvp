@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 
 import type { DemoSession, SessionCookieValues } from "@/auth/session"
-import { createIntegrationAdapters } from "@/integrations"
+import { createIntegrationAdapters } from "@glocalx/integrations"
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import type { SessionStore } from "@/server/repositories/session-store"
 import type { StoreProfileRepository } from "@/server/repositories/store-profile"

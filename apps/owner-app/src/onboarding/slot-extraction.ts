@@ -4,8 +4,8 @@ import type {
   MissingBusinessField,
   OnboardingSlotTurnRequest,
 } from "@glocalx/domain"
-import type { IntegrationAdapters } from "@/integrations/contracts"
-import { MalformedLlmResponseError } from "@/integrations/openai-conversation"
+import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
+import { MalformedLlmResponseError } from "@glocalx/integrations/openai-conversation"
 
 import { normalizeGuidedOutput } from "./guided-slot-output"
 

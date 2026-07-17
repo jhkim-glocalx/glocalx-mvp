@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 
 import type { PostingConversationDecision } from "@/conversations/contracts"
 import type { PostingDecisionRequest } from "@glocalx/domain"
-import type { IntegrationAdapters } from "@/integrations/contracts"
+import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import type { ConversationStore } from "@/server/repositories/conversation-store"
 
 import type { PostDraftResult } from "./post-types"

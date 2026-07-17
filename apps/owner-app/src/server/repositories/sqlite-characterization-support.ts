@@ -4,8 +4,8 @@ import { join } from "node:path"
 
 import { vi } from "vitest"
 
-import { createIntegrationAdapters } from "@/integrations"
-import type { IntegrationAdapters } from "@/integrations/contracts"
+import { createIntegrationAdapters } from "@glocalx/integrations"
+import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import { openDatabaseContext, type Queryable } from "@glocalx/db"
 import {
   applyMigrations,

@@ -1,4 +1,4 @@
-import { googleBusinessManageScope } from "@/integrations/credentials"
+import { googleBusinessManageScope } from "@glocalx/integrations/credentials"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import { encryptToken } from "@/auth/token-encryption"
 

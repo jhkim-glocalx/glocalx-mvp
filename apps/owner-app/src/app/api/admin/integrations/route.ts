@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 
-import { getIntegrationRuntimeDiagnostics } from "@/integrations/runtime-diagnostics"
+import { getIntegrationRuntimeDiagnostics } from "@glocalx/integrations/runtime-diagnostics"
 import {
   readDatabaseSession,
   requiredSessionResponse,

@@ -21,7 +21,7 @@ import {
   toPostingDecisionJsonSchema,
   type OnboardingConversationOutput,
   type PostingConversationDecision,
-} from "@/conversations/contracts"
+} from "@glocalx/domain/conversation/contracts"
 
 const openAiEnvVars = ["OPENAI_API_KEY"] as const
 const defaultOnboardingSlotModel = "gpt-5.4-mini"

@@ -5,8 +5,8 @@ export default function QueuePage() {
       <div className="ops-empty">
         <strong>No campaign requests yet</strong>
         <p>
-          Marketing intake requests move through production, owner approval,
-          and publishing here. Built in Phase 3.
+          Marketing intake requests move through production, owner approval, and
+          publishing here. Built in Phase 3.
         </p>
       </div>
     </>

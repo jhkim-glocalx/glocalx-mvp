@@ -6,8 +6,8 @@ import type {
   HttpRequestSpec,
   NaverSearchAdapter,
   NaverSearchResult,
-} from "@/integrations/contracts"
-import { createIntegrationAdapters } from "@/integrations"
+} from "@glocalx/integrations/contracts"
+import { createIntegrationAdapters } from "@glocalx/integrations"
 
 import { NaverSearchTimeoutError, extractBusinessProfile } from "./extraction"
 

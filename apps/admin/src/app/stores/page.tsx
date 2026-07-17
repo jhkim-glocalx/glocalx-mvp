@@ -5,8 +5,8 @@ export default function StoresPage() {
       <div className="ops-empty">
         <strong>No stores yet</strong>
         <p>
-          Onboarded stores appear here with their GBP access state and
-          activity timeline. Populated from Phase 1 onward.
+          Onboarded stores appear here with their GBP access state and activity
+          timeline. Populated from Phase 1 onward.
         </p>
       </div>
     </>

@@ -5,8 +5,8 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { z } from "zod"
 
-import { createIntegrationAdapters } from "@/integrations"
-import type { IntegrationAdapters } from "@/integrations/contracts"
+import { createIntegrationAdapters } from "@glocalx/integrations"
+import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import { createSqliteQueryable } from "@glocalx/db/sqlite-client"
 import {
   applyMigrations,

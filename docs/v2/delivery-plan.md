@@ -15,14 +15,14 @@ independently shippable behind the stub adapter boundary.
 
 ## Phase map
 
-| Phase | Outcome | Depends on | Est. |
-| --- | --- | --- | --- |
-| 0 | Monorepo restructure, admin scaffold, admin auth | — | 1 wk |
-| 1 | Chat MVP: widget + console + context telemetry (human mode) | 0 | 1.5 wk |
-| 2 | AI responder + AI/human mode toggle | 1 | 1 wk |
-| 3 | Marketing pipeline: intake → production → go/no-go → publish | 0 (parallel w/ 1–2) | 2 wk |
-| 4 | GBP org-access onboarding hardening | 0 | 1 wk |
-| 5 | Staging cohort readiness: seed, ops docs, QA pass | 1–4 | 0.5 wk |
+| Phase | Outcome                                                      | Depends on          | Est.   |
+| ----- | ------------------------------------------------------------ | ------------------- | ------ |
+| 0     | Monorepo restructure, admin scaffold, admin auth             | —                   | 1 wk   |
+| 1     | Chat MVP: widget + console + context telemetry (human mode)  | 0                   | 1.5 wk |
+| 2     | AI responder + AI/human mode toggle                          | 1                   | 1 wk   |
+| 3     | Marketing pipeline: intake → production → go/no-go → publish | 0 (parallel w/ 1–2) | 2 wk   |
+| 4     | GBP org-access onboarding hardening                          | 0                   | 1 wk   |
+| 5     | Staging cohort readiness: seed, ops docs, QA pass            | 1–4                 | 0.5 wk |
 
 Phases 1–2 (chat) and 3 (pipeline) are parallelizable workstreams after
 Phase 0. Total: ~5–6 calendar weeks with the current team.
@@ -332,18 +332,18 @@ captured as TODOS.md #4. **Critical gaps: 0.**
 
 ### Worktree parallelization
 
-| Step | Modules touched | Depends on |
-|------|----------------|------------|
-| Phase 0 split + harness | everything (move), root configs | — |
-| Chat (Ph 1-2) | apps/* chat, packages/domain (cs), db migrations | Phase 0 |
-| Pipeline (Ph 3) | apps/* campaign, packages/integrations, db migrations | Phase 0 |
-| GBP access (Ph 4) | apps/* gbp screens, db migration | Phase 0 |
+| Step                    | Modules touched                                        | Depends on |
+| ----------------------- | ------------------------------------------------------ | ---------- |
+| Phase 0 split + harness | everything (move), root configs                        | —          |
+| Chat (Ph 1-2)           | apps/\* chat, packages/domain (cs), db migrations      | Phase 0    |
+| Pipeline (Ph 3)         | apps/\* campaign, packages/integrations, db migrations | Phase 0    |
+| GBP access (Ph 4)       | apps/\* gbp screens, db migration                      | Phase 0    |
 
 Lanes after Phase 0: **Lane A** chat (Ph 1→2 sequential), **Lane B**
 pipeline (Ph 3), **Lane C** GBP access (Ph 4). A and B are parallel
 worktree candidates. Conflict flags: all lanes append ordered
 migrations in `packages/db` — allocate migration numbers per lane up
-front; A and B both touch `packages/domain` — keep cs/* and campaign/*
+front; A and B both touch `packages/domain` — keep cs/_ and campaign/_
 modules disjoint. Launch A + B in parallel, C after either merges.
 
 ### Implementation tasks
@@ -365,13 +365,13 @@ Synthesized from review findings; JSONL artifact for /autoplan at
 
 ## GSTACK REVIEW REPORT
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR (PLAN) | 9 issues, 0 critical gaps |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
-| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+| Review        | Trigger               | Why                             | Runs | Status       | Findings                  |
+| ------------- | --------------------- | ------------------------------- | ---- | ------------ | ------------------------- |
+| CEO Review    | `/plan-ceo-review`    | Scope & strategy                | 0    | —            | —                         |
+| Codex Review  | `/codex review`       | Independent 2nd opinion         | 0    | —            | —                         |
+| Eng Review    | `/plan-eng-review`    | Architecture & tests (required) | 1    | CLEAR (PLAN) | 9 issues, 0 critical gaps |
+| Design Review | `/plan-design-review` | UI/UX gaps                      | 0    | —            | —                         |
+| DX Review     | `/plan-devex-review`  | Developer experience gaps       | 0    | —            | —                         |
 
 - **CROSS-MODEL:** Outside voice (Claude subagent; Codex timed out) found 8 additional findings — 7 accepted and folded (org credential workstream, GBP grant reframe, doc self-containment, operator nudge, migration runbook, IG signed URL, dev-branch erratum), 1 sequencing challenge resolved as "keep parallel-serve, timeline explicitly tentative" (D26). Office-hours design doc (docs/v2/design-decisions.md) additionally carried a Codex cold read whose challenge produced the premise-2 kill metrics.
 - **VERDICT:** ENG CLEARED — 17 findings total (9 review + 8 outside voice) all resolved and folded into the plan; ready to implement pending `feat/social-post-publishing` merge.

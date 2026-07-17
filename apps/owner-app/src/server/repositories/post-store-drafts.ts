@@ -7,7 +7,7 @@ import type {
   StoreProfile,
 } from "@/posts/post-types"
 import { decryptToken } from "@/auth/token-encryption"
-import type { MarketingPlatform } from "@/integrations/contracts"
+import type { MarketingPlatform } from "@glocalx/integrations/contracts"
 import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 

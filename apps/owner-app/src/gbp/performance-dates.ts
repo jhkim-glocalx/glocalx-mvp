@@ -1,7 +1,7 @@
 import type {
   GbpPerformanceDailyRange,
   GbpPerformanceDate,
-} from "@/integrations/contracts"
+} from "@glocalx/integrations/contracts"
 
 const koreaTimeZone = "Asia/Seoul"
 

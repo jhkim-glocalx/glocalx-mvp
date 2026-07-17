@@ -60,7 +60,7 @@ cohort is 10-20 hand-picked stores served by one operator.
 
 1. **GBP org-access grant** (owner grants the GlocalX org account manager
    access) — AGREED WITH MITIGATION: operator-assisted grant via chat is
-   the *primary* path for the first cohort; the self-serve flow is the
+   the _primary_ path for the first cohort; the self-serve flow is the
    scaling path. `pending` is a first-class, long-lived state with
    dashboard visibility and chase notes.
 2. **In-app chat beats KakaoTalk for CS** — AGREED WITH KILL METRICS
@@ -122,6 +122,7 @@ public app's deployment).
 ## Approaches Considered
 
 ### Approach A: Thin Slice (one app, /admin routes)
+
 No monorepo split; admin route group + separate admin auth inside the
 existing app. Effort M (human ~3 wks / CC+Codex ~1.5 wks), Risk Med.
 Fastest to a served customer, zero restructure risk — but org publishing
@@ -130,6 +131,7 @@ session isolation is convention rather than boundary, and the split gets
 re-done later under cohort load.
 
 ### Approach B: The v2 plan, amended (RECOMMENDED)
+
 Monorepo, two Next.js apps, two Vercel projects, shared Neon Postgres, six
 phases (docs/v2/delivery-plan.md) — plus this session's four amendments:
 (1) parallel-serve 2-3 stores from week 1; (2) operator-assisted GBP grant
@@ -139,6 +141,7 @@ making autonomous AI mode a flip rather than a build. Effort L (human ~6
 wks / CC+Codex ~3-4 wks), Risk Low-Med.
 
 ### Approach C: Cockpit-first reorder
+
 Same end state as B but dashboard built first against the unchanged v1
 app; owner-app changes last. Tools operators by week 2, but forces early
 CS onto KakaoTalk — quietly pre-deciding the premise-2 experiment — and
@@ -156,6 +159,7 @@ stay strictly time-boxed at one week.
 
 Four session amendments plus one reconciliation to fold into docs/v2/
 before implementation:
+
 - delivery-plan.md Phases 1 and 3: add the chat kill metrics to
   acceptance criteria (definitions and thresholds in Premises §2).
   Response time, activation, and owner-initiated count instrument in

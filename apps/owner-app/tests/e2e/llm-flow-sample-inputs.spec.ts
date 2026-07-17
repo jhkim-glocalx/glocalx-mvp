@@ -1,8 +1,15 @@
 import { expect, test, type Page } from "@playwright/test"
 import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 
 import { resetFirstTimeE2eDatabase } from "./db-harness"
 import { startEmailOnboarding } from "./email-auth-helpers"
+
+// Fixture images live at the repo root, two workspace levels above this
+// app, so resolve them from the spec file rather than the test cwd.
+function repoRootFile(relativePath: string): string {
+  return fileURLToPath(new URL(`../../../../${relativePath}`, import.meta.url))
+}
 
 async function completeOnboarding(page: Page): Promise<void> {
   await page.context().clearCookies()
@@ -42,14 +49,18 @@ test("LLM posting flow analyzes sample images and revises through chat", async (
   await page.locator('input[type="file"]').setInputFiles([
     {
       buffer: readFileSync(
-        ".github/pr-assets/gbp-performance-dashboard/mobile-posting-draft.png"
+        repoRootFile(
+          ".github/pr-assets/gbp-performance-dashboard/mobile-posting-draft.png"
+        )
       ),
       mimeType: "image/png",
       name: "brunch-toast.png",
     },
     {
       buffer: readFileSync(
-        "docs/qa/store-retrieval-gbp-setup/screenshots/desktop-06-app-post.png"
+        repoRootFile(
+          "docs/qa/store-retrieval-gbp-setup/screenshots/desktop-06-app-post.png"
+        )
       ),
       mimeType: "image/png",
       name: "iced-latte.png",

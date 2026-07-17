@@ -1,5 +1,5 @@
 import { getDemoSession } from "@/auth/server-session"
-import { getIntegrationRuntimeDiagnostics } from "@/integrations/runtime-diagnostics"
+import { getIntegrationRuntimeDiagnostics } from "@glocalx/integrations/runtime-diagnostics"
 
 function isAdminDebugEnabled(): boolean {
   const value = process.env["ENABLE_ADMIN_DEBUG"]?.trim().toLowerCase()

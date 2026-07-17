@@ -1,4 +1,4 @@
-import type { MarketingPlatform } from "@/integrations/contracts"
+import type { MarketingPlatform } from "@glocalx/integrations/contracts"
 import { stableId } from "@/posts/post-repository"
 import type {
   PublishAttemptReservation,

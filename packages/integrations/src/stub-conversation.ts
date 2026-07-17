@@ -7,7 +7,7 @@ import type { AdapterResult } from "./contracts"
 import type {
   OnboardingConversationOutput,
   PostingConversationDecision,
-} from "@/conversations/contracts"
+} from "@glocalx/domain/conversation/contracts"
 import { extractLocalOnboardingSlots } from "@glocalx/domain/conversation/onboarding-slot-extraction"
 
 function classifyPostingReply(

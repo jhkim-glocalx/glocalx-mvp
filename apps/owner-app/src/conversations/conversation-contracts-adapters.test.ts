@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { createIntegrationAdapters } from "@/integrations"
-import { MalformedLlmResponseError } from "@/integrations/openai-conversation"
+import { createIntegrationAdapters } from "@glocalx/integrations"
+import { MalformedLlmResponseError } from "@glocalx/integrations/openai-conversation"
 
 describe("conversation-contracts adapter seams", () => {
   it("deterministically extracts only the requested onboarding field", async () => {

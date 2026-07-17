@@ -1,6 +1,6 @@
 import { encryptToken } from "@/auth/token-encryption"
 import type { LocationStatus } from "@glocalx/domain/location-status"
-import { googleBusinessManageScope } from "@/integrations/credentials"
+import { googleBusinessManageScope } from "@glocalx/integrations/credentials"
 import type { Queryable } from "@glocalx/db"
 
 import {

@@ -7,10 +7,7 @@ import {
   openPostgresDatabase,
   readDatabaseUrlDirect,
 } from "@glocalx/db/postgres/migrations"
-import {
-  openDatabase,
-  resolveDefaultDatabasePath,
-} from "@glocalx/db/sqlite"
+import { openDatabase, resolveDefaultDatabasePath } from "@glocalx/db/sqlite"
 import { resetAndSeedDatabaseForProvider } from "@glocalx/db/reset-seed"
 
 type DatabaseEnvironment = Readonly<Record<string, string | undefined>>

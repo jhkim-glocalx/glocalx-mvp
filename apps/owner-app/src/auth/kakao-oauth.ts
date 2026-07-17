@@ -3,7 +3,7 @@ import {
   type OAuthOriginRequest,
   resolveOAuthRedirectUri,
 } from "@/auth/oauth-redirect"
-import type { AdapterEnvironment } from "@/integrations/contracts"
+import type { AdapterEnvironment } from "@glocalx/integrations/contracts"
 
 const kakaoOAuthEndpoint = "https://kauth.kakao.com/oauth/authorize"
 const kakaoOAuthEnvVars = ["KAKAO_REST_API_KEY"] as const

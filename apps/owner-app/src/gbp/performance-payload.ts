@@ -1,5 +1,8 @@
-import type { AdapterResult, HttpRequestSpec } from "@/integrations/contracts"
-import type { GbpPerformanceApiResponse } from "@/integrations/contracts"
+import type {
+  AdapterResult,
+  HttpRequestSpec,
+} from "@glocalx/integrations/contracts"
+import type { GbpPerformanceApiResponse } from "@glocalx/integrations/contracts"
 
 import { parseGbpPerformanceResponse } from "./performance-metrics"
 import type {

@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 
-import type { AdapterEnvironment } from "@/integrations/contracts"
+import type { AdapterEnvironment } from "@glocalx/integrations/contracts"
 
 function mediaSigningKey(env: AdapterEnvironment): string | undefined {
   return (

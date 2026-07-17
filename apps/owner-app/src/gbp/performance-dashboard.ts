@@ -1,5 +1,5 @@
-import type { IntegrationAdapters } from "@/integrations/contracts"
-import { gbpPerformanceDailyMetrics } from "@/integrations/contracts"
+import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
+import { gbpPerformanceDailyMetrics } from "@glocalx/integrations/contracts"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import type { GbpStore } from "@/server/repositories/gbp-store"
 

@@ -5,8 +5,8 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { z } from "zod"
 
-import { createIntegrationAdapters } from "@/integrations"
-import type { IntegrationAdapters } from "@/integrations/contracts"
+import { createIntegrationAdapters } from "@glocalx/integrations"
+import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
 
 import { handleGoogleOAuthCallback } from "./oauth-callback"

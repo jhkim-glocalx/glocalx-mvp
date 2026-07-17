@@ -1,13 +1,24 @@
 import { readFileSync } from "node:fs"
+import { createRequire } from "node:module"
 
 import { describe, expect, it } from "vitest"
 
 const globalsCss = readFileSync("src/app/globals.css", "utf8")
 const layoutSource = readFileSync("src/app/layout.tsx", "utf8")
+// Tokens live once in @glocalx/ui; resolve through the package exports so
+// this test follows the file if the package layout changes.
+const tokensCss = readFileSync(
+  createRequire(import.meta.url).resolve("@glocalx/ui/tokens.css"),
+  "utf8"
+)
 
 describe("global design tokens", () => {
   it("keeps Tailwind as the first global import", () => {
     expect(globalsCss.split("\n")[0]).toBe('@import "tailwindcss";')
+  })
+
+  it("imports the shared token sheet from @glocalx/ui", () => {
+    expect(globalsCss).toContain('@import "@glocalx/ui/tokens.css";')
   })
 
   it("defines the finalized GlocalX token contract", () => {
@@ -30,7 +41,7 @@ describe("global design tokens", () => {
     ] as const
 
     for (const token of requiredTokens) {
-      expect(globalsCss).toContain(`${token}:`)
+      expect(tokensCss).toContain(`${token}:`)
     }
   })
 

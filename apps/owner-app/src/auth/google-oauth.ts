@@ -3,7 +3,7 @@ import {
   type OAuthOriginRequest,
   resolveOAuthRedirectUri,
 } from "@/auth/oauth-redirect"
-import type { AdapterEnvironment } from "@/integrations/contracts"
+import type { AdapterEnvironment } from "@glocalx/integrations/contracts"
 
 const googleOAuthEndpoint = "https://accounts.google.com/o/oauth2/v2/auth"
 const googleOAuthEnvVars = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"] as const

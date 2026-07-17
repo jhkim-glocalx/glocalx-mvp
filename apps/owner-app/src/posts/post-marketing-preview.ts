@@ -1,5 +1,5 @@
 import type { CreatePostDraftOptions, PostPreview } from "./post-types"
-import type { MarketingCaptionTranslation } from "@/integrations/contracts"
+import type { MarketingCaptionTranslation } from "@glocalx/integrations/contracts"
 
 function hasHangul(value: string): boolean {
   return /\p{Script=Hangul}/u.test(value)

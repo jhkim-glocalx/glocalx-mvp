@@ -7,7 +7,7 @@
     "dev": "next dev --hostname 127.0.0.1 --port 3100",
     "build": "next build",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@glocalx/ui": "*",

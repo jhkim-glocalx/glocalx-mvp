@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
 import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
-import { createIntegrationAdapters } from "@/integrations"
+import { createIntegrationAdapters } from "@glocalx/integrations"
 import { openDatabaseContext } from "@glocalx/db"
 import { applyMigrations, seedDemoData } from "@glocalx/db/sqlite"
 import { createDatabaseConversationStore } from "@/server/repositories/conversation-store"

@@ -5,7 +5,7 @@ import type {
   MarketingImageAssetInput,
   MarketingPlatform,
   MarketingSuggestionMode,
-} from "@/integrations/contracts"
+} from "@glocalx/integrations/contracts"
 import type { PostStore } from "@/server/repositories/post-store"
 
 export type CreatePostDraftOptions = {
