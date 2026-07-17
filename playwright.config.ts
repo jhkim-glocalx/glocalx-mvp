@@ -1,20 +1,24 @@
 import { defineConfig, devices } from "@playwright/test"
 
-const e2ePort = process.env["PLAYWRIGHT_PORT"] ?? "3000"
-const e2eBaseUrl = `http://127.0.0.1:${e2ePort}`
-const e2eTokenEncryptionKey = Buffer.alloc(32, 11).toString("base64")
-const e2eWebServerCommand =
-  process.env["PLAYWRIGHT_WEB_SERVER_COMMAND"] ??
-  `PLAYWRIGHT_TEST=true APP_INTEGRATION_MODE=stub GOOGLE_CLIENT_ID= GOOGLE_CLIENT_SECRET= KAKAO_REST_API_KEY= KAKAO_CLIENT_SECRET= TOKEN_ENCRYPTION_KEY=${e2eTokenEncryptionKey} npm run dev -- --hostname 127.0.0.1 --port ${e2ePort}`
+import {
+  adminBaseUrl,
+  adminPort,
+  ownerBaseUrl,
+  ownerPort,
+  sharedServerEnv,
+} from "./tests/e2e-cross/harness"
 
+// Cross-app harness: owner-app and admin run together against ONE stub
+// SQLite file. Single-app suites stay under apps/owner-app (npm run e2e);
+// this config only owns tests/e2e-cross/.
 export default defineConfig({
-  testDir: "./tests/e2e",
+  testDir: "./tests/e2e-cross",
   fullyParallel: false,
-  globalSetup: "./tests/e2e/global-setup.ts",
+  globalSetup: "./tests/e2e-cross/global-setup.ts",
   reporter: [["list"]],
   workers: 1,
   use: {
-    baseURL: e2eBaseUrl,
+    baseURL: adminBaseUrl,
     channel: "chrome",
     trace: "retain-on-failure",
   },
@@ -26,10 +30,22 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: e2eWebServerCommand,
-    url: e2eBaseUrl,
-    reuseExistingServer: false,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: `npx next dev --hostname 127.0.0.1 --port ${ownerPort}`,
+      cwd: "./apps/owner-app",
+      env: sharedServerEnv,
+      url: ownerBaseUrl,
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      command: `npx next dev --hostname 127.0.0.1 --port ${adminPort}`,
+      cwd: "./apps/admin",
+      env: sharedServerEnv,
+      url: `${adminBaseUrl}/api/health`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
 })

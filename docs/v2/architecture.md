@@ -23,14 +23,14 @@ glocalx-mvp/
 └── package.json          # npm workspaces root
 ```
 
-| Property | owner-app | admin |
-| --- | --- | --- |
-| Vercel project | existing (`glocalx-mvp-tawny`) | new (`glocalx-admin`) |
-| Vercel root directory | `apps/owner-app` | `apps/admin` |
-| Branch mapping | GitHub Flow: `main` → prod, per-PR previews as staging | same flow, own URLs |
-| Audience | store owners (public) | operators only (invite-gated) |
-| Session cookie | existing opaque owner session | separate admin session (different name, different table) |
-| Database | shared Neon Postgres (pooled `DATABASE_URL`) | same database, same rules |
+| Property              | owner-app                                              | admin                                                    |
+| --------------------- | ------------------------------------------------------ | -------------------------------------------------------- |
+| Vercel project        | existing (`glocalx-mvp`)                               | new (`glocalx-admin`)                                    |
+| Vercel root directory | `apps/owner-app`                                       | `apps/admin`                                             |
+| Branch mapping        | GitHub Flow: `main` → prod, per-PR previews as staging | same flow, own URLs                                      |
+| Audience              | store owners (public)                                  | operators only (invite-gated)                            |
+| Session cookie        | existing opaque owner session                          | separate admin session (different name, different table) |
+| Database              | shared Neon Postgres (pooled `DATABASE_URL`)           | same database, same rules                                |
 
 Rules carried over unchanged from the v1 ADRs
 (`docs/architecture/v2-postgres-architecture.md`):
@@ -87,7 +87,7 @@ logs) are reused, not forked.
 **Migration ownership across two apps:** with one database and two
 independently-deploying apps, `db:pg:migrate` runs exactly once per
 schema change — a named runbook step: the PM/founder runs it over the
-direct URL *before merging* any schema-bearing PR, and CI enforces
+direct URL _before merging_ any schema-bearing PR, and CI enforces
 `db:pg:verify` so drift fails the pipeline. Never at app runtime.
 CI-automated migration is deliberately deferred until the team grows. Every migration is **expand-contract**: additive changes
 (new tables/columns, nullable first) land freely; renames, drops, and
@@ -198,7 +198,7 @@ publish_jobs       id, request_id, channel ('gbp' | 'instagram' | …),
 
 ### Organization publishing credentials
 
-v1 publishes with the *owner's* Google token and a single global
+v1 publishes with the _owner's_ Google token and a single global
 Instagram env token. v2 inverts this: the org account publishes to many
 stores' GBP locations, and each store may link its own Instagram
 business account. This is its own workstream, not a reuse:
@@ -239,7 +239,7 @@ the owner over chat (the primary onboarding path). There is no
 automated Google polling in v2; whether the GBP Account Management API
 supports reliable automated grant detection is an open question pending
 a spike (§9). The v1 location-verification state machine
-(`src/gbp/state-machine.ts`) continues to gate *publishing* eligibility
+(`src/gbp/state-machine.ts`) continues to gate _publishing_ eligibility
 and is unrelated to this table.
 
 ## 3. Owner app v2 surface

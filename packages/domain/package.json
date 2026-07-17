@@ -1,0 +1,22 @@
+{
+  "name": "@glocalx/domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/schemas.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@glocalx/db": "*",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}

@@ -1,9 +1,0 @@
-HTTP/1.1 200 OK
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-content-type: application/json
-Date: Thu, 04 Jun 2026 16:03:00 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-Transfer-Encoding: chunked
-
-{"status":"VERIFICATION_PENDING","googleLocationId":"locations/stub-created","oauthConnectionId":"setup-oauth-google","gbpLocationId":"setup-gbp-location","followUpJobId":"setup-gbp-follow-up","auditLogId":"setup-gbp-audit","message":"Google 비즈니스 프로필 생성 요청이 접수되었습니다. 인증 완료까지 기다려주세요."}

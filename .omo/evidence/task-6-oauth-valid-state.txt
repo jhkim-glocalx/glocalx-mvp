@@ -1,9 +1,0 @@
-HTTP/1.1 200 OK
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-content-type: application/json
-Date: Thu, 04 Jun 2026 16:03:49 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-Transfer-Encoding: chunked
-
-{"status":"GOOGLE_OAUTH_CONNECTED","oauthConnectionId":"production-oauth-google","message":"Google 계정 연결이 저장되었습니다."}

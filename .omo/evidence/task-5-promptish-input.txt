@@ -1,9 +1,0 @@
-HTTP/1.1 200 OK
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-content-type: application/json
-Date: Thu, 04 Jun 2026 15:49:41 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-Transfer-Encoding: chunked
-
-{"status":"MANUAL_INPUT_REQUIRED","normalizedQuery":"<script>alert(1)</script>","candidates":[],"manualForm":{"requiredFields":["name","address","category"],"promptedFields":["phone","hours"]},"message":"네이버에서 매장을 찾지 못했습니다. 직접 입력으로 계속할 수 있습니다."}

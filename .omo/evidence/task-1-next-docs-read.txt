@@ -1,9 +1,0 @@
-Read local Next.js 16 canary docs before source edits:
-- node_modules/next/dist/docs/01-app/03-api-reference/04-functions/cookies.md:60-78
-  - Confirmed cookies() is asynchronous and cookie mutation belongs in Server Functions or Route Handlers.
-- node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md:20-40
-  - Confirmed App Router Route Handlers live under app/**/route.ts and cannot share a segment with page.ts.
-- node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md:1-24,170-194,288-300
-  - Confirmed pages/layouts default to Server Components, "use client" defines the boundary, and Client Component props must be serializable.
-- node_modules/next/dist/docs/01-app/01-getting-started/11-css.md:50-66,246-300
-  - Confirmed Tailwind import belongs in global CSS, root layout imports global CSS, and global styles should stay truly global.

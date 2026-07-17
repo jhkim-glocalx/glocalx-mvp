@@ -1,9 +1,0 @@
-HTTP/1.1 400 Bad Request
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-content-type: application/json
-Date: Thu, 04 Jun 2026 16:03:40 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-Transfer-Encoding: chunked
-
-{"status":"INVALID_OAUTH_STATE","message":"Google OAuth state가 일치하지 않습니다."}
