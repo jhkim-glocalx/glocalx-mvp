@@ -6,7 +6,17 @@ per app. Repo-side configuration (the ignore scripts) is committed;
 the dashboard steps below are operator actions and must be performed
 once by a project admin.
 
-## Owner app — existing project (`glocalx-mvp-tawny`)
+## First: disconnect the duplicate project
+
+The repo is currently connected to TWO Vercel projects in the
+`admin-10456072s-projects` team — `glocalx-mvp-private` (canonical) and
+`glocalx-mvp` (duplicate). Every push builds both and PRs carry two
+Vercel checks. In the duplicate `glocalx-mvp` project: Settings → Git →
+disconnect the repository (or delete the project). The unrelated
+`glocalx-mvp` project in the `glocal-x` team (`glocalx-mvp-v1.vercel.app`)
+is the frozen v1 snapshot — leave it alone.
+
+## Owner app — existing project (`glocalx-mvp-private`)
 
 1. Project → Settings → Build and Deployment → **Root Directory** →
    set to `apps/owner-app`. Leave "Include files outside the root
