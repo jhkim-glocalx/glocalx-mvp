@@ -7,7 +7,7 @@ import { z } from "zod"
 
 import { openDatabaseContext } from "@glocalx/db"
 import type { Queryable } from "@glocalx/db"
-import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
+import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
 
 import { createDatabaseOnboardingExtractionRepository } from "./onboarding-extraction"
 

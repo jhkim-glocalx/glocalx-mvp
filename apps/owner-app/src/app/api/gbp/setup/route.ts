@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 
-import { gbpSetupRequestSchema } from "@/domain/schemas"
+import { gbpSetupRequestSchema } from "@glocalx/domain"
 import { setupGoogleBusinessProfile } from "@/gbp/setup"
 import {
   parseJsonRoutePayload,

@@ -6,7 +6,7 @@ import {
   postImageMaxBytes,
   postImageMaxCount,
   postImageRequestDataUrlMaxChars,
-} from "@/domain/post-image-limits"
+} from "@glocalx/domain/post-image-limits"
 
 import type { MarketingImageAsset } from "./app-workspace-model"
 

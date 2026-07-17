@@ -1,4 +1,4 @@
-import { locationStatusSchema } from "@/domain/location-status"
+import { locationStatusSchema } from "@glocalx/domain/location-status"
 import type {
   CurrentLocation,
   GbpPublishingCredentials,

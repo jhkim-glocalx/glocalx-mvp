@@ -4,7 +4,7 @@ import type { PostingConversationDecision } from "@/conversations/contracts"
 import {
   postingDecisionRequestSchema,
   type PostingDecisionRequest,
-} from "@/domain/schemas"
+} from "@glocalx/domain"
 import type { IntegrationAdapters } from "@/integrations/contracts"
 import { createPostDraft, revisePostDraft } from "@/posts/post-flow"
 import {

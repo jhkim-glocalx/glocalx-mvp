@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import type { LocationStatus } from "@/domain/location-status"
-import { locationStatusValues } from "@/domain/location-status"
+import type { LocationStatus } from "@glocalx/domain/location-status"
+import { locationStatusValues } from "@glocalx/domain/location-status"
 
 import {
   canUseLiveGbpActions,

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 
-import { onboardingExtractionRequestSchema } from "@/domain/schemas"
+import { onboardingExtractionRequestSchema } from "@glocalx/domain"
 import type { BusinessProfileExtractionResult } from "@/onboarding/extraction"
 import { extractBusinessProfile } from "@/onboarding/extraction"
 import {

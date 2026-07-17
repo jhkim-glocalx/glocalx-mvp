@@ -5,7 +5,7 @@ import type {
 import type {
   MissingBusinessField,
   OnboardingSlotTurnRequest,
-} from "@/domain/schemas"
+} from "@glocalx/domain"
 
 export function requestedFieldForTurn(
   request: OnboardingSlotTurnRequest

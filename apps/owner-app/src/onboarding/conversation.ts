@@ -5,7 +5,7 @@ import type {
   AdapterBusinessProfileCandidate,
   MissingBusinessField,
   OnboardingSlotTurnRequest,
-} from "@/domain/schemas"
+} from "@glocalx/domain"
 import type { IntegrationAdapters } from "@/integrations/contracts"
 import type { ConversationStore } from "@/server/repositories/conversation-store"
 

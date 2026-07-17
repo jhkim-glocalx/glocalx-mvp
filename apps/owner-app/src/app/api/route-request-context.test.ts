@@ -6,7 +6,7 @@ import {
   readDatabaseSession,
   requiredSessionResponse,
 } from "@/server/http"
-import { postDraftRequestSchema } from "@/domain/schemas"
+import { postDraftRequestSchema } from "@glocalx/domain"
 import type { SessionStore } from "@/server/repositories/session-store"
 
 const unusedSessionStore: SessionStore = {

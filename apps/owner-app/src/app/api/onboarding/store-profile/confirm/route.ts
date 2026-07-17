@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 
-import { confirmedStoreProfileSchema } from "@/domain/schemas"
+import { confirmedStoreProfileSchema } from "@glocalx/domain"
 import { confirmStoreProfile } from "@/onboarding/store-profile"
 import {
   parseJsonRoutePayload,

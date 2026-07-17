@@ -15,7 +15,7 @@ import type {
   TranslationAdapter,
 } from "./contracts"
 import { createStubMarketingDraft } from "./stub-marketing-generation"
-import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
+import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
 
 const stubCandidate = {
   candidateId: "naver-local-stub-brunch-moment",

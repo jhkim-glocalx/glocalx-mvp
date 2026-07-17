@@ -1,9 +1,9 @@
 import type { OnboardingConversationOutput } from "@/conversations/contracts"
-import { extractLocalOnboardingSlots } from "@/conversations/onboarding-slot-extraction"
+import { extractLocalOnboardingSlots } from "@glocalx/domain/conversation/onboarding-slot-extraction"
 import type {
   MissingBusinessField,
   OnboardingSlotTurnRequest,
-} from "@/domain/schemas"
+} from "@glocalx/domain"
 import type { IntegrationAdapters } from "@/integrations/contracts"
 import { MalformedLlmResponseError } from "@/integrations/openai-conversation"
 

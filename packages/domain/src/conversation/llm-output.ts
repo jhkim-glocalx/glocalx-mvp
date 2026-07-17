@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { missingBusinessFieldSchema } from "@/domain/schemas"
+import { missingBusinessFieldSchema } from "../schemas"
 
 const nonEmptyStringSchema = z.string().trim().min(1)
 

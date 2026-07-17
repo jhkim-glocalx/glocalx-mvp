@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer"
 import type {
   AdapterBusinessProfileCandidate,
   MissingBusinessField,
-} from "@/domain/schemas"
+} from "@glocalx/domain"
 import type {
   HttpRequestSpec,
   IntegrationAdapters,

@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer"
 
 import { z } from "zod"
 
-import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
+import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
 
 import { blockedByCredentials, missingEnvVars } from "./credentials"
 import type {

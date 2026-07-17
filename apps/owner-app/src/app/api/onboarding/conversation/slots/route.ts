@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 
-import { onboardingSlotTurnRequestSchema } from "@/domain/schemas"
+import { onboardingSlotTurnRequestSchema } from "@glocalx/domain"
 import { processOnboardingSlotTurn } from "@/onboarding/conversation"
 import {
   parseJsonRoutePayload,

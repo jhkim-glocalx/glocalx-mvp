@@ -1,7 +1,7 @@
 import { z } from "zod"
 
-import { locationStatusSchema } from "@/domain/location-status"
-import type { LocationStatus } from "@/domain/location-status"
+import { locationStatusSchema } from "@glocalx/domain/location-status"
+import type { LocationStatus } from "@glocalx/domain/location-status"
 import type {
   HttpRequestSpec,
   IntegrationAdapters,

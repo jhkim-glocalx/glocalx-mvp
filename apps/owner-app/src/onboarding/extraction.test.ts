@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
+import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
 import type {
   AdapterResult,
   HttpRequestSpec,

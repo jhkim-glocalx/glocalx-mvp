@@ -1,4 +1,4 @@
-import type { MissingBusinessField } from "@/domain/schemas"
+import type { MissingBusinessField } from "@glocalx/domain"
 import type {
   OnboardingConversationOutput,
   OnboardingConversationState,

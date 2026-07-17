@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server"
 
-import { postPublishRequestSchema } from "@/domain/schemas"
+import { postPublishRequestSchema } from "@glocalx/domain"
 import { publishPostDraft } from "@/posts/post-flow"
 import {
   parseJsonRoutePayload,

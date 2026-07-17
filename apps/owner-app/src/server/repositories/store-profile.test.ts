@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import type { ConfirmedStoreProfile } from "@/domain/schemas"
+import type { ConfirmedStoreProfile } from "@glocalx/domain"
 import { openDatabaseContext } from "@glocalx/db"
 import type { Queryable } from "@glocalx/db"
 import { hasConfiguredPostgresDirectUrl } from "@glocalx/db/postgres/direct-url"

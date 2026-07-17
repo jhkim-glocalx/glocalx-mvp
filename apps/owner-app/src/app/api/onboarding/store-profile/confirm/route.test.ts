@@ -7,7 +7,7 @@ import {
   demoStoreId,
   demoUserId,
 } from "@/auth/session"
-import type { ConfirmedStoreProfile } from "@/domain/schemas"
+import type { ConfirmedStoreProfile } from "@glocalx/domain"
 import {
   applyMigrations,
   openDatabase,

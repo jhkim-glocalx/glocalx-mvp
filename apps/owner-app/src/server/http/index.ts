@@ -11,8 +11,8 @@ import {
   sessionCookieOptions,
 } from "@/auth/session"
 import type { DemoSession } from "@/auth/session"
-import { parseRoutePayload } from "@/domain/schemas"
-import type { ParsedValidationIssue } from "@/domain/schemas"
+import { parseRoutePayload } from "@glocalx/domain"
+import type { ParsedValidationIssue } from "@glocalx/domain"
 import { createIntegrationAdapters } from "@/integrations"
 import { openDatabaseContext, resolveDatabaseConfig } from "@glocalx/db"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"

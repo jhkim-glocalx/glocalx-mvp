@@ -1,4 +1,4 @@
-import type { LocationStatus } from "@/domain/location-status"
+import type { LocationStatus } from "@glocalx/domain/location-status"
 import type {
   IntegrationAdapters,
   MarketingGenerationResult,

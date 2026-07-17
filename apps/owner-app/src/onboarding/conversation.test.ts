@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
+import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
 import { createIntegrationAdapters } from "@/integrations"
 import { openDatabaseContext } from "@glocalx/db"
 import { applyMigrations, seedDemoData } from "@glocalx/db/sqlite"

@@ -1,4 +1,4 @@
-import type { AdapterBusinessProfileCandidate } from "@/domain/schemas"
+import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import type {
   GbpBusinessInformationAdapter,

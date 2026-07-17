@@ -8,7 +8,7 @@ import type {
   OnboardingConversationOutput,
   PostingConversationDecision,
 } from "@/conversations/contracts"
-import { extractLocalOnboardingSlots } from "@/conversations/onboarding-slot-extraction"
+import { extractLocalOnboardingSlots } from "@glocalx/domain/conversation/onboarding-slot-extraction"
 
 function classifyPostingReply(
   input: PostingOwnerReplyInput

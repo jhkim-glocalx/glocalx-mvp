@@ -3,7 +3,7 @@ import {
   readString,
   readStringArray,
 } from "@/app/_components/json-value"
-import type { ConfirmedStoreProfile } from "@/domain/schemas"
+import type { ConfirmedStoreProfile } from "@glocalx/domain"
 
 export type StoreProfileSource = "NAVER_LOCAL" | "MANUAL"
 
