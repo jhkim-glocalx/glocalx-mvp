@@ -1,0 +1,44 @@
+{
+  "name": "@glocalx/owner-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "db:pg:migrate": "node scripts/db-pg-migrate.ts",
+    "db:pg:reset": "node scripts/db-pg-reset.ts",
+    "db:pg:seed": "node scripts/db-pg-seed.ts",
+    "db:pg:verify": "node scripts/db-pg-verify.ts",
+    "db:migrate:sqlite-to-pg": "node scripts/db-migrate-sqlite-to-pg.ts",
+    "db:reset": "node scripts/db-reset.ts",
+    "db:seed": "node scripts/db-seed.ts",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "e2e:postgres": "DATABASE_PROVIDER=postgres playwright test"
+  },
+  "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.10.0",
+    "next": "16.3.0-canary.40",
+    "postgres": "^3.4.9",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "latest",
+    "@tailwindcss/postcss": "latest",
+    "@testing-library/jest-dom": "latest",
+    "@testing-library/react": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "jsdom": "latest",
+    "postcss": "8.5.10",
+    "tailwindcss": "latest",
+    "vitest": "latest"
+  }
+}

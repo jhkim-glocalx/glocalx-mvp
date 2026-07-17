@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "@glocalx/ui/tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 960px;
+  background: var(--canvas);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--canvas);
+  color: var(--foreground);
+  font-family:
+    "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic",
+    system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.ops-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.ops-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 12px;
+  background: var(--canvas-2);
+  border-right: 1px solid var(--border);
+}
+
+.ops-brand {
+  padding: 8px 12px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.ops-brand span {
+  color: var(--accent);
+}
+
+.ops-nav-link {
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.ops-nav-link:hover {
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ops-nav-link[aria-current="page"] {
+  color: var(--foreground);
+  background: rgba(255, 106, 61, 0.14);
+}
+
+.ops-main {
+  padding: 28px 32px;
+}
+
+.ops-page-title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.ops-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 40px 32px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--canvas-2);
+}
+
+.ops-empty strong {
+  font-size: 15px;
+}
+
+.ops-empty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}

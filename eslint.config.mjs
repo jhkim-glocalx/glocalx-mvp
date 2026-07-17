@@ -3,11 +3,16 @@ import nextTypescript from "eslint-config-next/typescript"
 
 const eslintConfig = [
   {
-    ignores: ["02_assets/**"],
+    ignores: ["02_assets/**", "**/.next/**", "**/test-results/**"],
   },
   ...nextCoreWebVitals,
   ...nextTypescript,
   {
+    settings: {
+      next: {
+        rootDir: "apps/owner-app/",
+      },
+    },
     rules: {
       "@typescript-eslint/consistent-type-imports": [
         "error",
