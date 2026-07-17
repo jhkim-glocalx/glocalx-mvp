@@ -33,6 +33,10 @@ export const operationalTableNames = [
   "auth_rate_limits",
   "admin_users",
   "admin_sessions",
+  "cs_conversations",
+  "cs_messages",
+  "cs_message_context",
+  "activity_events",
 ] as const
 export const databaseTableNames = [
   ...requiredTableNames,
@@ -76,6 +80,7 @@ const migrationPaths = [
   // 0005 is Postgres-only (SQLite handles social channels in code below);
   // numbering stays aligned across dialects.
   join(currentDirectory, "migrations", "0006_admin_identity.sql"),
+  join(currentDirectory, "migrations", "0007_cs_chat_activity.sql"),
 ] as const
 
 const sqlIdentifierPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
