@@ -1,9 +1,0 @@
-HTTP/1.1 200 OK
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-content-type: application/json
-Date: Thu, 04 Jun 2026 15:49:04 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-Transfer-Encoding: chunked
-
-{"status":"CANDIDATES_FOUND","normalizedQuery":"mybrunchcafe","candidates":[{"source":"NAVER_LOCAL","name":"브런치모먼트 홍대점","address":"서울 마포구 와우산로 123","category":"브런치 카페","phone":"02-123-4567","missingFields":["hours"],"naverPlaceUrl":"https://naver.me/mybrunchcafe"}],"requiresSelection":false,"message":"네이버에서 매장 정보를 찾았습니다."}

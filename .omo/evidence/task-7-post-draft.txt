@@ -1,9 +1,0 @@
-HTTP/1.1 200 OK
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-content-type: application/json
-Date: Thu, 04 Jun 2026 16:31:26 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-Transfer-Encoding: chunked
-
-{"status":"DRAFT_READY","draftId":"post-draft-ZGVtby1zdG9yZTrso7zrp5Ag","preview":{"canPublish":true,"koreanCopy":"브런치모먼트 홍대점에서 주말 브런치 신메뉴 홍보 소식을 전해드립니다.","englishCopy":"Sharing this update: 주말 브런치 신메뉴 홍보 Visit 브런치모먼트 홍대점 in 서울 마포구 와우산로 123."}}

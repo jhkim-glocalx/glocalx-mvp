@@ -1,9 +1,0 @@
-HTTP/1.1 200 OK
-vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
-content-type: application/json
-Date: Thu, 04 Jun 2026 16:31:41 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
-Transfer-Encoding: chunked
-
-{"status":"PUBLISHED","draftId":"post-draft-ZGVtby1zdG9yZTrso7zrp5Ag","gbpPostId":"stub-gbp-post","publicUrl":"https://business.google.com/local-post/stub-gbp-post","attemptNumber":1,"history":[{"attemptNumber":1,"status":"SUCCEEDED","gbpPostId":"stub-gbp-post","publicUrl":"https://business.google.com/local-post/stub-gbp-post"}]}
