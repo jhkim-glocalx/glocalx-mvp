@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { hashPassword, verifyPassword } from "./email-password"
+import { hashPassword, verifyPassword } from "./password-hash"
 
 describe("email password hashing", () => {
   it("accepts only the password that created an encoded credential", async () => {

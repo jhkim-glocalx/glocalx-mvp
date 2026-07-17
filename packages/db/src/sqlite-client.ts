@@ -9,7 +9,14 @@ import type {
 } from "./types.ts"
 
 class SqliteQueryable implements Queryable {
-  constructor(private readonly database: SqliteDatabase) {}
+  // Explicit field instead of a constructor parameter property: Node runs
+  // this package's TypeScript directly in strip-only mode, which rejects
+  // non-erasable syntax like parameter properties.
+  private readonly database: SqliteDatabase
+
+  constructor(database: SqliteDatabase) {
+    this.database = database
+  }
 
   async query(
     sql: string,

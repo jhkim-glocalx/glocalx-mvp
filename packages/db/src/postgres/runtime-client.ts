@@ -74,10 +74,16 @@ export function buildPostgresRuntimeOptions(
 }
 
 class PostgresQueryable implements Queryable {
-  constructor(
-    private readonly executor: PostgresExecutor,
-    private readonly runTransaction: TransactionRunner
-  ) {}
+  // Explicit fields instead of constructor parameter properties: Node runs
+  // this package's TypeScript directly in strip-only mode, which rejects
+  // non-erasable syntax like parameter properties.
+  private readonly executor: PostgresExecutor
+  private readonly runTransaction: TransactionRunner
+
+  constructor(executor: PostgresExecutor, runTransaction: TransactionRunner) {
+    this.executor = executor
+    this.runTransaction = runTransaction
+  }
 
   async query(
     sql: string,

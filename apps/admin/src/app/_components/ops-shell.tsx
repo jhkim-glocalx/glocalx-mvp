@@ -12,9 +12,10 @@ const sections = [
 
 type OpsShellProps = {
   readonly children: React.ReactNode
+  readonly operatorName: string
 }
 
-export function OpsShell({ children }: OpsShellProps) {
+export function OpsShell({ children, operatorName }: OpsShellProps) {
   const pathname = usePathname()
 
   return (
@@ -38,6 +39,14 @@ export function OpsShell({ children }: OpsShellProps) {
             </Link>
           ))}
         </nav>
+        <div className="ops-sidebar-footer">
+          <span className="ops-operator-name">{operatorName}</span>
+          <form action="/api/auth/logout" method="post">
+            <button type="submit" className="ops-logout-button">
+              Log out
+            </button>
+          </form>
+        </div>
       </aside>
       <main className="ops-main">{children}</main>
     </div>

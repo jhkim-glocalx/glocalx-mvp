@@ -6,9 +6,10 @@ const appRoot = dirname(fileURLToPath(import.meta.url))
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  serverExternalPackages: ["better-sqlite3"],
   // Workspace packages ship TypeScript source (no build step), so Next must
   // transpile them.
-  transpilePackages: ["@glocalx/ui"],
+  transpilePackages: ["@glocalx/db", "@glocalx/domain", "@glocalx/ui"],
   turbopack: {
     // Workspace root, not app root: node_modules and packages/* are hoisted
     // two levels up in the npm-workspaces monorepo.
