@@ -46,7 +46,9 @@ cohort is 10-20 hand-picked stores served by one operator.
 
 ## Constraints
 
-- Only Codex writes application code (PM/verify workflow in CLAUDE.md).
+- ~~Only Codex writes application code~~ Amended 2026-07-17: Claude
+  writes and tests application code directly; Codex is a second-opinion
+  reviewer only (workflow in CLAUDE.md).
 - Next.js 16 canary pinned; Vercel serverless + Neon pooling (no
   LISTEN/NOTIFY, no long-lived connections) — hence polling chat.
 - `APP_INTEGRATION_MODE=stub` must keep both apps fully demoable without

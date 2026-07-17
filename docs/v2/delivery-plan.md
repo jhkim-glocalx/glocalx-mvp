@@ -4,8 +4,9 @@ Status: Proposed
 Date: 2026-07-16
 Companion docs: [README.md](README.md) (scope), [architecture.md](architecture.md) (design)
 
-Working model: Claude (PM) writes scoped task specs, Codex implements,
-PM verifies (diff review + `/qa` + test suite) and ships via GitHub
+Working model: Claude implements and tests directly (Codex is a
+second-opinion reviewer only, e.g. `/codex review` on risky changes),
+then verifies (diff review + `/qa` + test suite) and ships via GitHub
 Flow — `feat/*` branches PR directly into `main`, with per-PR Vercel
 previews as staging (the `dev` branch is retired by
 `feat/social-post-publishing`, which must merge before Phase 0). Each
@@ -270,7 +271,8 @@ Acceptance criteria:
 
 ## Verification gates (every phase)
 
-1. Codex diff review against the task spec (PM).
+1. Self diff review against the task spec; `/codex review` as an
+   independent second opinion on risky or security-touching changes.
 2. `npm run typecheck && npm run lint && npm run test` green at root.
 3. `npm run e2e` (stub) green; new flows get e2e coverage in the same PR.
 4. `/qa` browser pass on the affected surfaces (both apps when touched).

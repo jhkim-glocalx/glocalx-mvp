@@ -131,8 +131,10 @@ Out of scope (explicitly):
 
 ## 6. Operating model
 
-- **PM (Claude)** specifies, delegates, verifies, ships. **Codex**
-  implements. Same workflow as v1 (see `CLAUDE.md`).
+- **Claude** specifies, implements, tests, verifies, and ships.
+  **Codex** provides an independent second opinion on demand (design
+  sanity checks, `/codex review`) — it does not implement (see
+  `CLAUDE.md`).
 - Git flow is GitHub Flow: `feat/*` PRs directly into `main`
   (production), with per-PR Vercel previews serving as staging — the
   `dev` branch is retired by `feat/social-post-publishing`. The admin
