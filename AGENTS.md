@@ -54,3 +54,24 @@ The following are gitignored and must never be committed:
 - `01_documents/`, `02_assets/`, `workspace/` — business files, not app code
 - `.env` — secrets (use `.env.example` for the template)
 <!-- END:git-rules -->
+
+## Stacked PRs (a PR branched off another open PR)
+
+When PR **B** is branched off PR **A**'s branch instead of `main`:
+
+- **Retarget B to `main` before merging A** — or merge A **without**
+  `--delete-branch`. Deleting A's branch while it is still B's base makes
+  GitHub **close** B (it does *not* auto-retarget it), and a PR whose base
+  branch is gone cannot be reopened.
+- **Recovery if B was closed this way:** rebase B onto the updated `main`
+  and open a fresh PR. Because A was squash-merged, drop A's now-redundant
+  commits by replaying only B's own:
+
+  ```bash
+  git rebase --onto origin/main <A-branch-tip-sha> <B-branch>
+  git push --force-with-lease
+  gh pr create --base main --head <B-branch>
+  ```
+
+  Verify `git diff --stat origin/main...HEAD` shows only B's files before
+  pushing.
