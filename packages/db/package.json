@@ -18,6 +18,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@glocalx/domain": "*",
     "typescript": "latest",
     "vitest": "latest"
   }
