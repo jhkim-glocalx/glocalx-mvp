@@ -143,7 +143,15 @@ export function AppWorkspace({
           ) : undefined
         }
         key={activeNavId}
-        overlay={<ChatWidget activity={activity} section={activitySection} />}
+        overlay={
+          // The floating FAB shares the bottom-right corner with the composer's
+          // send button and the flows' bottom action rows, so it only mounts on
+          // composer-less surfaces (the dashboard) for now; extending CS chat to
+          // composer screens needs a non-colliding dock (Phase 1 follow-up).
+          showComposer ? undefined : (
+            <ChatWidget activity={activity} section={activitySection} />
+          )
+        }
         screenClassName={
           activeNavId === "dashboard" ? "gx-dashboard-screen" : "gx-chat-screen"
         }
