@@ -16,6 +16,14 @@ import type { ParsedValidationIssue } from "@glocalx/domain"
 import { createIntegrationAdapters } from "@glocalx/integrations"
 import { openDatabaseContext, resolveDatabaseConfig } from "@glocalx/db"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
+import { createDatabaseActivityEventStore } from "@glocalx/db/support/activity-store"
+import type { ActivityEventStore } from "@glocalx/db/support/activity-store"
+import { createDatabaseCsConversationStore } from "@glocalx/db/support/conversation-store"
+import type { CsConversationStore } from "@glocalx/db/support/conversation-store"
+import { createDatabaseCsMessageContextStore } from "@glocalx/db/support/message-context-store"
+import type { CsMessageContextStore } from "@glocalx/db/support/message-context-store"
+import { createDatabaseCsMessageStore } from "@glocalx/db/support/message-store"
+import type { CsMessageStore } from "@glocalx/db/support/message-store"
 import { createDatabaseConversationStore } from "@/server/repositories/conversation-store"
 import type { ConversationStore } from "@/server/repositories/conversation-store"
 import { createDatabaseAuthRateLimitRepository } from "@/server/repositories/auth-rate-limit"
@@ -51,11 +59,15 @@ export type ParsedJsonRoutePayload<TValue> =
     }
 
 export type QueryableRouteDatabaseContext = {
+  readonly activityEventStore: ActivityEventStore
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
   readonly authRateLimitRepository: ReturnType<
     typeof createDatabaseAuthRateLimitRepository
   >
   readonly conversationStore: ConversationStore
+  readonly csConversationStore: CsConversationStore
+  readonly csMessageContextStore: CsMessageContextStore
+  readonly csMessageStore: CsMessageStore
   readonly emailCredentialsRepository: ReturnType<
     typeof createDatabaseEmailCredentialsRepository
   >
@@ -213,9 +225,13 @@ export async function withQueryableRouteDatabase<TResponse extends Response>(
 
   try {
     return await handler({
+      activityEventStore: createDatabaseActivityEventStore(queryable),
       adapters: createIntegrationAdapters(),
       authRateLimitRepository: createDatabaseAuthRateLimitRepository(queryable),
       conversationStore: createDatabaseConversationStore(queryable),
+      csConversationStore: createDatabaseCsConversationStore(queryable),
+      csMessageContextStore: createDatabaseCsMessageContextStore(queryable),
+      csMessageStore: createDatabaseCsMessageStore(queryable),
       emailCredentialsRepository:
         createDatabaseEmailCredentialsRepository(queryable),
       gbpStore: createDatabaseGbpStore(queryable),

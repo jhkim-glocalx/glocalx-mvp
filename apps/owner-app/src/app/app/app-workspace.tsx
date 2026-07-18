@@ -2,10 +2,26 @@
 
 import { useEffect, useRef, useState } from "react"
 
+import type { ActivitySection } from "@glocalx/domain/support/contracts"
+
+import { ChatWidget } from "@/app/_components/chat-widget"
 import { MobileShell } from "@/app/_components/mobile-shell"
 import { ReferenceComposer } from "@/app/_components/reference-composer"
+import { useActivityTrail } from "@/app/_components/use-activity-trail"
 
 import { isAppNavId, type AppNavId } from "./app-workspace-model"
+
+// Owner nav ids map onto the fixed activity-telemetry sections so the operator
+// console can see which surface a message came from (architecture §2/§7).
+const activitySectionByNav: Record<AppNavId, ActivitySection> = {
+  dashboard: "home",
+  onboarding: "onboarding",
+  photo: "marketing",
+  posting: "marketing",
+  report: "performance",
+  reviews: "reviews",
+  targets: "marketing",
+}
 import { AppWorkspaceTopBar } from "./app-workspace-topbar"
 import { ReferenceFlowScreens } from "./reference-flow-screens"
 import { useAppOnboarding } from "./use-app-onboarding"
@@ -24,7 +40,15 @@ export function AppWorkspace({
   const [composerFocusKey, setComposerFocusKey] = useState(0)
   const [composerMessage, setComposerMessage] = useState("")
   const screenRef = useRef<HTMLDivElement>(null)
+  const activity = useActivityTrail()
+  const activitySection = activitySectionByNav[activeNavId]
   const onboarding = useAppOnboarding()
+
+  useEffect(() => {
+    activity.recordAction(activitySection, "section_viewed", {
+      section: activitySection,
+    })
+  }, [activity, activitySection])
   const posting = usePostingWorkspace({
     onMoveToPosting: () => setActiveNavId("posting"),
     storeId,
@@ -119,6 +143,15 @@ export function AppWorkspace({
           ) : undefined
         }
         key={activeNavId}
+        overlay={
+          // The floating FAB shares the bottom-right corner with the composer's
+          // send button and the flows' bottom action rows, so it only mounts on
+          // composer-less surfaces (the dashboard) for now; extending CS chat to
+          // composer screens needs a non-colliding dock (Phase 1 follow-up).
+          showComposer ? undefined : (
+            <ChatWidget activity={activity} section={activitySection} />
+          )
+        }
         screenClassName={
           activeNavId === "dashboard" ? "gx-dashboard-screen" : "gx-chat-screen"
         }
