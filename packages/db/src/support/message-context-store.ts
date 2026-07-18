@@ -29,6 +29,11 @@ export interface CsMessageContextStore {
   getContextForMessage(
     messageId: string
   ): Promise<CsMessageContextRecord | undefined>
+  // Batch fetch for the operator conversation view: one query for a page of
+  // messages instead of N per-message reads. Only owner messages carry context.
+  getContextsForMessages(
+    messageIds: readonly string[]
+  ): Promise<ReadonlyMap<string, CsMessageContextRecord>>
 }
 
 // The trail was validated against the domain schema at write time; on read we
@@ -88,6 +93,25 @@ export function createDatabaseCsMessageContextStore(
         [messageId]
       )
       return row === undefined ? undefined : toContextRecord(row)
+    },
+
+    async getContextsForMessages(messageIds) {
+      const byMessageId = new Map<string, CsMessageContextRecord>()
+      if (messageIds.length === 0) {
+        return byMessageId
+      }
+      const placeholders = messageIds.map(() => "?").join(", ")
+      const rows = await queryable.query(
+        `SELECT ${contextProjection}
+           FROM cs_message_context
+          WHERE message_id IN (${placeholders})`,
+        [...messageIds]
+      )
+      for (const row of rows) {
+        const record = toContextRecord(row)
+        byMessageId.set(record.messageId, record)
+      }
+      return byMessageId
     },
   }
 }

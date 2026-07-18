@@ -1,11 +1,12 @@
 import type {
   CsConversationMode,
   CsConversationStatus,
+  CsMessageSender,
 } from "@glocalx/domain/support/contracts"
 import { z } from "zod"
 
 import type { Queryable } from "../types.ts"
-import { timestampSchema } from "./row-codecs.ts"
+import { nullableTimestampSchema, timestampSchema } from "./row-codecs.ts"
 
 export type CsConversationRecord = {
   readonly id: string
@@ -22,6 +23,24 @@ export type CreateOpenConversationInput = {
   readonly storeId: string
   readonly mode: CsConversationMode
   readonly now: Date
+}
+
+// Operator-inbox read model: a conversation joined to its store, its most
+// recent message, and how many owner messages the operator has not read yet.
+// `unreadFromOwner > 0` is the "awaiting reply" signal that floats a row to the
+// top of the inbox (delivery-plan Phase 1 §5).
+export type InboxConversationSummary = {
+  readonly id: string
+  readonly storeId: string
+  readonly storeName: string
+  readonly mode: CsConversationMode
+  readonly status: CsConversationStatus
+  readonly assignedAdminId: string | null
+  readonly unreadFromOwner: number
+  readonly lastMessageSender: CsMessageSender | null
+  readonly lastMessageBody: string | null
+  readonly lastMessageAt: string | null
+  readonly updatedAt: string
 }
 
 export interface CsConversationStore {
@@ -41,6 +60,12 @@ export interface CsConversationStore {
   listConversations(
     filter?: CsConversationListFilter
   ): Promise<readonly CsConversationRecord[]>
+  listInboxConversations(
+    filter?: CsConversationListFilter
+  ): Promise<readonly InboxConversationSummary[]>
+  getInboxConversationById(
+    conversationId: string
+  ): Promise<InboxConversationSummary | undefined>
   assignAdmin(conversationId: string, adminId: string, now: Date): Promise<void>
   setMode(
     conversationId: string,
@@ -77,6 +102,54 @@ const conversationProjection = `
 
 function toConversation(row: unknown): CsConversationRecord {
   return conversationRowSchema.parse(row)
+}
+
+const inboxSummaryRowSchema = z.object({
+  id: z.string(),
+  storeId: z.string(),
+  storeName: z.string(),
+  mode: z.enum(["ai", "human"]),
+  status: z.enum(["open", "resolved"]),
+  assignedAdminId: z.string().nullable(),
+  unreadFromOwner: z.coerce.number(),
+  lastMessageSender: z.enum(["owner", "assistant"]).nullable(),
+  lastMessageBody: z.string().nullable(),
+  lastMessageAt: nullableTimestampSchema,
+  updatedAt: timestampSchema,
+})
+
+// Owner messages the operator has not yet read: the "awaiting reply" count.
+// Repeated verbatim in the ORDER BY because Postgres forbids referencing an
+// output-column alias inside an ORDER BY expression (SQLite would allow it).
+const unreadFromOwnerSubquery = `
+  (SELECT COUNT(*) FROM cs_messages m
+     WHERE m.conversation_id = c.id
+       AND m.sender = 'owner'
+       AND m.admin_read_at IS NULL)
+`
+
+const inboxSummaryProjection = `
+  c.id,
+  c.store_id AS "storeId",
+  s.name AS "storeName",
+  c.mode,
+  c.status,
+  c.assigned_admin_id AS "assignedAdminId",
+  ${unreadFromOwnerSubquery} AS "unreadFromOwner",
+  (SELECT m.sender FROM cs_messages m
+     WHERE m.conversation_id = c.id
+     ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS "lastMessageSender",
+  (SELECT m.body FROM cs_messages m
+     WHERE m.conversation_id = c.id
+     ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS "lastMessageBody",
+  (SELECT m.created_at FROM cs_messages m
+     WHERE m.conversation_id = c.id
+     ORDER BY m.created_at DESC, m.id DESC LIMIT 1) AS "lastMessageAt",
+  c.updated_at AS "updatedAt"
+`
+
+function toInboxSummary(row: unknown): InboxConversationSummary {
+  return inboxSummaryRowSchema.parse(row)
 }
 
 async function readOpenConversationForStore(
@@ -170,6 +243,46 @@ export function createDatabaseCsConversationStore(
               [status]
             )
       return rows.map(toConversation)
+    },
+
+    async listInboxConversations(filter) {
+      const status = filter?.status
+      // Awaiting-reply conversations float to the top (delivery-plan §5),
+      // then most-recently-updated. id breaks ties for a stable order.
+      const orderBy = `
+        ORDER BY
+          CASE WHEN ${unreadFromOwnerSubquery} > 0 THEN 0 ELSE 1 END,
+          c.updated_at DESC,
+          c.id ASC
+      `
+      const rows =
+        status === undefined
+          ? await queryable.query(
+              `SELECT ${inboxSummaryProjection}
+                 FROM cs_conversations c
+                 JOIN stores s ON s.id = c.store_id
+                 ${orderBy}`
+            )
+          : await queryable.query(
+              `SELECT ${inboxSummaryProjection}
+                 FROM cs_conversations c
+                 JOIN stores s ON s.id = c.store_id
+                WHERE c.status = ?
+                 ${orderBy}`,
+              [status]
+            )
+      return rows.map(toInboxSummary)
+    },
+
+    async getInboxConversationById(conversationId) {
+      const row = await queryable.queryOne(
+        `SELECT ${inboxSummaryProjection}
+           FROM cs_conversations c
+           JOIN stores s ON s.id = c.store_id
+          WHERE c.id = ?`,
+        [conversationId]
+      )
+      return row === undefined ? undefined : toInboxSummary(row)
     },
 
     async assignAdmin(conversationId, adminId, now) {

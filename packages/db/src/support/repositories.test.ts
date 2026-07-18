@@ -17,6 +17,7 @@ import {
   createDatabaseCsMessageStore,
   type CsMessageStore,
 } from "./message-store.ts"
+import { createDatabaseSupportMetricsStore } from "./metrics-store.ts"
 
 const storeId = "store-1"
 const otherStoreId = "store-2"
@@ -286,6 +287,80 @@ describe("message store", () => {
   })
 })
 
+describe("inbox conversation summaries", () => {
+  it("floats awaiting-reply conversations above quiet ones", async () => {
+    // storeId: operator already replied and read the owner message → quiet.
+    const answered = await openConversation(at(0))
+    const ownerMsg = await messages.appendMessage({
+      id: randomUUID(),
+      conversationId: answered,
+      sender: "owner",
+      authorKind: "user",
+      authorAdminId: null,
+      body: "first question",
+      now: at(1),
+    })
+    await messages.markAdminRead(answered, at(2))
+    await messages.appendMessage({
+      id: randomUUID(),
+      conversationId: answered,
+      sender: "assistant",
+      authorKind: "admin",
+      authorAdminId: adminId,
+      body: "answered",
+      now: at(3),
+    })
+    await conversations.touch(answered, at(3))
+
+    // otherStoreId: a newer owner message the operator has not read → awaiting.
+    const waiting = await conversations.getOrCreateOpenConversation({
+      id: randomUUID(),
+      storeId: otherStoreId,
+      mode: "human",
+      now: at(4),
+    })
+    await messages.appendMessage({
+      id: randomUUID(),
+      conversationId: waiting.id,
+      sender: "owner",
+      authorKind: "user",
+      authorAdminId: null,
+      body: "please help",
+      now: at(5),
+    })
+    await conversations.touch(waiting.id, at(5))
+
+    const inbox = await conversations.listInboxConversations()
+    expect(inbox.map((row) => row.id)).toStrictEqual([waiting.id, answered])
+
+    const [first, second] = inbox
+    expect(first?.storeName).toBe(otherStoreId)
+    expect(first?.unreadFromOwner).toBe(1)
+    expect(first?.lastMessageSender).toBe("owner")
+    expect(first?.lastMessageBody).toBe("please help")
+    expect(second?.unreadFromOwner).toBe(0)
+    expect(second?.lastMessageSender).toBe("assistant")
+    void ownerMsg
+  })
+
+  it("filters inbox summaries by status", async () => {
+    const resolved = await openConversation(at(0))
+    await conversations.resolveConversation(resolved, at(1))
+    const open = await conversations.getOrCreateOpenConversation({
+      id: randomUUID(),
+      storeId: otherStoreId,
+      mode: "human",
+      now: at(2),
+    })
+
+    const openOnly = await conversations.listInboxConversations({
+      status: "open",
+    })
+    expect(openOnly.map((row) => row.id)).toStrictEqual([open.id])
+    expect(await conversations.listInboxConversations()).toHaveLength(2)
+  })
+})
+
 describe("message context store", () => {
   it("attaches and reads back the screen context plus trail", async () => {
     const conversationId = await openConversation()
@@ -323,6 +398,124 @@ describe("message context store", () => {
     expect(record?.activityTrail[0]).toMatchObject({
       action: "gbp_connect_started",
     })
+  })
+
+  it("batch-fetches contexts keyed by message id", async () => {
+    const conversationId = await openConversation()
+    const contextStore = createDatabaseCsMessageContextStore(queryable)
+    const withContext = await messages.appendMessage({
+      id: randomUUID(),
+      conversationId,
+      sender: "owner",
+      authorKind: "user",
+      authorAdminId: null,
+      body: "on marketing",
+      now: at(1),
+    })
+    const withoutContext = await messages.appendMessage({
+      id: randomUUID(),
+      conversationId,
+      sender: "owner",
+      authorKind: "user",
+      authorAdminId: null,
+      body: "follow up",
+      now: at(2),
+    })
+    await contextStore.attachContext({
+      id: randomUUID(),
+      messageId: withContext.id,
+      capturedAt: at(1),
+      context: { section: "marketing", stage: "intake", activityTrail: [] },
+    })
+
+    const byId = await contextStore.getContextsForMessages([
+      withContext.id,
+      withoutContext.id,
+    ])
+    expect(byId.size).toBe(1)
+    expect(byId.get(withContext.id)?.section).toBe("marketing")
+    expect(byId.has(withoutContext.id)).toBe(false)
+    expect((await contextStore.getContextsForMessages([])).size).toBe(0)
+  })
+})
+
+describe("support metrics store", () => {
+  it("gathers the window's rows for the domain compute step", async () => {
+    const metricsStore = createDatabaseSupportMetricsStore(queryable)
+    const activityStore = createDatabaseActivityEventStore(queryable)
+    await activityStore.recordEvents([
+      {
+        id: randomUUID(),
+        storeId,
+        sessionId: null,
+        section: "home",
+        action: "section_viewed",
+        detail: undefined,
+        occurredAt: at(1),
+      },
+      {
+        id: randomUUID(),
+        storeId: otherStoreId,
+        sessionId: null,
+        section: "home",
+        action: "section_viewed",
+        detail: undefined,
+        occurredAt: at(2),
+      },
+    ])
+    const conversationId = await openConversation(at(0))
+    await messages.appendMessage({
+      id: randomUUID(),
+      conversationId,
+      sender: "assistant",
+      authorKind: "admin",
+      authorAdminId: adminId,
+      body: "how can I help?",
+      now: at(10),
+    })
+    await messages.appendMessage({
+      id: randomUUID(),
+      conversationId,
+      sender: "owner",
+      authorKind: "user",
+      authorAdminId: null,
+      body: "a reply 5s later",
+      now: at(15),
+    })
+
+    const input = await metricsStore.gatherWeeklyMetricsInput({
+      start: at(0).toISOString(),
+      end: at(60).toISOString(),
+    })
+    expect(input.activityEvents).toHaveLength(2)
+    expect(input.conversations).toHaveLength(1)
+    // Messages arrive chronologically within a conversation so the domain
+    // pairing walk sees assistant-then-owner.
+    expect(input.messages.map((m) => m.sender)).toStrictEqual([
+      "assistant",
+      "owner",
+    ])
+    expect(input.messages[1]?.createdAt).toBe(at(15).toISOString())
+  })
+
+  it("excludes rows at or after the window end", async () => {
+    const metricsStore = createDatabaseSupportMetricsStore(queryable)
+    await createDatabaseActivityEventStore(queryable).recordEvents([
+      {
+        id: randomUUID(),
+        storeId,
+        sessionId: null,
+        section: "home",
+        action: "section_viewed",
+        detail: undefined,
+        occurredAt: at(30),
+      },
+    ])
+    const input = await metricsStore.gatherWeeklyMetricsInput({
+      start: at(0).toISOString(),
+      end: at(30).toISOString(),
+    })
+    expect(input.activityEvents).toHaveLength(0)
   })
 })
 
