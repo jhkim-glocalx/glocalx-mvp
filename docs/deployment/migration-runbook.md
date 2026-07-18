@@ -43,3 +43,14 @@ npm run db:pg:migrate && npm run db:pg:verify
 
 Production resets are blocked by the target-bound confirmation guard in
 `packages/db/src/postgres/reset-guard.ts`.
+
+## Applied migration log
+
+The `glocalx_schema_migrations` table (version, checksum, `applied_at`) is
+the source of truth for what has run against a given database. This table
+is the human-readable trail — add a row each time step 4 is run against a
+real (non-throwaway) database.
+
+| Date       | Migration(s) applied                                                                     | Target                          | Verify result                                         | Run by  |
+| ---------- | ---------------------------------------------------------------------------------------- | ------------------------------- | ----------------------------------------------------- | ------- |
+| 2026-07-18 | `0007_cs_chat_activity` (`0002`–`0006` also applied — the DB previously had only `0001`) | production shared Neon Postgres | `Verified Postgres schema with 26 application tables` | founder |
