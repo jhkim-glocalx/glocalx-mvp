@@ -54,6 +54,15 @@ export type CsMessageCreateRequest = z.infer<
   typeof csMessageCreateRequestSchema
 >
 
+// Operator reply payload (trust boundary for the dashboard reply API, PR3).
+// Reuses the owner's body bounds — a reply is a message like any other.
+export const csAdminReplyRequestSchema = z
+  .object({
+    body: csMessageBodySchema,
+  })
+  .strict()
+export type CsAdminReplyRequest = z.infer<typeof csAdminReplyRequestSchema>
+
 // Owner-facing message DTO: deliberately omits author_kind/author_admin_id so
 // no owner-facing read can ever reveal whether a human or the AI replied.
 export type OwnerFacingMessage = {
