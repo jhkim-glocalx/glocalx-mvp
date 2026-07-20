@@ -14,6 +14,7 @@ import {
   createProductionPostingConversation,
 } from "./openai-conversation"
 import { createProductionMarketingGeneration } from "./openai-production"
+import { createProductionCsAssistant } from "./openai-cs-assistant"
 import { createProductionPerformance } from "./production-performance"
 import { shouldUsePreviewNaverStub } from "./runtime-diagnostics"
 import {
@@ -69,9 +70,7 @@ export function createIntegrationAdapters(
         fetchImpl
       ),
       postingConversation: createProductionPostingConversation(env, fetchImpl),
-      // Production CS responder lands in Phase 2 PR2; the stub keeps AI-mode
-      // chat demoable until then.
-      csAssistant: createStubCsAssistant(),
+      csAssistant: createProductionCsAssistant(env, fetchImpl),
       translation: createStubTranslation(),
       clock: createStubClock(now),
       jobScheduler: createStubJobScheduler(),

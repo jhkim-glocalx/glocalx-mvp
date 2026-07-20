@@ -141,6 +141,13 @@ that maximizes early learning — and an operator opts a conversation into
 `human` **keeps** any un-sent AI draft as an editable draft rather than
 discarding it.
 
+Failure-degradation refinement (PR2): composition failures differ by mode.
+Autonomous `ai` has no operator in the loop, so the owner gets a courteous
+owner-visible fallback **and** the conversation is flagged. `ai_draft`
+already routes every reply through an operator, so a failure only flags the
+conversation (no owner-visible fallback — the operator writes the reply).
+Both paths always flag; neither drops silently.
+
 Tasks:
 
 1. **`CsAssistant` adapter contract** + deterministic stub + OpenAI
