@@ -166,6 +166,64 @@ function ensureSocialPostDraftChannels(database: SqliteDatabase): void {
   }
 }
 
+// Phase 2: widen cs_conversations.mode to add the 'ai_draft' posture and add the
+// AI-failure flag columns. SQLite cannot ALTER a CHECK constraint, so rebuild the
+// table (the ensureSocialPostDraftChannels pattern). Guarded on the widened CHECK
+// already being present, and idempotent because every open re-runs applyMigrations.
+function ensureAiDraftConversationMode(database: SqliteDatabase): void {
+  const row = database
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get("cs_conversations") as { readonly sql?: string } | undefined
+  if (row === undefined || row.sql === undefined) {
+    // cs_conversations not created yet (migrations run before this helper only
+    // on a populated schema) — nothing to upgrade.
+    return
+  }
+  if (row.sql.includes("'ai_draft'")) {
+    return
+  }
+
+  database.pragma("foreign_keys = OFF")
+  try {
+    database.exec(`
+      BEGIN;
+      CREATE TABLE cs_conversations_ai_mode_upgrade (
+        id TEXT PRIMARY KEY,
+        store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+        mode TEXT NOT NULL CHECK (mode IN ('ai_draft', 'ai', 'human')),
+        status TEXT NOT NULL CHECK (status IN ('open', 'resolved')),
+        assigned_admin_id TEXT REFERENCES admin_users(id) ON DELETE SET NULL,
+        flagged_at TEXT,
+        flag_reason TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      INSERT INTO cs_conversations_ai_mode_upgrade (
+        id, store_id, mode, status, assigned_admin_id, flagged_at, flag_reason,
+        created_at, updated_at
+      )
+      SELECT id, store_id, mode, status, assigned_admin_id, NULL, NULL,
+        created_at, updated_at
+      FROM cs_conversations;
+      DROP TABLE cs_conversations;
+      ALTER TABLE cs_conversations_ai_mode_upgrade RENAME TO cs_conversations;
+      CREATE INDEX IF NOT EXISTS cs_conversations_status_updated_idx
+        ON cs_conversations (status, updated_at);
+      CREATE UNIQUE INDEX IF NOT EXISTS cs_conversations_one_open_per_store_idx
+        ON cs_conversations (store_id)
+        WHERE status = 'open';
+      COMMIT;
+    `)
+  } catch (error) {
+    if (database.inTransaction) {
+      database.exec("ROLLBACK")
+    }
+    throw error
+  } finally {
+    database.pragma("foreign_keys = ON")
+  }
+}
+
 export function resolveDefaultDatabasePath(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): string {
@@ -214,5 +272,18 @@ export function applyMigrations(database: SqliteDatabase): void {
   ensureColumn(database, "post_publish_attempts", "external_post_id", "TEXT")
   database.exec(
     "UPDATE post_publish_attempts SET external_post_id = gbp_post_id WHERE external_post_id IS NULL AND gbp_post_id IS NOT NULL"
+  )
+  // Phase 2 (matches postgres/migrations/0008_cs_ai_mode.sql).
+  ensureAiDraftConversationMode(database)
+  ensureColumn(
+    database,
+    "cs_messages",
+    "status",
+    "TEXT NOT NULL DEFAULT 'sent' CHECK (status IN ('sent', 'draft'))"
+  )
+  database.exec(
+    `CREATE INDEX IF NOT EXISTS cs_messages_owner_visible_cursor_idx
+       ON cs_messages (conversation_id, created_at, id)
+      WHERE status = 'sent'`
   )
 }

@@ -129,9 +129,17 @@ Acceptance criteria:
 
 ## Phase 2 — AI mode + seamless handoff
 
-Goal: conversations start in "AI drafts, operator sends" posture;
-autonomous AI mode is a per-conversation flip once draft quality is
-trusted; operators can take over (and hand back) invisibly to the owner.
+Goal: operators can turn on an "AI drafts, operator sends" posture per
+conversation; autonomous AI mode is a further per-conversation flip once
+draft quality is trusted; operators can take over (and hand back)
+invisibly to the owner.
+
+Founder decision (2026-07-19, revises the original "ai_draft default"):
+new conversations still open in **`human`** mode — the concierge posture
+that maximizes early learning — and an operator opts a conversation into
+`ai_draft` (then `ai`) from the console. Handing a conversation back to
+`human` **keeps** any un-sent AI draft as an editable draft rather than
+discarding it.
 
 Tasks:
 
@@ -142,9 +150,9 @@ Tasks:
    never owner-visible) + console draft review/edit/send surface. AI
    composition runs out-of-band after the owner's message persists
    (architecture.md §5) — never inside the owner's POST. Mode toggle:
-   per-conversation switch between `ai_draft` (default) and autonomous
-   `ai`; failures degrade to a courteous fallback message + dashboard
-   flag (never silent).
+   per-conversation switch across `human` (default), `ai_draft`, and
+   autonomous `ai`; failures degrade to a courteous fallback message +
+   dashboard flag (never silent).
 3. **Handoff semantics:** flipping to human stops AI replies immediately;
    flipping back resumes. Console renders AI vs admin authorship
    distinctly; the owner sees one assistant.
