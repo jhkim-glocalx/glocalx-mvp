@@ -18,26 +18,46 @@ export const campaignAssetKindSchema = z.enum(["original", "processed"])
 export type CampaignAssetKind = z.infer<typeof campaignAssetKindSchema>
 
 export const campaignAssetUploadedBySchema = z.enum(["owner", "admin"])
-export type CampaignAssetUploadedBy = z.infer<typeof campaignAssetUploadedBySchema>
+export type CampaignAssetUploadedBy = z.infer<
+  typeof campaignAssetUploadedBySchema
+>
 
 export const campaignReviewActorSchema = z.enum(["owner", "admin"])
 export type CampaignReviewActor = z.infer<typeof campaignReviewActorSchema>
 
-export const campaignReviewDecisionSchema = z.enum(["go", "no_go", "changes_requested"])
-export type CampaignReviewDecision = z.infer<typeof campaignReviewDecisionSchema>
+export const campaignReviewDecisionSchema = z.enum([
+  "go",
+  "no_go",
+  "changes_requested",
+])
+export type CampaignReviewDecision = z.infer<
+  typeof campaignReviewDecisionSchema
+>
 
 export const publishChannelSchema = z.enum(["gbp", "instagram"])
 export type PublishChannel = z.infer<typeof publishChannelSchema>
 
-export const publishJobStatusSchema = z.enum(["queued", "publishing", "published", "failed"])
+export const publishJobStatusSchema = z.enum([
+  "queued",
+  "publishing",
+  "published",
+  "failed",
+])
 export type PublishJobStatus = z.infer<typeof publishJobStatusSchema>
 
 export type CampaignAction =
   | { readonly type: "START_PRODUCTION" }
   | { readonly type: "SUBMIT_FOR_REVIEW" }
-  | { readonly type: "SUBMIT_REVIEW_DECISION"; readonly decision: CampaignReviewDecision; readonly note?: string }
+  | {
+      readonly type: "SUBMIT_REVIEW_DECISION"
+      readonly decision: CampaignReviewDecision
+      readonly note?: string
+    }
   | { readonly type: "START_PUBLISHING" }
-  | { readonly type: "UPDATE_PUBLISH_PROGRESS"; readonly channelStatuses: readonly PublishJobStatus[] }
+  | {
+      readonly type: "UPDATE_PUBLISH_PROGRESS"
+      readonly channelStatuses: readonly PublishJobStatus[]
+    }
   | { readonly type: "FAIL_CAMPAIGN"; readonly reason?: string }
 
 export class InvalidCampaignTransitionError extends Error {
@@ -60,7 +80,10 @@ export function transitionCampaignRequest(
 ): CampaignStatus {
   switch (action.type) {
     case "START_PRODUCTION": {
-      if (currentStatus !== "submitted" && currentStatus !== "changes_requested") {
+      if (
+        currentStatus !== "submitted" &&
+        currentStatus !== "changes_requested"
+      ) {
         throw new InvalidCampaignTransitionError(
           currentStatus,
           action.type,
@@ -122,7 +145,9 @@ export function transitionCampaignRequest(
         return "publishing"
       }
 
-      const allPublished = action.channelStatuses.every((s) => s === "published")
+      const allPublished = action.channelStatuses.every(
+        (s) => s === "published"
+      )
       if (allPublished) {
         return "published"
       }
@@ -133,7 +158,9 @@ export function transitionCampaignRequest(
       }
 
       const anyPublished = action.channelStatuses.some((s) => s === "published")
-      const anyTerminalFailed = action.channelStatuses.some((s) => s === "failed")
+      const anyTerminalFailed = action.channelStatuses.some(
+        (s) => s === "failed"
+      )
       const anyPending = action.channelStatuses.some(
         (s) => s === "queued" || s === "publishing"
       )

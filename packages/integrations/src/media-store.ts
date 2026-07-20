@@ -6,7 +6,8 @@ export const mediaStoreAllowedContentTypes = [
   "image/webp",
 ] as const
 
-export type MediaStoreAllowedContentType = (typeof mediaStoreAllowedContentTypes)[number]
+export type MediaStoreAllowedContentType =
+  (typeof mediaStoreAllowedContentTypes)[number]
 
 export type CreateUploadTokenInput = {
   readonly storeId: string
@@ -29,7 +30,9 @@ export class MediaStoreValidationError extends Error {
 }
 
 export interface MediaStore {
-  createUploadToken(input: CreateUploadTokenInput): Promise<CreateUploadTokenResult>
+  createUploadToken(
+    input: CreateUploadTokenInput
+  ): Promise<CreateUploadTokenResult>
   getSignedUrl(blobUrl: string, expiresInSeconds?: number): Promise<string>
   deleteAsset(blobUrl: string): Promise<void>
 }
@@ -41,7 +44,11 @@ export function validateMediaUploadInput(input: CreateUploadTokenInput): void {
   if (!input.filename || input.filename.trim().length === 0) {
     throw new MediaStoreValidationError("filename is required")
   }
-  if (!mediaStoreAllowedContentTypes.includes(input.contentType as MediaStoreAllowedContentType)) {
+  if (
+    !mediaStoreAllowedContentTypes.includes(
+      input.contentType as MediaStoreAllowedContentType
+    )
+  ) {
     throw new MediaStoreValidationError(
       `Invalid content type "${input.contentType}". Allowed types: ${mediaStoreAllowedContentTypes.join(", ")}`
     )
@@ -57,9 +64,14 @@ export function validateMediaUploadInput(input: CreateUploadTokenInput): void {
 }
 
 export class StubMediaStore implements MediaStore {
-  private readonly assets = new Map<string, { storeId: string; contentType: string; sizeBytes: number }>()
+  private readonly assets = new Map<
+    string,
+    { storeId: string; contentType: string; sizeBytes: number }
+  >()
 
-  async createUploadToken(input: CreateUploadTokenInput): Promise<CreateUploadTokenResult> {
+  async createUploadToken(
+    input: CreateUploadTokenInput
+  ): Promise<CreateUploadTokenResult> {
     validateMediaUploadInput(input)
 
     const assetId = `stub_blob_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
@@ -80,7 +92,10 @@ export class StubMediaStore implements MediaStore {
     }
   }
 
-  async getSignedUrl(blobUrl: string, expiresInSeconds = 3600): Promise<string> {
+  async getSignedUrl(
+    blobUrl: string,
+    expiresInSeconds = 3600
+  ): Promise<string> {
     const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds
     return `${blobUrl}?signature=stub_sig_${expiresAt}&expires=${expiresAt}`
   }

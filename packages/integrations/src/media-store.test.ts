@@ -18,12 +18,16 @@ describe("StubMediaStore", () => {
     })
 
     expect(result.uploadToken).toMatch(/^stub_upload_token_/)
-    expect(result.blobUrl).toContain("https://stub.blob.glocalx.internal/stores/store_123/")
+    expect(result.blobUrl).toContain(
+      "https://stub.blob.glocalx.internal/stores/store_123/"
+    )
     expect(new Date(result.expiresAt).getTime()).toBeGreaterThan(Date.now())
   })
 
   it("generates signed url for blob", async () => {
-    const signedUrl = await store.getSignedUrl("https://stub.blob.glocalx.internal/stores/store_123/asset.png")
+    const signedUrl = await store.getSignedUrl(
+      "https://stub.blob.glocalx.internal/stores/store_123/asset.png"
+    )
     expect(signedUrl).toContain("signature=stub_sig_")
   })
 

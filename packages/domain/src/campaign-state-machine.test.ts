@@ -7,7 +7,9 @@ import {
 
 describe("transitionCampaignRequest", () => {
   it("progresses submitted request into production and through review to approved", () => {
-    let status = transitionCampaignRequest("submitted", { type: "START_PRODUCTION" })
+    let status = transitionCampaignRequest("submitted", {
+      type: "START_PRODUCTION",
+    })
     expect(status).toBe("in_production")
 
     status = transitionCampaignRequest(status, { type: "SUBMIT_FOR_REVIEW" })
@@ -42,7 +44,9 @@ describe("transitionCampaignRequest", () => {
 
   it("blocks publishing before owner approval", () => {
     expect(() =>
-      transitionCampaignRequest("ready_for_review", { type: "START_PUBLISHING" })
+      transitionCampaignRequest("ready_for_review", {
+        type: "START_PUBLISHING",
+      })
     ).toThrow(InvalidCampaignTransitionError)
 
     expect(() =>
@@ -51,7 +55,9 @@ describe("transitionCampaignRequest", () => {
   })
 
   it("allows publishing only from approved status", () => {
-    const status = transitionCampaignRequest("approved", { type: "START_PUBLISHING" })
+    const status = transitionCampaignRequest("approved", {
+      type: "START_PUBLISHING",
+    })
     expect(status).toBe("publishing")
   })
 
@@ -90,7 +96,11 @@ describe("transitionCampaignRequest", () => {
   })
 
   it("allows transition to failed from any state via FAIL_CAMPAIGN", () => {
-    expect(transitionCampaignRequest("submitted", { type: "FAIL_CAMPAIGN" })).toBe("failed")
-    expect(transitionCampaignRequest("publishing", { type: "FAIL_CAMPAIGN" })).toBe("failed")
+    expect(
+      transitionCampaignRequest("submitted", { type: "FAIL_CAMPAIGN" })
+    ).toBe("failed")
+    expect(
+      transitionCampaignRequest("publishing", { type: "FAIL_CAMPAIGN" })
+    ).toBe("failed")
   })
 })
