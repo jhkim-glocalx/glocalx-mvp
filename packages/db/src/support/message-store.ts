@@ -49,6 +49,12 @@ export type ListMessagesInput = {
   // result directly under exactOptionalPropertyTypes.
   readonly after?: MessageCursor | undefined
   readonly limit?: number | undefined
+  // Admin-only: exclude `draft` rows from the transcript. The console reviews a
+  // pending draft through its own surface (getLatestPendingDraft), not the
+  // append-only stream — a draft's created_at is re-stamped on send, so leaving
+  // it in the cursor stream would let the dedup-by-id client miss the sent copy.
+  // Defaults to false so the full admin list still returns drafts.
+  readonly sentOnly?: boolean | undefined
 }
 
 export interface CsMessageStore {
@@ -219,7 +225,11 @@ export function createDatabaseCsMessageStore(
     },
 
     async listAdminMessages(input) {
-      const messages = await readMessagePage(queryable, input, false)
+      const messages = await readMessagePage(
+        queryable,
+        input,
+        input.sentOnly === true
+      )
       return { messages, nextCursor: nextCursorFor(messages) }
     },
 

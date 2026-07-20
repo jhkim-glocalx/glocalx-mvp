@@ -74,6 +74,39 @@ export const csAdminReplyRequestSchema = z
   .strict()
 export type CsAdminReplyRequest = z.infer<typeof csAdminReplyRequestSchema>
 
+// Operator mode-toggle payload (trust boundary for the set-mode API, PR3). The
+// operator flips a conversation between the concierge (`human`) and AI postures.
+export const csAdminSetModeRequestSchema = z
+  .object({
+    mode: csConversationModeSchema,
+  })
+  .strict()
+export type CsAdminSetModeRequest = z.infer<typeof csAdminSetModeRequestSchema>
+
+// Operator send-draft payload (PR3). `messageId` pins which pending draft is
+// being promoted — the store guards on status='draft', so a stale id is a no-op
+// rather than sending the wrong message. `body` carries the operator's edits.
+export const csAdminSendDraftRequestSchema = z
+  .object({
+    messageId: z.string().min(1),
+    body: csMessageBodySchema,
+  })
+  .strict()
+export type CsAdminSendDraftRequest = z.infer<
+  typeof csAdminSendDraftRequestSchema
+>
+
+// Operator discard-draft payload (PR3): reject an AI draft outright (the
+// operator writes their own reply instead). `messageId` pins the draft.
+export const csAdminDiscardDraftRequestSchema = z
+  .object({
+    messageId: z.string().min(1),
+  })
+  .strict()
+export type CsAdminDiscardDraftRequest = z.infer<
+  typeof csAdminDiscardDraftRequestSchema
+>
+
 // Owner-facing message DTO: deliberately omits author_kind/author_admin_id so
 // no owner-facing read can ever reveal whether a human or the AI replied.
 export type OwnerFacingMessage = {

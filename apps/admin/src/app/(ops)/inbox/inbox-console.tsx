@@ -14,21 +14,31 @@ type ConversationListResponse = {
 type ConversationDetailResponse = {
   readonly conversation: InboxConversationView
   readonly messages: readonly InboxMessageView[]
+  readonly pendingDraft: InboxMessageView | null
   readonly nextCursor: string | null
 }
 
 const listPollMs = 5000
 const detailPollMs = 5000
 
+// The three per-conversation postures an operator can flip between (delivery-plan
+// Phase 2 §3). Labels are operator-facing; the owner never sees any of this.
+const modeOptions = [
+  { value: "human", label: "Human" },
+  { value: "ai_draft", label: "AI draft" },
+  { value: "ai", label: "AI auto" },
+] as const
+
 type InboxConsoleProps = {
   readonly operatorAdminId: string
   readonly initialConversations: readonly InboxConversationView[]
 }
 
-// Operator inbox (delivery-plan Phase 1 §5). The list polls every 5s with
-// awaiting-reply conversations floated to the top; opening one polls its
-// messages (and marks the owner's read, clearing the awaiting badge). Replies
-// post as the single "assistant" persona the owner sees.
+// Operator inbox (delivery-plan Phase 1 §5, extended in Phase 2 §3). The list
+// polls every 5s with awaiting-reply conversations floated to the top; opening
+// one polls its messages (and marks the owner's read, clearing the awaiting
+// badge). Operators flip the AI/human posture per conversation and review AI
+// drafts before they reach the owner — who only ever sees one "assistant".
 export function InboxConsole({
   initialConversations,
   operatorAdminId,
@@ -39,10 +49,15 @@ export function InboxConsole({
   const [conversation, setConversation] =
     useState<InboxConversationView | null>(null)
   const [messages, setMessages] = useState<readonly InboxMessageView[]>([])
+  const [pendingDraft, setPendingDraft] = useState<InboxMessageView | null>(
+    null
+  )
+  const [draftInput, setDraftInput] = useState("")
   const [input, setInput] = useState("")
   const [busy, setBusy] = useState(false)
   const cursorRef = useRef<string | null>(null)
   const selectedRef = useRef<string | null>(null)
+  const draftIdRef = useRef<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -85,6 +100,14 @@ export function InboxConsole({
         return
       }
       setConversation(data.conversation)
+      // Seed the editable draft only when a *new* draft id appears, so a poll
+      // mid-edit never clobbers the operator's in-progress text.
+      const nextDraftId = data.pendingDraft?.id ?? null
+      if (nextDraftId !== draftIdRef.current) {
+        draftIdRef.current = nextDraftId
+        setDraftInput(data.pendingDraft?.body ?? "")
+      }
+      setPendingDraft(data.pendingDraft)
       if (data.nextCursor !== null) {
         cursorRef.current = data.nextCursor
       }
@@ -124,7 +147,10 @@ export function InboxConsole({
 
   function selectConversation(next: InboxConversationView): void {
     cursorRef.current = null
+    draftIdRef.current = null
     setMessages([])
+    setPendingDraft(null)
+    setDraftInput("")
     setConversation(next)
     setSelectedId(next.id)
   }
@@ -157,6 +183,99 @@ export function InboxConsole({
     }
   }
 
+  async function setMode(mode: string): Promise<void> {
+    const conversationId = selectedId
+    if (conversationId === null || busy || conversation?.mode === mode) {
+      return
+    }
+    setBusy(true)
+    try {
+      const response = await fetch(
+        `/api/inbox/conversations/${conversationId}/mode`,
+        {
+          body: JSON.stringify({ mode }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        }
+      )
+      if (response.ok) {
+        const data = (await response.json()) as {
+          conversation: InboxConversationView
+        }
+        setConversation(data.conversation)
+        await pollList()
+      }
+    } catch {
+      // Best-effort; state reconciles on the next poll.
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function sendDraft(): Promise<void> {
+    const conversationId = selectedId
+    const draft = pendingDraft
+    const body = draftInput.trim()
+    if (
+      conversationId === null ||
+      draft === null ||
+      body.length === 0 ||
+      busy
+    ) {
+      return
+    }
+    setBusy(true)
+    try {
+      const response = await fetch(
+        `/api/inbox/conversations/${conversationId}/draft/send`,
+        {
+          body: JSON.stringify({ messageId: draft.id, body }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        }
+      )
+      if (response.ok) {
+        draftIdRef.current = null
+        setPendingDraft(null)
+        setDraftInput("")
+        await pollDetail()
+        await pollList()
+      }
+    } catch {
+      // Keep the draft so the operator can retry.
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function discardDraft(): Promise<void> {
+    const conversationId = selectedId
+    const draft = pendingDraft
+    if (conversationId === null || draft === null || busy) {
+      return
+    }
+    setBusy(true)
+    try {
+      const response = await fetch(
+        `/api/inbox/conversations/${conversationId}/draft/discard`,
+        {
+          body: JSON.stringify({ messageId: draft.id }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        }
+      )
+      if (response.ok) {
+        draftIdRef.current = null
+        setPendingDraft(null)
+        setDraftInput("")
+      }
+    } catch {
+      // Best-effort; the next poll re-surfaces the draft if it survived.
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function runAction(action: "assign" | "resolve"): Promise<void> {
     const conversationId = selectedId
     if (conversationId === null || busy) {
@@ -181,6 +300,8 @@ export function InboxConsole({
           setSelectedId(null)
           setConversation(null)
           setMessages([])
+          setPendingDraft(null)
+          setDraftInput("")
         }
         await pollList()
       }
@@ -190,6 +311,8 @@ export function InboxConsole({
       setBusy(false)
     }
   }
+
+  const resolved = conversation?.status === "resolved"
 
   return (
     <div className="ops-inbox">
@@ -208,6 +331,15 @@ export function InboxConsole({
             >
               <span className="ops-inbox-item-head">
                 <span className="ops-inbox-store">{item.storeName}</span>
+                {item.flaggedAt !== null ? (
+                  <span
+                    className="ops-inbox-flag-dot"
+                    data-testid="inbox-flag-dot"
+                    title="AI composition failed"
+                  >
+                    ⚑
+                  </span>
+                ) : null}
                 {item.unreadFromOwner > 0 ? (
                   <span
                     className="ops-inbox-badge"
@@ -256,7 +388,7 @@ export function InboxConsole({
               <button
                 type="button"
                 className="ops-inbox-action"
-                disabled={busy || conversation.status === "resolved"}
+                disabled={busy || resolved}
                 onClick={() => void runAction("resolve")}
               >
                 Resolve
@@ -264,12 +396,50 @@ export function InboxConsole({
             </div>
           </header>
 
+          <div
+            className="ops-inbox-modebar"
+            role="group"
+            aria-label="Response mode"
+          >
+            <span className="ops-modebar-label">Mode</span>
+            {modeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className="ops-mode-option"
+                data-testid={`mode-${option.value}`}
+                aria-pressed={
+                  conversation.mode === option.value ? "true" : "false"
+                }
+                disabled={busy || resolved}
+                onClick={() => void setMode(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          {conversation.flaggedAt !== null ? (
+            <div className="ops-inbox-flag" role="status">
+              ⚑ AI composition failed
+              {conversation.flagReason !== null
+                ? ` (${conversation.flagReason})`
+                : ""}
+              . Review and reply manually.
+            </div>
+          ) : null}
+
           <div className="ops-inbox-messages" ref={listRef}>
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`ops-msg ops-msg-${message.sender === "owner" ? "owner" : "admin"}`}
+                className={`ops-msg ops-msg-${message.sender === "owner" ? "owner" : message.authorKind === "ai" ? "ai" : "admin"}`}
               >
+                {message.sender !== "owner" ? (
+                  <span className="ops-msg-author">
+                    {message.authorKind === "ai" ? "AI" : "Operator"}
+                  </span>
+                ) : null}
                 <div className="ops-msg-body">{message.body}</div>
                 {message.context !== null ? (
                   <div className="ops-msg-context" data-testid="msg-context">
@@ -300,6 +470,40 @@ export function InboxConsole({
             ))}
           </div>
 
+          {pendingDraft !== null ? (
+            <div className="ops-inbox-draft" data-testid="ai-draft">
+              <span className="ops-draft-label">
+                AI draft — review before sending
+              </span>
+              <textarea
+                aria-label="AI draft"
+                className="ops-inbox-input"
+                rows={3}
+                value={draftInput}
+                disabled={resolved}
+                onChange={(event) => setDraftInput(event.target.value)}
+              />
+              <div className="ops-draft-actions">
+                <button
+                  type="button"
+                  className="ops-inbox-action"
+                  disabled={busy}
+                  onClick={() => void discardDraft()}
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  className="ops-primary-button"
+                  disabled={busy || draftInput.trim().length === 0 || resolved}
+                  onClick={() => void sendDraft()}
+                >
+                  Send draft
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="ops-inbox-composer">
             <textarea
               aria-label="Reply"
@@ -307,7 +511,7 @@ export function InboxConsole({
               placeholder="Reply to the owner…"
               rows={2}
               value={input}
-              disabled={conversation.status === "resolved"}
+              disabled={resolved}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
@@ -319,11 +523,7 @@ export function InboxConsole({
             <button
               type="button"
               className="ops-primary-button"
-              disabled={
-                busy ||
-                input.trim().length === 0 ||
-                conversation.status === "resolved"
-              }
+              disabled={busy || input.trim().length === 0 || resolved}
               onClick={() => void sendReply()}
             >
               Send

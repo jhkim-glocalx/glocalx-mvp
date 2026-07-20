@@ -172,6 +172,45 @@ describe("draft visibility (the one-assistant illusion)", () => {
   })
 })
 
+describe("admin transcript sentOnly", () => {
+  it("excludes drafts so the cursor never lands on a re-stamped row", async () => {
+    await appendOwner("질문", 1)
+    const draftId = await appendDraft("검토 대기 초안", 2)
+
+    // The transcript stream skips the draft; the cursor points at the owner
+    // message, not the draft that will be re-stamped on send.
+    const page = await messages.listAdminMessages({
+      conversationId,
+      sentOnly: true,
+    })
+    expect(page.messages.map((m) => m.body)).toEqual(["질문"])
+
+    // Sending the draft re-stamps it later than its original position; a poll
+    // from the prior cursor now delivers the sent copy as a fresh message.
+    await messages.sendDraft({
+      messageId: draftId,
+      body: "보낸 답변",
+      now: at(5),
+    })
+    const nextPage = await messages.listAdminMessages({
+      conversationId,
+      sentOnly: true,
+      after:
+        page.nextCursor === null
+          ? undefined
+          : decodeMessageCursor(page.nextCursor),
+    })
+    expect(nextPage.messages.map((m) => m.body)).toEqual(["보낸 답변"])
+  })
+
+  it("still returns drafts in the full admin list by default", async () => {
+    await appendOwner("질문", 1)
+    await appendDraft("초안", 2)
+    const page = await messages.listAdminMessages({ conversationId })
+    expect(page.messages.map((m) => m.status)).toEqual(["sent", "draft"])
+  })
+})
+
 describe("sendDraft", () => {
   it("promotes a draft to a sent, owner-visible message with a fresh timestamp", async () => {
     const draftId = await appendDraft("초안", 2)

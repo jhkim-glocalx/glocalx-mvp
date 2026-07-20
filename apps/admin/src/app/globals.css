@@ -372,8 +372,24 @@ select {
   align-self: flex-start;
 }
 
-.ops-msg-admin {
+.ops-msg-admin,
+.ops-msg-ai {
   align-self: flex-end;
+  align-items: flex-end;
+}
+
+/* Authorship label: the operator sees who actually wrote an assistant message
+   (AI vs a human operator) even though the owner sees one persona. */
+.ops-msg-author {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.ops-msg-ai .ops-msg-author {
+  color: var(--accent);
 }
 
 .ops-msg-body {
@@ -393,6 +409,14 @@ select {
 .ops-msg-admin .ops-msg-body {
   background: var(--accent);
   color: #ffffff;
+}
+
+/* AI-authored (sent) messages read as assistant replies but stay visually
+   distinct from operator-written ones in the console. */
+.ops-msg-ai .ops-msg-body {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--foreground);
 }
 
 .ops-msg-context {
@@ -443,6 +467,90 @@ select {
   outline: 2px solid var(--accent);
   outline-offset: 0;
   border-color: transparent;
+}
+
+/* Per-conversation mode toggle (human / ai_draft / ai). */
+.ops-inbox-modebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ops-modebar-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.ops-mode-option {
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ops-mode-option:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.ops-mode-option[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.ops-mode-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Failure flag: an AI composition failed and needs operator attention. */
+.ops-inbox-flag {
+  margin: 12px 16px 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(224, 164, 88, 0.5);
+  border-radius: 10px;
+  background: rgba(224, 164, 88, 0.12);
+  color: #e0a458;
+  font-size: 13px;
+}
+
+.ops-inbox-flag-dot {
+  color: #e0a458;
+  font-size: 13px;
+}
+
+/* AI-draft review surface: the operator edits/sends a draft the owner has not
+   seen. Sits above the manual composer so taking over by hand stays available. */
+.ops-inbox-draft {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 16px;
+  padding: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+
+.ops-draft-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.ops-draft-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* Settings: weekly kill-metrics panel. */

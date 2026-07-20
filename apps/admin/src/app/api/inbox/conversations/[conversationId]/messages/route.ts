@@ -29,10 +29,16 @@ export async function GET(
     const rawCursor = request.nextUrl.searchParams.get("after")
     const after =
       rawCursor === null ? undefined : decodeMessageCursor(rawCursor)
+    // The transcript is sent-only so the append-only cursor never lands on a
+    // draft (a draft's created_at is re-stamped on send). The one pending draft
+    // rides alongside as its own field for the console review surface.
     const page = await context.csMessageStore.listAdminMessages({
       conversationId,
       after,
+      sentOnly: true,
     })
+    const pendingDraft =
+      await context.csMessageStore.getLatestPendingDraft(conversationId)
 
     const contexts = await context.csMessageContextStore.getContextsForMessages(
       page.messages.map((message) => message.id)
@@ -45,6 +51,10 @@ export async function GET(
       messages: page.messages.map((message) =>
         toInboxMessageView(message, contexts.get(message.id))
       ),
+      pendingDraft:
+        pendingDraft === undefined
+          ? null
+          : toInboxMessageView(pendingDraft, undefined),
       nextCursor: page.nextCursor,
     })
   })

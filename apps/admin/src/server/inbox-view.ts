@@ -15,6 +15,10 @@ export type InboxConversationView = {
   readonly mode: string
   readonly status: string
   readonly assignedAdminId: string | null
+  // Set when an AI composition failed (architecture §5) so the console can
+  // surface the conversation for operator attention. Null when healthy.
+  readonly flaggedAt: string | null
+  readonly flagReason: string | null
   readonly unreadFromOwner: number
   readonly lastMessageSender: string | null
   readonly lastMessageBody: string | null
@@ -36,6 +40,9 @@ export type InboxMessageView = {
   readonly id: string
   readonly sender: string
   readonly authorKind: string
+  // `sent` vs `draft`: a `draft` is an un-sent AI composition the console
+  // reviews before it ever reaches the owner (the one-assistant illusion).
+  readonly status: string
   readonly authorAdminId: string | null
   readonly body: string
   readonly createdAt: string
@@ -58,6 +65,7 @@ export function toInboxMessageView(
     id: message.id,
     sender: message.sender,
     authorKind: message.authorKind,
+    status: message.status,
     authorAdminId: message.authorAdminId,
     body: message.body,
     createdAt: message.createdAt,
