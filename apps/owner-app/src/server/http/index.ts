@@ -214,38 +214,60 @@ export function requireSessionStoreAccess(
   return storeId === session.storeId ? undefined : forbiddenStoreResponse()
 }
 
-export async function withQueryableRouteDatabase<TResponse extends Response>(
+function buildRouteDatabaseContext(
+  databaseContext: Awaited<ReturnType<typeof openDatabaseContext>>,
+  provider: ReturnType<typeof resolveDatabaseConfig>["provider"]
+): QueryableRouteDatabaseContext {
+  const queryable = databaseContext.queryable
+  return {
+    activityEventStore: createDatabaseActivityEventStore(queryable),
+    adapters: createIntegrationAdapters(),
+    authRateLimitRepository: createDatabaseAuthRateLimitRepository(queryable),
+    conversationStore: createDatabaseConversationStore(queryable),
+    csConversationStore: createDatabaseCsConversationStore(queryable),
+    csMessageContextStore: createDatabaseCsMessageContextStore(queryable),
+    csMessageStore: createDatabaseCsMessageStore(queryable),
+    emailCredentialsRepository:
+      createDatabaseEmailCredentialsRepository(queryable),
+    gbpStore: createDatabaseGbpStore(queryable),
+    ...(provider === "sqlite"
+      ? { legacySqliteDatabase: databaseContext.legacySqliteDatabase }
+      : {}),
+    oauthIdentityRepository: createDatabaseOAuthIdentityRepository(queryable),
+    onboardingExtractionRepository:
+      createDatabaseOnboardingExtractionRepository(queryable),
+    postStore: createDatabasePostStore(queryable),
+    sessionStore: createDatabaseSessionStore(queryable),
+    storeProfileRepository: createDatabaseStoreProfileRepository(queryable),
+  }
+}
+
+// Open a database context, run `handler` against the route stores, and always
+// close the connection. Generic over the return type so background work
+// scheduled with `after()` (which returns no Response) can reuse it — the
+// out-of-band AI composition opens its own connection here because the owner
+// request's context is already closed by the time it runs (architecture §5).
+export async function withRouteDatabaseContext<TResult>(
+  handler: (
+    context: QueryableRouteDatabaseContext
+  ) => Promise<TResult> | TResult
+): Promise<TResult> {
+  const databaseConfig = resolveDatabaseConfig()
+  const databaseContext = await openDatabaseContext()
+
+  try {
+    return await handler(
+      buildRouteDatabaseContext(databaseContext, databaseConfig.provider)
+    )
+  } finally {
+    await databaseContext.close()
+  }
+}
+
+export function withQueryableRouteDatabase<TResponse extends Response>(
   handler: (
     context: QueryableRouteDatabaseContext
   ) => Promise<TResponse> | TResponse
 ): Promise<TResponse> {
-  const databaseConfig = resolveDatabaseConfig()
-  const databaseContext = await openDatabaseContext()
-  const queryable = databaseContext.queryable
-
-  try {
-    return await handler({
-      activityEventStore: createDatabaseActivityEventStore(queryable),
-      adapters: createIntegrationAdapters(),
-      authRateLimitRepository: createDatabaseAuthRateLimitRepository(queryable),
-      conversationStore: createDatabaseConversationStore(queryable),
-      csConversationStore: createDatabaseCsConversationStore(queryable),
-      csMessageContextStore: createDatabaseCsMessageContextStore(queryable),
-      csMessageStore: createDatabaseCsMessageStore(queryable),
-      emailCredentialsRepository:
-        createDatabaseEmailCredentialsRepository(queryable),
-      gbpStore: createDatabaseGbpStore(queryable),
-      ...(databaseConfig.provider === "sqlite"
-        ? { legacySqliteDatabase: databaseContext.legacySqliteDatabase }
-        : {}),
-      oauthIdentityRepository: createDatabaseOAuthIdentityRepository(queryable),
-      onboardingExtractionRepository:
-        createDatabaseOnboardingExtractionRepository(queryable),
-      postStore: createDatabasePostStore(queryable),
-      sessionStore: createDatabaseSessionStore(queryable),
-      storeProfileRepository: createDatabaseStoreProfileRepository(queryable),
-    })
-  } finally {
-    await databaseContext.close()
-  }
+  return withRouteDatabaseContext(handler)
 }

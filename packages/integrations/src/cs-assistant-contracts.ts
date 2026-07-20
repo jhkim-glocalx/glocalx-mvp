@@ -33,8 +33,9 @@ export type CsAssistantComposeOutput = {
 
 // Composes the assistant's next reply to an owner message. Stub mode returns a
 // deterministic, credential-free reply so chat is fully demoable; the
-// production OpenAI implementation (Phase 2 PR2) grounds a real reply in the
-// same input and is request-spec tested rather than exercised with live calls.
+// production OpenAI implementation (openai-cs-assistant.ts) grounds a real reply
+// in the same input and is request-spec tested rather than exercised with live
+// calls.
 export interface CsAssistantAdapter {
   composeReply(
     input: CsAssistantComposeInput
