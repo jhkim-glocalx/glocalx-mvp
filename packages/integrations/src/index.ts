@@ -20,6 +20,7 @@ import {
   createStubOnboardingConversation,
   createStubPostingConversation,
 } from "./stub-conversation"
+import { createStubCsAssistant } from "./stub-cs-assistant"
 import {
   createStubBusinessInformation,
   createStubClock,
@@ -68,6 +69,9 @@ export function createIntegrationAdapters(
         fetchImpl
       ),
       postingConversation: createProductionPostingConversation(env, fetchImpl),
+      // Production CS responder lands in Phase 2 PR2; the stub keeps AI-mode
+      // chat demoable until then.
+      csAssistant: createStubCsAssistant(),
       translation: createStubTranslation(),
       clock: createStubClock(now),
       jobScheduler: createStubJobScheduler(),
@@ -87,6 +91,7 @@ export function createIntegrationAdapters(
     marketingGeneration: createStubMarketingGeneration(),
     onboardingConversation: createStubOnboardingConversation(),
     postingConversation: createStubPostingConversation(),
+    csAssistant: createStubCsAssistant(),
     translation: createStubTranslation(),
     clock: createStubClock(now),
     jobScheduler: createStubJobScheduler(),

@@ -16,10 +16,21 @@ export type CsMessageSender = z.infer<typeof csMessageSenderSchema>
 export const csAuthorKindSchema = z.enum(["user", "ai", "admin"])
 export type CsAuthorKind = z.infer<typeof csAuthorKindSchema>
 
-// Which producer composes the next assistant message. Flips per conversation
-// (Phase 2); Phase 1 conversations are created in "human" mode.
-export const csConversationModeSchema = z.enum(["ai", "human"])
+// Which producer composes the next assistant message, flipped per conversation
+// by an operator. `human`: an operator writes every reply (Phase 1 default,
+// still the default for new conversations — the concierge posture). `ai_draft`:
+// the AI pre-composes a reply the operator reviews and sends (owner never sees
+// it unsent). `ai`: the AI composes and sends autonomously. Widened in Phase 2.
+export const csConversationModeSchema = z.enum(["ai_draft", "ai", "human"])
 export type CsConversationMode = z.infer<typeof csConversationModeSchema>
+
+// Whether an assistant message has been sent to the owner (`sent`) or is an
+// AI-composed draft awaiting operator review (`draft`). No owner-facing read
+// ever returns a `draft` row — that exclusion is the one-assistant illusion for
+// the draft posture (architecture §5). Owner and admin messages are always
+// `sent`; only `author_kind='ai'` rows are ever `draft`.
+export const csMessageStatusSchema = z.enum(["sent", "draft"])
+export type CsMessageStatus = z.infer<typeof csMessageStatusSchema>
 
 export const csConversationStatusSchema = z.enum(["open", "resolved"])
 export type CsConversationStatus = z.infer<typeof csConversationStatusSchema>
@@ -72,11 +83,13 @@ export type OwnerFacingMessage = {
   readonly createdAt: string
 }
 
-// Operations-facing message DTO: the full authorship picture for the console.
+// Operations-facing message DTO: the full authorship picture for the console,
+// including draft status so the console can render un-sent AI drafts distinctly.
 export type AdminFacingMessage = {
   readonly id: string
   readonly sender: CsMessageSender
   readonly authorKind: CsAuthorKind
+  readonly status: CsMessageStatus
   readonly authorAdminId: string | null
   readonly body: string
   readonly createdAt: string

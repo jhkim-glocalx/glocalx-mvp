@@ -14,6 +14,10 @@ export type CsConversationRecord = {
   readonly mode: CsConversationMode
   readonly status: CsConversationStatus
   readonly assignedAdminId: string | null
+  // Set when an AI composition failed for this conversation, so the dashboard
+  // can surface it for operator attention (architecture §5). Null when healthy.
+  readonly flaggedAt: string | null
+  readonly flagReason: string | null
   readonly createdAt: string
   readonly updatedAt: string
 }
@@ -36,6 +40,8 @@ export type InboxConversationSummary = {
   readonly mode: CsConversationMode
   readonly status: CsConversationStatus
   readonly assignedAdminId: string | null
+  readonly flaggedAt: string | null
+  readonly flagReason: string | null
   readonly unreadFromOwner: number
   readonly lastMessageSender: CsMessageSender | null
   readonly lastMessageBody: string | null
@@ -72,6 +78,14 @@ export interface CsConversationStore {
     mode: CsConversationMode,
     now: Date
   ): Promise<void>
+  // Record an AI-composition failure so the dashboard surfaces the conversation.
+  flagConversation(
+    conversationId: string,
+    reason: string,
+    now: Date
+  ): Promise<void>
+  // Clear the flag once an operator has taken over (or the AI recovered).
+  clearFlag(conversationId: string, now: Date): Promise<void>
   resolveConversation(conversationId: string, now: Date): Promise<void>
   touch(conversationId: string, now: Date): Promise<void>
 }
@@ -83,9 +97,11 @@ export type CsConversationListFilter = {
 const conversationRowSchema = z.object({
   id: z.string(),
   storeId: z.string(),
-  mode: z.enum(["ai", "human"]),
+  mode: z.enum(["ai_draft", "ai", "human"]),
   status: z.enum(["open", "resolved"]),
   assignedAdminId: z.string().nullable(),
+  flaggedAt: nullableTimestampSchema,
+  flagReason: z.string().nullable(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 })
@@ -96,6 +112,8 @@ const conversationProjection = `
   mode,
   status,
   assigned_admin_id AS "assignedAdminId",
+  flagged_at AS "flaggedAt",
+  flag_reason AS "flagReason",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 `
@@ -108,9 +126,11 @@ const inboxSummaryRowSchema = z.object({
   id: z.string(),
   storeId: z.string(),
   storeName: z.string(),
-  mode: z.enum(["ai", "human"]),
+  mode: z.enum(["ai_draft", "ai", "human"]),
   status: z.enum(["open", "resolved"]),
   assignedAdminId: z.string().nullable(),
+  flaggedAt: nullableTimestampSchema,
+  flagReason: z.string().nullable(),
   unreadFromOwner: z.coerce.number(),
   lastMessageSender: z.enum(["owner", "assistant"]).nullable(),
   lastMessageBody: z.string().nullable(),
@@ -135,6 +155,8 @@ const inboxSummaryProjection = `
   c.mode,
   c.status,
   c.assigned_admin_id AS "assignedAdminId",
+  c.flagged_at AS "flaggedAt",
+  c.flag_reason AS "flagReason",
   ${unreadFromOwnerSubquery} AS "unreadFromOwner",
   (SELECT m.sender FROM cs_messages m
      WHERE m.conversation_id = c.id
@@ -300,6 +322,24 @@ export function createDatabaseCsConversationStore(
             SET mode = ?, updated_at = ?
           WHERE id = ?`,
         [mode, now.toISOString(), conversationId]
+      )
+    },
+
+    async flagConversation(conversationId, reason, now) {
+      await queryable.execute(
+        `UPDATE cs_conversations
+            SET flagged_at = ?, flag_reason = ?, updated_at = ?
+          WHERE id = ?`,
+        [now.toISOString(), reason, now.toISOString(), conversationId]
+      )
+    },
+
+    async clearFlag(conversationId, now) {
+      await queryable.execute(
+        `UPDATE cs_conversations
+            SET flagged_at = NULL, flag_reason = NULL, updated_at = ?
+          WHERE id = ?`,
+        [now.toISOString(), conversationId]
       )
     },
 

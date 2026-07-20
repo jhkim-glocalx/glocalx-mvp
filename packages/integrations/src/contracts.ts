@@ -12,6 +12,7 @@ import type {
   OnboardingConversationAdapter,
   PostingConversationAdapter,
 } from "./conversation-contracts"
+import type { CsAssistantAdapter } from "./cs-assistant-contracts"
 
 export type {
   CreateLocalPostInput,
@@ -63,6 +64,12 @@ export type {
   PostingConversationAdapter,
   PostingOwnerReplyInput,
 } from "./conversation-contracts"
+export type {
+  CsAssistantAdapter,
+  CsAssistantComposeInput,
+  CsAssistantComposeOutput,
+  CsAssistantTurn,
+} from "./cs-assistant-contracts"
 
 export type IntegrationMode = "stub" | "production"
 
@@ -170,6 +177,7 @@ export type IntegrationAdapters = {
   readonly marketingGeneration: MarketingGenerationAdapter
   readonly onboardingConversation: OnboardingConversationAdapter
   readonly postingConversation: PostingConversationAdapter
+  readonly csAssistant: CsAssistantAdapter
   readonly translation: TranslationAdapter
   readonly clock: ClockAdapter
   readonly jobScheduler: JobSchedulerAdapter
