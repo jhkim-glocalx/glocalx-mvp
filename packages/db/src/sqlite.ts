@@ -37,6 +37,10 @@ export const operationalTableNames = [
   "cs_messages",
   "cs_message_context",
   "activity_events",
+  "campaign_requests",
+  "campaign_assets",
+  "campaign_review_events",
+  "publish_jobs",
 ] as const
 export const databaseTableNames = [
   ...requiredTableNames,
@@ -77,8 +81,7 @@ const migrationPaths = [
   join(currentDirectory, "migrations", "0002_email_credentials.sql"),
   join(currentDirectory, "migrations", "0003_user_sessions.sql"),
   join(currentDirectory, "migrations", "0004_auth_rate_limits.sql"),
-  // 0005 is Postgres-only (SQLite handles social channels in code below);
-  // numbering stays aligned across dialects.
+  join(currentDirectory, "migrations", "0005_campaign_pipeline.sql"),
   join(currentDirectory, "migrations", "0006_admin_identity.sql"),
   join(currentDirectory, "migrations", "0007_cs_chat_activity.sql"),
 ] as const
