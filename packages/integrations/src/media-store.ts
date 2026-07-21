@@ -1,9 +1,12 @@
+import type { AdapterResult } from "./contracts"
+
 export const mediaStoreMaxFileSizeBytes = 10 * 1024 * 1024 // 10MB
 export const mediaStoreMaxFilesPerRequest = 10
 export const mediaStoreAllowedContentTypes = [
   "image/jpeg",
   "image/png",
   "image/webp",
+  "image/heic",
 ] as const
 
 export type MediaStoreAllowedContentType =
@@ -18,6 +21,9 @@ export type CreateUploadTokenInput = {
 
 export type CreateUploadTokenResult = {
   readonly uploadToken: string
+  // The pathname the client must upload to (via `@vercel/blob/client`'s `put`).
+  // blobUrl is derived from it but isn't authoritative until the upload completes.
+  readonly pathname: string
   readonly blobUrl: string
   readonly expiresAt: string
 }
@@ -29,12 +35,39 @@ export class MediaStoreValidationError extends Error {
   }
 }
 
+// Thrown (not an AdapterResult) when a pathname/blobUrl doesn't resolve to a
+// real stored object — mirrors @vercel/blob's own head()/BlobNotFoundError,
+// per the house convention that AdapterResult is reserved for the
+// credential-blocked state while upstream/transport failures propagate as
+// exceptions (see naver-production.ts / openai-production.ts).
+export class MediaStoreAssetNotFoundError extends Error {
+  constructor(blobUrl: string) {
+    super(`No asset found at ${blobUrl}`)
+    this.name = "MediaStoreAssetNotFoundError"
+  }
+}
+
+export type MediaStoreAssetMetadata = {
+  readonly contentType: string
+  readonly sizeBytes: number
+}
+
 export interface MediaStore {
   createUploadToken(
     input: CreateUploadTokenInput
-  ): Promise<CreateUploadTokenResult>
-  getSignedUrl(blobUrl: string, expiresInSeconds?: number): Promise<string>
-  deleteAsset(blobUrl: string): Promise<void>
+  ): Promise<AdapterResult<CreateUploadTokenResult>>
+  getSignedUrl(
+    blobUrl: string,
+    expiresInSeconds?: number
+  ): Promise<AdapterResult<string>>
+  // Re-derives the real stored content type/size from the store itself
+  // (never the client's own claims) so asset registration can reject an
+  // oversize or disallowed upload even if the client token flow was
+  // bypassed. Throws MediaStoreAssetNotFoundError if blobUrl doesn't resolve.
+  getAssetMetadata(
+    blobUrl: string
+  ): Promise<AdapterResult<MediaStoreAssetMetadata>>
+  deleteAsset(blobUrl: string): Promise<AdapterResult<void>>
 }
 
 // storeId and filename are interpolated into the blob object key
@@ -78,44 +111,56 @@ export function validateMediaUploadInput(input: CreateUploadTokenInput): void {
   }
 }
 
+// Stateless by design: a route's create-upload-token call and its later
+// register-asset call each get their OWN createIntegrationAdapters() /
+// StubMediaStore instance (one per request), so adapter-instance memory
+// never survives the round trip a real browser upload makes. Metadata rides
+// in the fake URL's query string instead, mirroring how getSignedUrl already
+// encodes signature/expires there.
 export class StubMediaStore implements MediaStore {
-  private readonly assets = new Map<
-    string,
-    { storeId: string; contentType: string; sizeBytes: number }
-  >()
-
   async createUploadToken(
     input: CreateUploadTokenInput
-  ): Promise<CreateUploadTokenResult> {
+  ): Promise<AdapterResult<CreateUploadTokenResult>> {
     validateMediaUploadInput(input)
 
     const assetId = `stub_blob_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-    const blobUrl = `https://stub.blob.glocalx.internal/stores/${input.storeId}/${assetId}-${input.filename}`
+    const pathname = `stores/${input.storeId}/${assetId}-${input.filename}`
+    const metaQuery = `contentType=${encodeURIComponent(input.contentType)}&sizeBytes=${input.sizeBytes}`
+    const blobUrl = `https://stub.blob.glocalx.internal/${pathname}?${metaQuery}`
     const uploadToken = `stub_upload_token_${assetId}`
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
-    this.assets.set(blobUrl, {
-      storeId: input.storeId,
-      contentType: input.contentType,
-      sizeBytes: input.sizeBytes,
-    })
-
     return {
-      uploadToken,
-      blobUrl,
-      expiresAt,
+      kind: "ok",
+      value: { uploadToken, pathname, blobUrl, expiresAt },
     }
   }
 
   async getSignedUrl(
     blobUrl: string,
     expiresInSeconds = 3600
-  ): Promise<string> {
+  ): Promise<AdapterResult<string>> {
     const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds
-    return `${blobUrl}?signature=stub_sig_${expiresAt}&expires=${expiresAt}`
+    const separator = blobUrl.includes("?") ? "&" : "?"
+    return {
+      kind: "ok",
+      value: `${blobUrl}${separator}signature=stub_sig_${expiresAt}&expires=${expiresAt}`,
+    }
   }
 
-  async deleteAsset(blobUrl: string): Promise<void> {
-    this.assets.delete(blobUrl)
+  async getAssetMetadata(
+    blobUrl: string
+  ): Promise<AdapterResult<MediaStoreAssetMetadata>> {
+    const params = new URL(blobUrl).searchParams
+    const contentType = params.get("contentType")
+    const sizeBytes = Number(params.get("sizeBytes"))
+    if (contentType === null || !Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+      throw new MediaStoreAssetNotFoundError(blobUrl)
+    }
+    return { kind: "ok", value: { contentType, sizeBytes } }
+  }
+
+  async deleteAsset(_blobUrl: string): Promise<AdapterResult<void>> {
+    return { kind: "ok", value: undefined }
   }
 }

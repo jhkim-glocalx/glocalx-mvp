@@ -16,7 +16,12 @@ import {
 import { createProductionMarketingGeneration } from "./openai-production"
 import { createProductionCsAssistant } from "./openai-cs-assistant"
 import { createProductionPerformance } from "./production-performance"
-import { shouldUsePreviewNaverStub } from "./runtime-diagnostics"
+import {
+  shouldUsePreviewMediaStoreStub,
+  shouldUsePreviewNaverStub,
+} from "./runtime-diagnostics"
+import { createProductionMediaStore } from "./vercel-blob-production"
+import { StubMediaStore } from "./media-store"
 import {
   createStubOnboardingConversation,
   createStubPostingConversation,
@@ -74,6 +79,10 @@ export function createIntegrationAdapters(
       translation: createStubTranslation(),
       clock: createStubClock(now),
       jobScheduler: createStubJobScheduler(),
+      // Preview/dev deployments may lack a provisioned Blob store, same rationale as the Naver fallback above.
+      mediaStore: shouldUsePreviewMediaStoreStub(env)
+        ? new StubMediaStore()
+        : createProductionMediaStore(env),
     }
   }
 
@@ -94,6 +103,7 @@ export function createIntegrationAdapters(
     translation: createStubTranslation(),
     clock: createStubClock(now),
     jobScheduler: createStubJobScheduler(),
+    mediaStore: new StubMediaStore(),
   }
 }
 

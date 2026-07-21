@@ -14,6 +14,7 @@ import { isAppNavId, type AppNavId } from "./app-workspace-model"
 // Owner nav ids map onto the fixed activity-telemetry sections so the operator
 // console can see which surface a message came from (architecture §2/§7).
 const activitySectionByNav: Record<AppNavId, ActivitySection> = {
+  campaigns: "marketing",
   dashboard: "home",
   onboarding: "onboarding",
   photo: "marketing",
@@ -25,6 +26,7 @@ const activitySectionByNav: Record<AppNavId, ActivitySection> = {
 import { AppWorkspaceTopBar } from "./app-workspace-topbar"
 import { ReferenceFlowScreens } from "./reference-flow-screens"
 import { useAppOnboarding } from "./use-app-onboarding"
+import { useCampaignIntake } from "./use-campaign-intake"
 import { usePostingWorkspace } from "./use-posting-workspace"
 
 type AppWorkspaceProps = {
@@ -53,6 +55,7 @@ export function AppWorkspace({
     onMoveToPosting: () => setActiveNavId("posting"),
     storeId,
   })
+  const campaigns = useCampaignIntake()
 
   useEffect(() => {
     const hasOnboardingResult =
@@ -85,6 +88,9 @@ export function AppWorkspace({
   function handleNavChange(navId: string) {
     if (isAppNavId(navId)) {
       setActiveNavId(navId)
+      if (navId === "campaigns") {
+        void campaigns.refreshRequests()
+      }
     }
   }
 
@@ -164,6 +170,13 @@ export function AppWorkspace({
         <ReferenceFlowScreens
           activeNavId={activeNavId}
           activePreviewKey={posting.activePreviewKey}
+          campaignBrief={campaigns.brief}
+          campaignIntake={campaigns.intake}
+          campaignRequests={campaigns.requests}
+          campaignSelectedFiles={campaigns.selectedFiles}
+          onCampaignBriefChange={campaigns.setBrief}
+          onCampaignFiles={campaigns.handleFiles}
+          onCampaignSubmit={() => void campaigns.submit()}
           draft={posting.draft}
           imageAssets={posting.imageAssets}
           intent={posting.intent}
