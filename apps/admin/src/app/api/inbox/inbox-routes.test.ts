@@ -95,6 +95,36 @@ async function seedOwnerMessage(): Promise<string> {
   }
 }
 
+// A conversation belonging to a *different* store. Only one open conversation
+// may exist per store (cs_conversations_one_open_per_store_idx), so a second
+// conversation is by construction a second tenant — which is what makes a
+// body-supplied messageId dangerous if the route does not scope it.
+async function seedOtherStoreConversation(): Promise<string> {
+  const database = openDatabase()
+  try {
+    const id = randomUUID()
+    const now = new Date().toISOString()
+    database
+      .prepare(
+        "INSERT INTO users (id, email, display_name, role, created_at) VALUES ('user-2', 'owner2@example.com', 'Owner 2', 'OWNER', ?)"
+      )
+      .run(now)
+    database
+      .prepare(
+        "INSERT INTO stores (id, owner_user_id, name, address, category, onboarding_status, created_at) VALUES ('store-2', 'user-2', 'Store 2', 'addr', 'cat', 'COMPLETED', ?)"
+      )
+      .run(now)
+    database
+      .prepare(
+        "INSERT INTO cs_conversations (id, store_id, mode, status, assigned_admin_id, created_at, updated_at) VALUES (?, 'store-2', 'ai_draft', 'open', NULL, ?, ?)"
+      )
+      .run(id, now, now)
+    return id
+  } finally {
+    database.close()
+  }
+}
+
 // Append a pending AI draft (author_kind='ai', status='draft') to a conversation
 // and return its id — the row the console review surface acts on.
 async function seedDraft(
@@ -506,6 +536,52 @@ describe("ai draft review", () => {
       conversationParams(conversationId)
     )
     expect(second.status).toBe(409)
+  })
+
+  // messageId comes from the request body, conversationId from the path. If the
+  // store did not scope the send to the path conversation, this would deliver
+  // the draft into the *other* store's conversation while auditing,
+  // read-marking, and touching this one — a mis-attributed audit trail.
+  it("409s a draft that belongs to another conversation, and leaves it pending", async () => {
+    const conversationId = await seedOwnerMessage()
+    const otherConversationId = await seedOtherStoreConversation()
+    const otherDraftId = await seedDraft(otherConversationId, "다른 대화 초안")
+
+    const response = await sendDraft(
+      postRequest(
+        `${origin}/api/inbox/conversations/${conversationId}/draft/send`,
+        {
+          cookie: await adminSessionCookie(),
+          body: { messageId: otherDraftId, body: "잘못된 대상" },
+        }
+      ),
+      conversationParams(conversationId)
+    )
+    expect(response.status).toBe(409)
+
+    const database = openDatabase()
+    try {
+      const row = database
+        .prepare(
+          "SELECT status, body, conversation_id FROM cs_messages WHERE id = ?"
+        )
+        .get(otherDraftId) as {
+        status: string
+        body: string
+        conversation_id: string
+      }
+      expect(row.status).toBe("draft")
+      expect(row.body).toBe("다른 대화 초안")
+      expect(row.conversation_id).toBe(otherConversationId)
+      const audit = database
+        .prepare(
+          "SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'cs_send_draft'"
+        )
+        .get() as { n: number }
+      expect(audit.n).toBe(0)
+    } finally {
+      database.close()
+    }
   })
 
   it("discards a pending draft and 409s a second discard", async () => {

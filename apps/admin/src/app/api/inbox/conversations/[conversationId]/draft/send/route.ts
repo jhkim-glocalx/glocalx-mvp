@@ -28,7 +28,9 @@ function draftNotPendingResponse(): Response {
 // persona — the owner never learns it originated as an AI draft. Guarded on
 // status='draft', so a double-send (two operators, or a retry) is a no-op.
 // Sending implies the operator read the owner's messages, so it clears the
-// admin-side unread. Audited.
+// admin-side unread. The send is scoped to the path conversation as well as the
+// body's messageId, so a draft from another conversation 409s instead of being
+// delivered there under this conversation's audit record. Audited.
 export async function POST(
   request: NextRequest,
   routeContext: ConversationRouteContext
@@ -53,6 +55,7 @@ export async function POST(
 
       const now = new Date()
       const sent = await context.csMessageStore.sendDraft({
+        conversationId,
         messageId: parsed.value.messageId,
         body: parsed.value.body,
         now,

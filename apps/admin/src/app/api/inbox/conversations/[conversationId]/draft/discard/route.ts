@@ -48,6 +48,7 @@ export async function POST(
       }
 
       const discarded = await context.csMessageStore.discardDraft(
+        conversationId,
         parsed.value.messageId
       )
       if (!discarded) {
