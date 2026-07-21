@@ -30,6 +30,7 @@ export const appNavItems = [
   { id: "onboarding", label: "가게 인증 및 등록" },
   { id: "photo", label: "홍보 콘텐츠 넣기" },
   { id: "posting", label: "여러 SNS 자동홍보" },
+  { id: "campaigns", label: "마케팅 소재 요청" },
   { id: "reviews", label: "리뷰 AI 관리" },
   { id: "targets", label: "홍보할 국가" },
   { id: "report", label: "주간 홍보 실적" },

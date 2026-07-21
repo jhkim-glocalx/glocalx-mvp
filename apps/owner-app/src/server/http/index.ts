@@ -18,6 +18,8 @@ import { openDatabaseContext, resolveDatabaseConfig } from "@glocalx/db"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import { createDatabaseActivityEventStore } from "@glocalx/db/support/activity-store"
 import type { ActivityEventStore } from "@glocalx/db/support/activity-store"
+import { createDatabaseCampaignStore } from "@glocalx/db/support/campaign-store"
+import type { CampaignStore } from "@glocalx/db/support/campaign-store"
 import { createDatabaseCsConversationStore } from "@glocalx/db/support/conversation-store"
 import type { CsConversationStore } from "@glocalx/db/support/conversation-store"
 import { createDatabaseCsMessageContextStore } from "@glocalx/db/support/message-context-store"
@@ -64,6 +66,7 @@ export type QueryableRouteDatabaseContext = {
   readonly authRateLimitRepository: ReturnType<
     typeof createDatabaseAuthRateLimitRepository
   >
+  readonly campaignStore: CampaignStore
   readonly conversationStore: ConversationStore
   readonly csConversationStore: CsConversationStore
   readonly csMessageContextStore: CsMessageContextStore
@@ -223,6 +226,7 @@ function buildRouteDatabaseContext(
     activityEventStore: createDatabaseActivityEventStore(queryable),
     adapters: createIntegrationAdapters(),
     authRateLimitRepository: createDatabaseAuthRateLimitRepository(queryable),
+    campaignStore: createDatabaseCampaignStore(queryable),
     conversationStore: createDatabaseConversationStore(queryable),
     csConversationStore: createDatabaseCsConversationStore(queryable),
     csMessageContextStore: createDatabaseCsMessageContextStore(queryable),

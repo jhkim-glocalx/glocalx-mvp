@@ -19,6 +19,11 @@ import type {
   PublishState,
   MarketingPlatform,
 } from "./app-workspace-model"
+import { CampaignIntakeScreen } from "./campaign-intake-screen"
+import type {
+  CampaignIntakeState,
+  CampaignRequestSummary,
+} from "./campaign-model"
 import { OnboardingSnapshot } from "./onboarding-snapshot"
 import { PhotoScreen } from "./reference-flow-photo-screen"
 import { PostingScreen } from "./reference-flow-posting-screen"
@@ -33,6 +38,13 @@ import { FlowNav } from "./reference-flow-shared"
 export type ReferenceFlowScreensProps = {
   readonly activeNavId: AppNavId
   readonly activePreviewKey: string
+  readonly campaignBrief: string
+  readonly campaignIntake: CampaignIntakeState
+  readonly campaignRequests: readonly CampaignRequestSummary[]
+  readonly campaignSelectedFiles: readonly File[]
+  readonly onCampaignBriefChange: (brief: string) => void
+  readonly onCampaignFiles: (files: FileList | null) => void
+  readonly onCampaignSubmit: () => void
   readonly draft: DraftState
   readonly imageAssets: readonly MarketingImageAsset[]
   readonly intent: string
@@ -68,6 +80,13 @@ export type ReferenceFlowScreensProps = {
 export function ReferenceFlowScreens({
   activeNavId,
   activePreviewKey,
+  campaignBrief,
+  campaignIntake,
+  campaignRequests,
+  campaignSelectedFiles,
+  onCampaignBriefChange,
+  onCampaignFiles,
+  onCampaignSubmit,
   draft,
   imageAssets,
   intent,
@@ -148,6 +167,17 @@ export function ReferenceFlowScreens({
           onPreviewChange={onPreviewChange}
           onPublish={onPublish}
           publish={publish}
+        />
+      ) : null}
+      {activeNavId === "campaigns" ? (
+        <CampaignIntakeScreen
+          campaignBrief={campaignBrief}
+          campaignIntake={campaignIntake}
+          campaignRequests={campaignRequests}
+          campaignSelectedFiles={campaignSelectedFiles}
+          onCampaignBriefChange={onCampaignBriefChange}
+          onCampaignFiles={onCampaignFiles}
+          onCampaignSubmit={onCampaignSubmit}
         />
       ) : null}
       {activeNavId === "reviews" ? <ReviewsScreen /> : null}

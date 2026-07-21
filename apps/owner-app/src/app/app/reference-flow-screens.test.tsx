@@ -24,6 +24,13 @@ function baseProps(
   return {
     activeNavId: overrides.activeNavId ?? "photo",
     activePreviewKey: overrides.activePreviewKey ?? "GBP",
+    campaignBrief: "",
+    campaignIntake: { kind: "idle" },
+    campaignRequests: [],
+    campaignSelectedFiles: [],
+    onCampaignBriefChange: noop,
+    onCampaignFiles: noop,
+    onCampaignSubmit: noop,
     draft: overrides.draft ?? { kind: "idle" },
     imageAssets: [],
     intent: "이번 주말 브런치 신메뉴 홍보",

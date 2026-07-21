@@ -1,6 +1,7 @@
 import { missingEnvVars } from "./credentials"
 import type { AdapterEnvironment, IntegrationMode } from "./contracts"
 import { naverEnvVars } from "./production"
+import { blobEnvVars } from "./vercel-blob-production"
 
 type SafeEnvValueDiagnostics = {
   readonly configured: boolean
@@ -62,6 +63,15 @@ export function shouldUsePreviewNaverStub(env: AdapterEnvironment): boolean {
   return (
     (env["VERCEL_ENV"] === "preview" || env["VERCEL_ENV"] === "development") &&
     missingEnvVars(env, naverEnvVars).length > 0
+  )
+}
+
+export function shouldUsePreviewMediaStoreStub(
+  env: AdapterEnvironment
+): boolean {
+  return (
+    (env["VERCEL_ENV"] === "preview" || env["VERCEL_ENV"] === "development") &&
+    missingEnvVars(env, blobEnvVars).length > 0
   )
 }
 

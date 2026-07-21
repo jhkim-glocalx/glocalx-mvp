@@ -13,6 +13,7 @@ import type {
   PostingConversationAdapter,
 } from "./conversation-contracts"
 import type { CsAssistantAdapter } from "./cs-assistant-contracts"
+import type { MediaStore } from "./media-store"
 
 export type {
   CreateLocalPostInput,
@@ -181,6 +182,7 @@ export type IntegrationAdapters = {
   readonly translation: TranslationAdapter
   readonly clock: ClockAdapter
   readonly jobScheduler: JobSchedulerAdapter
+  readonly mediaStore: MediaStore
 }
 
 export type CreateIntegrationAdaptersOptions = {
