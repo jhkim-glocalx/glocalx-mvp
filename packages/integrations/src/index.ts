@@ -96,3 +96,5 @@ export function createIntegrationAdapters(
     jobScheduler: createStubJobScheduler(),
   }
 }
+
+export * from "./media-store"
