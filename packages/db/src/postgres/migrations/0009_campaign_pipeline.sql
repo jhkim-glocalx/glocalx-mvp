@@ -1,11 +1,11 @@
--- Phase 3: Marketing Material Pipeline Migration
--- Defines campaign_requests, campaign_assets, campaign_review_events, and publish_jobs.
+-- Phase 3 (Marketing Material Pipeline): campaign requests, their media assets,
+-- the owner/operator review trail, and per-channel publish jobs.
 
 CREATE TABLE IF NOT EXISTS campaign_requests (
-  id TEXT PRIMARY KEY,
-  store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
-  brief TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (
+  id text PRIMARY KEY,
+  store_id text NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+  brief text NOT NULL,
+  status text NOT NULL CHECK (
     status IN (
       'submitted',
       'in_production',
@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS campaign_requests (
       'failed'
     )
   ),
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL
 );
 
 -- Queue kanban ordering and per-store lookup indexes (architecture §2).
@@ -31,46 +31,48 @@ CREATE INDEX IF NOT EXISTS campaign_requests_store_id_idx
   ON campaign_requests (store_id, updated_at);
 
 CREATE TABLE IF NOT EXISTS campaign_assets (
-  id TEXT PRIMARY KEY,
-  request_id TEXT NOT NULL REFERENCES campaign_requests(id) ON DELETE CASCADE,
-  kind TEXT NOT NULL CHECK (kind IN ('original', 'processed')),
-  blob_url TEXT NOT NULL,
-  content_type TEXT NOT NULL,
-  width INTEGER,
-  height INTEGER,
-  meta_json TEXT NOT NULL DEFAULT '{}',
-  uploaded_by TEXT NOT NULL CHECK (uploaded_by IN ('owner', 'admin')),
-  created_at TEXT NOT NULL
+  id text PRIMARY KEY,
+  request_id text NOT NULL REFERENCES campaign_requests(id) ON DELETE CASCADE,
+  kind text NOT NULL CHECK (kind IN ('original', 'processed')),
+  blob_url text NOT NULL,
+  content_type text NOT NULL,
+  width integer,
+  height integer,
+  meta_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  uploaded_by text NOT NULL CHECK (uploaded_by IN ('owner', 'admin')),
+  created_at timestamptz NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS campaign_assets_request_idx
   ON campaign_assets (request_id, kind);
 
 CREATE TABLE IF NOT EXISTS campaign_review_events (
-  id TEXT PRIMARY KEY,
-  request_id TEXT NOT NULL REFERENCES campaign_requests(id) ON DELETE CASCADE,
-  actor TEXT NOT NULL CHECK (actor IN ('owner', 'admin')),
-  decision TEXT NOT NULL CHECK (decision IN ('go', 'no_go', 'changes_requested')),
-  note TEXT,
-  created_at TEXT NOT NULL
+  id text PRIMARY KEY,
+  request_id text NOT NULL REFERENCES campaign_requests(id) ON DELETE CASCADE,
+  actor text NOT NULL CHECK (actor IN ('owner', 'admin')),
+  decision text NOT NULL CHECK (decision IN ('go', 'no_go', 'changes_requested')),
+  note text,
+  created_at timestamptz NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS campaign_review_events_request_idx
   ON campaign_review_events (request_id, created_at);
 
 CREATE TABLE IF NOT EXISTS publish_jobs (
-  id TEXT PRIMARY KEY,
-  request_id TEXT NOT NULL REFERENCES campaign_requests(id) ON DELETE CASCADE,
-  channel TEXT NOT NULL CHECK (channel IN ('gbp', 'instagram')),
-  status TEXT NOT NULL CHECK (status IN ('queued', 'publishing', 'published', 'failed')),
-  external_ref TEXT,
-  attempt_count INTEGER NOT NULL DEFAULT 0,
-  last_error TEXT,
-  idempotency_key TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
+  id text PRIMARY KEY,
+  request_id text NOT NULL REFERENCES campaign_requests(id) ON DELETE CASCADE,
+  channel text NOT NULL CHECK (channel IN ('gbp', 'instagram')),
+  status text NOT NULL CHECK (status IN ('queued', 'publishing', 'published', 'failed')),
+  external_ref text,
+  attempt_count integer NOT NULL DEFAULT 0,
+  last_error text,
+  idempotency_key text NOT NULL,
+  created_at timestamptz NOT NULL,
+  updated_at timestamptz NOT NULL
 );
 
+-- One job per channel per request, plus a globally unique idempotency key so a
+-- retried publish never double-posts to GBP/Instagram.
 CREATE UNIQUE INDEX IF NOT EXISTS publish_jobs_request_channel_idx
   ON publish_jobs (request_id, channel);
 

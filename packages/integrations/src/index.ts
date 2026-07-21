@@ -97,4 +97,4 @@ export function createIntegrationAdapters(
   }
 }
 
-export * from "./media-store.ts"
+export * from "./media-store"

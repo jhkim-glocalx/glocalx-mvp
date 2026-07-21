@@ -37,12 +37,27 @@ export interface MediaStore {
   deleteAsset(blobUrl: string): Promise<void>
 }
 
+// storeId and filename are interpolated into the blob object key
+// (`/stores/<storeId>/<assetId>-<filename>`), so a separator or traversal
+// segment in either would write outside the owning store's prefix.
+const unsafePathSegmentPattern = /[/\\]|\.\./
+
 export function validateMediaUploadInput(input: CreateUploadTokenInput): void {
   if (!input.storeId || input.storeId.trim().length === 0) {
     throw new MediaStoreValidationError("storeId is required")
   }
+  if (unsafePathSegmentPattern.test(input.storeId)) {
+    throw new MediaStoreValidationError(
+      "storeId must not contain path separators or traversal segments"
+    )
+  }
   if (!input.filename || input.filename.trim().length === 0) {
     throw new MediaStoreValidationError("filename is required")
+  }
+  if (unsafePathSegmentPattern.test(input.filename)) {
+    throw new MediaStoreValidationError(
+      "filename must not contain path separators or traversal segments"
+    )
   }
   if (
     !mediaStoreAllowedContentTypes.includes(

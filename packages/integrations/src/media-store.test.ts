@@ -42,6 +42,30 @@ describe("StubMediaStore", () => {
     ).toThrow(MediaStoreValidationError)
   })
 
+  it("rejects filenames that would escape the store's blob prefix", () => {
+    for (const filename of ["../../other-store/x.jpg", "nested/x.jpg"]) {
+      expect(() =>
+        validateMediaUploadInput({
+          storeId: "store_123",
+          filename,
+          contentType: "image/jpeg",
+          sizeBytes: 1000,
+        })
+      ).toThrow(MediaStoreValidationError)
+    }
+  })
+
+  it("rejects store ids that would escape the blob prefix", () => {
+    expect(() =>
+      validateMediaUploadInput({
+        storeId: "store_123/../store_456",
+        filename: "sample.jpg",
+        contentType: "image/jpeg",
+        sizeBytes: 1000,
+      })
+    ).toThrow(MediaStoreValidationError)
+  })
+
   it("enforces 10MB file size limit", () => {
     expect(() =>
       validateMediaUploadInput({

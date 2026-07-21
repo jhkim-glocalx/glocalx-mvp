@@ -95,12 +95,36 @@ describe("transitionCampaignRequest", () => {
     ).toBe("publishing")
   })
 
-  it("allows transition to failed from any state via FAIL_CAMPAIGN", () => {
+  it("allows transition to failed from any in-flight state via FAIL_CAMPAIGN", () => {
     expect(
       transitionCampaignRequest("submitted", { type: "FAIL_CAMPAIGN" })
     ).toBe("failed")
     expect(
       transitionCampaignRequest("publishing", { type: "FAIL_CAMPAIGN" })
     ).toBe("failed")
+    expect(
+      transitionCampaignRequest("partially_published", {
+        type: "FAIL_CAMPAIGN",
+      })
+    ).toBe("failed")
+  })
+
+  it("refuses to fail a campaign that already settled as published or rejected", () => {
+    expect(() =>
+      transitionCampaignRequest("published", { type: "FAIL_CAMPAIGN" })
+    ).toThrow(InvalidCampaignTransitionError)
+
+    expect(() =>
+      transitionCampaignRequest("rejected", { type: "FAIL_CAMPAIGN" })
+    ).toThrow(InvalidCampaignTransitionError)
+  })
+
+  it("reports an unrecognized review decision as a review error, not a publish error", () => {
+    expect(() =>
+      transitionCampaignRequest("ready_for_review", {
+        type: "SUBMIT_REVIEW_DECISION",
+        decision: "GO" as never,
+      })
+    ).toThrow(/Unrecognized review decision "GO"/)
   })
 })

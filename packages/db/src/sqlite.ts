@@ -81,9 +81,11 @@ const migrationPaths = [
   join(currentDirectory, "migrations", "0002_email_credentials.sql"),
   join(currentDirectory, "migrations", "0003_user_sessions.sql"),
   join(currentDirectory, "migrations", "0004_auth_rate_limits.sql"),
-  join(currentDirectory, "migrations", "0005_campaign_pipeline.sql"),
+  // 0005 and 0008 are Postgres-only (SQLite handles social channels and the
+  // cs AI-mode widening in code below); numbering stays aligned across dialects.
   join(currentDirectory, "migrations", "0006_admin_identity.sql"),
   join(currentDirectory, "migrations", "0007_cs_chat_activity.sql"),
+  join(currentDirectory, "migrations", "0009_campaign_pipeline.sql"),
 ] as const
 
 const sqlIdentifierPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/

@@ -119,6 +119,15 @@ export function transitionCampaignRequest(
           return "changes_requested"
         case "no_go":
           return "rejected"
+        // Callers reach this with request- and database-derived decisions; without
+        // a default the switch falls through to START_PUBLISHING and reports an
+        // unrecognized decision as a publish failure.
+        default:
+          throw new InvalidCampaignTransitionError(
+            currentStatus,
+            action.type,
+            `Unrecognized review decision "${String(action.decision)}". Must be "go", "no_go", or "changes_requested".`
+          )
       }
     }
 
@@ -157,26 +166,29 @@ export function transitionCampaignRequest(
         return "failed"
       }
 
-      const anyPublished = action.channelStatuses.some((s) => s === "published")
-      const anyTerminalFailed = action.channelStatuses.some(
-        (s) => s === "failed"
-      )
       const anyPending = action.channelStatuses.some(
         (s) => s === "queued" || s === "publishing"
       )
-
       if (anyPending) {
         return "publishing"
       }
 
-      if (anyPublished && anyTerminalFailed) {
-        return "partially_published"
-      }
-
-      return "publishing"
+      // Every channel is terminal and they are not uniform (all-published and
+      // all-failed returned above), so some published and some failed.
+      return "partially_published"
     }
 
     case "FAIL_CAMPAIGN": {
+      // A campaign that reached a terminal outcome keeps it: overwriting
+      // "published" with "failed" would erase the record that the post went
+      // live, and the publish_jobs rows would still say otherwise.
+      if (currentStatus === "published" || currentStatus === "rejected") {
+        throw new InvalidCampaignTransitionError(
+          currentStatus,
+          action.type,
+          `Cannot fail a campaign that already settled as "${currentStatus}".`
+        )
+      }
       return "failed"
     }
 
