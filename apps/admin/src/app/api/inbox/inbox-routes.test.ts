@@ -23,6 +23,9 @@ import { GET as getMessages } from "./conversations/[conversationId]/messages/ro
 import { POST as reply } from "./conversations/[conversationId]/reply/route"
 import { POST as resolve } from "./conversations/[conversationId]/resolve/route"
 import { POST as assign } from "./conversations/[conversationId]/assign/route"
+import { POST as setMode } from "./conversations/[conversationId]/mode/route"
+import { POST as sendDraft } from "./conversations/[conversationId]/draft/send/route"
+import { POST as discardDraft } from "./conversations/[conversationId]/draft/discard/route"
 
 const origin = "http://localhost:3100"
 const adminUserId = "admin-1"
@@ -87,6 +90,74 @@ async function seedOwnerMessage(): Promise<string> {
       },
     })
     return conversation.id
+  } finally {
+    database.close()
+  }
+}
+
+// A conversation belonging to a *different* store. Only one open conversation
+// may exist per store (cs_conversations_one_open_per_store_idx), so a second
+// conversation is by construction a second tenant — which is what makes a
+// body-supplied messageId dangerous if the route does not scope it.
+async function seedOtherStoreConversation(): Promise<string> {
+  const database = openDatabase()
+  try {
+    const id = randomUUID()
+    const now = new Date().toISOString()
+    database
+      .prepare(
+        "INSERT INTO users (id, email, display_name, role, created_at) VALUES ('user-2', 'owner2@example.com', 'Owner 2', 'OWNER', ?)"
+      )
+      .run(now)
+    database
+      .prepare(
+        "INSERT INTO stores (id, owner_user_id, name, address, category, onboarding_status, created_at) VALUES ('store-2', 'user-2', 'Store 2', 'addr', 'cat', 'COMPLETED', ?)"
+      )
+      .run(now)
+    database
+      .prepare(
+        "INSERT INTO cs_conversations (id, store_id, mode, status, assigned_admin_id, created_at, updated_at) VALUES (?, 'store-2', 'ai_draft', 'open', NULL, ?, ?)"
+      )
+      .run(id, now, now)
+    return id
+  } finally {
+    database.close()
+  }
+}
+
+// Append a pending AI draft (author_kind='ai', status='draft') to a conversation
+// and return its id — the row the console review surface acts on.
+async function seedDraft(
+  conversationId: string,
+  body: string
+): Promise<string> {
+  const database = openDatabase()
+  try {
+    const draft = await createDatabaseCsMessageStore(
+      createSqliteQueryable(database)
+    ).appendMessage({
+      id: randomUUID(),
+      conversationId,
+      sender: "assistant",
+      authorKind: "ai",
+      authorAdminId: null,
+      status: "draft",
+      body,
+      now: new Date(),
+    })
+    return draft.id
+  } finally {
+    database.close()
+  }
+}
+
+async function conversationMode(conversationId: string): Promise<string> {
+  const database = openDatabase()
+  try {
+    const record = await createDatabaseCsConversationStore(
+      createSqliteQueryable(database)
+    ).getConversationById(conversationId)
+    return record?.mode ?? "unknown"
   } finally {
     database.close()
   }
@@ -317,5 +388,224 @@ describe("assign and resolve", () => {
       conversations: readonly unknown[]
     }
     expect(body.conversations).toHaveLength(0)
+  })
+})
+
+describe("mode toggle", () => {
+  it("rejects a cross-origin post before touching data", async () => {
+    const conversationId = await seedOwnerMessage()
+    const response = await setMode(
+      postRequest(`${origin}/api/inbox/conversations/${conversationId}/mode`, {
+        cookie: await adminSessionCookie(),
+        body: { mode: "ai_draft" },
+        withOrigin: false,
+      }),
+      conversationParams(conversationId)
+    )
+    expect(response.status).toBe(403)
+  })
+
+  it("flips the conversation mode and audits it", async () => {
+    const conversationId = await seedOwnerMessage()
+    const response = await setMode(
+      postRequest(`${origin}/api/inbox/conversations/${conversationId}/mode`, {
+        cookie: await adminSessionCookie(),
+        body: { mode: "ai_draft" },
+      }),
+      conversationParams(conversationId)
+    )
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      conversation: { mode: string }
+    }
+    expect(body.conversation.mode).toBe("ai_draft")
+    expect(await conversationMode(conversationId)).toBe("ai_draft")
+
+    const database = openDatabase()
+    try {
+      const auditRow = database
+        .prepare(
+          "SELECT redacted_payload_json FROM audit_logs WHERE action = 'cs_set_mode'"
+        )
+        .get() as { redacted_payload_json: string } | undefined
+      expect(JSON.parse(auditRow?.redacted_payload_json ?? "{}")).toMatchObject(
+        {
+          adminUserId,
+          conversationId,
+          mode: "ai_draft",
+        }
+      )
+    } finally {
+      database.close()
+    }
+  })
+
+  it("rejects an unknown mode", async () => {
+    const conversationId = await seedOwnerMessage()
+    const response = await setMode(
+      postRequest(`${origin}/api/inbox/conversations/${conversationId}/mode`, {
+        cookie: await adminSessionCookie(),
+        body: { mode: "autonomous" },
+      }),
+      conversationParams(conversationId)
+    )
+    expect(response.status).toBe(400)
+  })
+})
+
+describe("ai draft review", () => {
+  it("returns the pending draft alongside a draft-free transcript", async () => {
+    const conversationId = await seedOwnerMessage()
+    const draftId = await seedDraft(conversationId, "초안 답변")
+    const response = await getMessages(
+      getRequest(
+        `${origin}/api/inbox/conversations/${conversationId}/messages`,
+        await adminSessionCookie()
+      ),
+      conversationParams(conversationId)
+    )
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      messages: readonly { id: string; status: string }[]
+      pendingDraft: { id: string; status: string } | null
+    }
+    // The draft rides on its own field, never in the append-only transcript.
+    expect(body.messages.some((m) => m.id === draftId)).toBe(false)
+    expect(body.messages.every((m) => m.status === "sent")).toBe(true)
+    expect(body.pendingDraft?.id).toBe(draftId)
+    expect(body.pendingDraft?.status).toBe("draft")
+  })
+
+  it("sends an edited draft as an owner-visible assistant message and audits it", async () => {
+    const conversationId = await seedOwnerMessage()
+    const draftId = await seedDraft(conversationId, "초안")
+    const response = await sendDraft(
+      postRequest(
+        `${origin}/api/inbox/conversations/${conversationId}/draft/send`,
+        {
+          cookie: await adminSessionCookie(),
+          body: { messageId: draftId, body: "운영자가 다듬은 답변" },
+        }
+      ),
+      conversationParams(conversationId)
+    )
+    expect(response.status).toBe(201)
+    const body = (await response.json()) as {
+      message: { id: string; status: string; authorKind: string; body: string }
+    }
+    expect(body.message.status).toBe("sent")
+    expect(body.message.authorKind).toBe("ai")
+    expect(body.message.body).toBe("운영자가 다듬은 답변")
+
+    const database = openDatabase()
+    try {
+      const auditRow = database
+        .prepare(
+          "SELECT redacted_payload_json FROM audit_logs WHERE action = 'cs_send_draft'"
+        )
+        .get() as { redacted_payload_json: string } | undefined
+      expect(JSON.parse(auditRow?.redacted_payload_json ?? "{}")).toMatchObject(
+        {
+          adminUserId,
+          conversationId,
+          messageId: draftId,
+        }
+      )
+    } finally {
+      database.close()
+    }
+  })
+
+  it("409s sending an already-sent or unknown draft", async () => {
+    const conversationId = await seedOwnerMessage()
+    const draftId = await seedDraft(conversationId, "초안")
+    const cookie = await adminSessionCookie()
+    const first = await sendDraft(
+      postRequest(
+        `${origin}/api/inbox/conversations/${conversationId}/draft/send`,
+        { cookie, body: { messageId: draftId, body: "x" } }
+      ),
+      conversationParams(conversationId)
+    )
+    expect(first.status).toBe(201)
+    const second = await sendDraft(
+      postRequest(
+        `${origin}/api/inbox/conversations/${conversationId}/draft/send`,
+        { cookie, body: { messageId: draftId, body: "y" } }
+      ),
+      conversationParams(conversationId)
+    )
+    expect(second.status).toBe(409)
+  })
+
+  // messageId comes from the request body, conversationId from the path. If the
+  // store did not scope the send to the path conversation, this would deliver
+  // the draft into the *other* store's conversation while auditing,
+  // read-marking, and touching this one — a mis-attributed audit trail.
+  it("409s a draft that belongs to another conversation, and leaves it pending", async () => {
+    const conversationId = await seedOwnerMessage()
+    const otherConversationId = await seedOtherStoreConversation()
+    const otherDraftId = await seedDraft(otherConversationId, "다른 대화 초안")
+
+    const response = await sendDraft(
+      postRequest(
+        `${origin}/api/inbox/conversations/${conversationId}/draft/send`,
+        {
+          cookie: await adminSessionCookie(),
+          body: { messageId: otherDraftId, body: "잘못된 대상" },
+        }
+      ),
+      conversationParams(conversationId)
+    )
+    expect(response.status).toBe(409)
+
+    const database = openDatabase()
+    try {
+      const row = database
+        .prepare(
+          "SELECT status, body, conversation_id FROM cs_messages WHERE id = ?"
+        )
+        .get(otherDraftId) as {
+        status: string
+        body: string
+        conversation_id: string
+      }
+      expect(row.status).toBe("draft")
+      expect(row.body).toBe("다른 대화 초안")
+      expect(row.conversation_id).toBe(otherConversationId)
+      const audit = database
+        .prepare(
+          "SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'cs_send_draft'"
+        )
+        .get() as { n: number }
+      expect(audit.n).toBe(0)
+    } finally {
+      database.close()
+    }
+  })
+
+  it("discards a pending draft and 409s a second discard", async () => {
+    const conversationId = await seedOwnerMessage()
+    const draftId = await seedDraft(conversationId, "초안")
+    const cookie = await adminSessionCookie()
+    const first = await discardDraft(
+      postRequest(
+        `${origin}/api/inbox/conversations/${conversationId}/draft/discard`,
+        { cookie, body: { messageId: draftId } }
+      ),
+      conversationParams(conversationId)
+    )
+    expect(first.status).toBe(200)
+    expect((await first.json()) as { discarded: boolean }).toEqual({
+      discarded: true,
+    })
+    const second = await discardDraft(
+      postRequest(
+        `${origin}/api/inbox/conversations/${conversationId}/draft/discard`,
+        { cookie, body: { messageId: draftId } }
+      ),
+      conversationParams(conversationId)
+    )
+    expect(second.status).toBe(409)
   })
 })

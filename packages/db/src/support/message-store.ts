@@ -31,6 +31,11 @@ export type CsMessageInsert = {
 // draft's when an operator edits before sending; created_at is re-stamped so the
 // owner's cursor poll delivers it as a fresh message.
 export type SendDraftInput = {
+  // The conversation the draft must belong to. The id alone is not enough: a
+  // route takes it from the request body, so without this the caller's audit
+  // record, read-marking, and touch would attribute to one conversation while
+  // the message landed in another.
+  readonly conversationId: string
   readonly messageId: string
   readonly body: string
   readonly now: Date
@@ -49,6 +54,12 @@ export type ListMessagesInput = {
   // result directly under exactOptionalPropertyTypes.
   readonly after?: MessageCursor | undefined
   readonly limit?: number | undefined
+  // Admin-only: exclude `draft` rows from the transcript. The console reviews a
+  // pending draft through its own surface (getLatestPendingDraft), not the
+  // append-only stream — a draft's created_at is re-stamped on send, so leaving
+  // it in the cursor stream would let the dedup-by-id client miss the sent copy.
+  // Defaults to false so the full admin list still returns drafts.
+  readonly sentOnly?: boolean | undefined
 }
 
 export interface CsMessageStore {
@@ -72,10 +83,12 @@ export interface CsMessageStore {
     conversationId: string
   ): Promise<AdminFacingMessage | undefined>
   // Send an AI draft (optionally edited) to the owner. Returns the sent message,
-  // or undefined if the id is not a pending draft (already sent, or discarded).
+  // or undefined if the id is not a pending draft of that conversation (already
+  // sent, discarded, or belonging to a different conversation).
   sendDraft(input: SendDraftInput): Promise<AdminFacingMessage | undefined>
-  // Discard a single draft by id; returns whether a draft row was removed.
-  discardDraft(messageId: string): Promise<boolean>
+  // Discard a single draft; returns whether a draft row was removed. Scoped to
+  // the conversation for the same reason as sendDraft.
+  discardDraft(conversationId: string, messageId: string): Promise<boolean>
   // Discard every pending draft in a conversation — used before composing a
   // fresh draft so at most one pending draft exists at a time. (Handing off to
   // human keeps the pending draft editable, so it is not cleared there.)
@@ -219,7 +232,11 @@ export function createDatabaseCsMessageStore(
     },
 
     async listAdminMessages(input) {
-      const messages = await readMessagePage(queryable, input, false)
+      const messages = await readMessagePage(
+        queryable,
+        input,
+        input.sentOnly === true
+      )
       return { messages, nextCursor: nextCursorFor(messages) }
     },
 
@@ -289,8 +306,9 @@ export function createDatabaseCsMessageStore(
         `UPDATE cs_messages
             SET status = 'sent', body = ?, created_at = ?
           WHERE id = ?
+            AND conversation_id = ?
             AND status = 'draft'`,
-        [input.body, now, input.messageId]
+        [input.body, now, input.messageId, input.conversationId]
       )
       if (result.changes === 0) {
         return undefined
@@ -304,10 +322,13 @@ export function createDatabaseCsMessageStore(
       return row === undefined ? undefined : toAdminMessage(row)
     },
 
-    async discardDraft(messageId) {
+    async discardDraft(conversationId, messageId) {
       const result = await queryable.execute(
-        `DELETE FROM cs_messages WHERE id = ? AND status = 'draft'`,
-        [messageId]
+        `DELETE FROM cs_messages
+          WHERE id = ?
+            AND conversation_id = ?
+            AND status = 'draft'`,
+        [messageId, conversationId]
       )
       return result.changes > 0
     },

@@ -6,7 +6,13 @@ import type { Queryable } from "@glocalx/db"
 // out-of-band decision is traceable. audit_logs.actor_user_id FKs to users(id)
 // — operators live in admin_users, not users — so the operator identity is
 // carried in the redacted payload instead, and actor_user_id stays NULL.
-export type AdminAuditAction = "cs_reply" | "cs_resolve" | "cs_assign"
+export type AdminAuditAction =
+  | "cs_reply"
+  | "cs_resolve"
+  | "cs_assign"
+  | "cs_set_mode"
+  | "cs_send_draft"
+  | "cs_discard_draft"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction
