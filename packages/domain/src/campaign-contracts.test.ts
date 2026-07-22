@@ -6,6 +6,9 @@ import {
   createCampaignRequestSchema,
   createUploadTokenRequestSchema,
   registerCampaignAssetRequestSchema,
+  registerProcessedAssetRequestSchema,
+  setCampaignFinalCopyRequestSchema,
+  submitCampaignReviewDecisionRequestSchema,
 } from "./campaign-contracts"
 
 describe("campaign-contracts", () => {
@@ -15,6 +18,7 @@ describe("campaign-contracts", () => {
       storeId: "store_1",
       brief: "Promote our new brunch menu",
       status: "submitted",
+      finalCopy: null,
       createdAt: "2026-07-21T00:00:00.000Z",
       updatedAt: "2026-07-21T00:00:00.000Z",
     })
@@ -28,6 +32,7 @@ describe("campaign-contracts", () => {
       storeId: "store_1",
       brief: "Promote our new brunch menu",
       status: "not_a_real_status",
+      finalCopy: null,
       createdAt: "2026-07-21T00:00:00.000Z",
       updatedAt: "2026-07-21T00:00:00.000Z",
     })
@@ -88,6 +93,57 @@ describe("campaign-contracts", () => {
       sizeBytes: 999,
     })
     // .strict() rejects unknown keys outright rather than silently trusting them.
+    expect(result.success).toBe(false)
+  })
+
+  it("only accepts kind 'processed' for operator asset registration", () => {
+    const asOriginal = registerProcessedAssetRequestSchema.safeParse({
+      blobUrl: "https://blob.example/stores/store_1/asset_1-photo.jpg",
+      kind: "original",
+    })
+    const asProcessed = registerProcessedAssetRequestSchema.safeParse({
+      blobUrl: "https://blob.example/stores/store_1/asset_1-photo.jpg",
+      kind: "processed",
+    })
+
+    expect(asOriginal.success).toBe(false)
+    expect(asProcessed.success).toBe(true)
+  })
+
+  it("rejects empty final copy", () => {
+    expect(
+      setCampaignFinalCopyRequestSchema.safeParse({ finalCopy: "   " }).success
+    ).toBe(false)
+    expect(
+      setCampaignFinalCopyRequestSchema.safeParse({ finalCopy: "Come by!" })
+        .success
+    ).toBe(true)
+  })
+
+  it("requires a note only when the owner requests changes", () => {
+    const changesWithoutNote =
+      submitCampaignReviewDecisionRequestSchema.safeParse({
+        decision: "changes_requested",
+      })
+    const changesWithNote = submitCampaignReviewDecisionRequestSchema.safeParse(
+      {
+        decision: "changes_requested",
+        note: "Please brighten the second photo.",
+      }
+    )
+    const goWithoutNote = submitCampaignReviewDecisionRequestSchema.safeParse({
+      decision: "go",
+    })
+
+    expect(changesWithoutNote.success).toBe(false)
+    expect(changesWithNote.success).toBe(true)
+    expect(goWithoutNote.success).toBe(true)
+  })
+
+  it("rejects an unrecognized review decision", () => {
+    const result = submitCampaignReviewDecisionRequestSchema.safeParse({
+      decision: "maybe",
+    })
     expect(result.success).toBe(false)
   })
 })

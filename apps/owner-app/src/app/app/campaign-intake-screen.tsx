@@ -12,18 +12,34 @@ export function CampaignIntakeScreen({
   campaignBrief,
   campaignIntake,
   campaignRequests,
+  campaignReviewBusy,
+  campaignReviewNote,
+  campaignReviewNotice,
+  campaignReviewing,
   campaignSelectedFiles,
   onCampaignBriefChange,
   onCampaignFiles,
+  onCampaignReviewClose,
+  onCampaignReviewDecision,
+  onCampaignReviewNoteChange,
+  onCampaignReviewOpen,
   onCampaignSubmit,
 }: Pick<
   ReferenceFlowScreensProps,
   | "campaignBrief"
   | "campaignIntake"
   | "campaignRequests"
+  | "campaignReviewBusy"
+  | "campaignReviewNote"
+  | "campaignReviewNotice"
+  | "campaignReviewing"
   | "campaignSelectedFiles"
   | "onCampaignBriefChange"
   | "onCampaignFiles"
+  | "onCampaignReviewClose"
+  | "onCampaignReviewDecision"
+  | "onCampaignReviewNoteChange"
+  | "onCampaignReviewOpen"
   | "onCampaignSubmit"
 >) {
   const isBusy =
@@ -97,9 +113,105 @@ export function CampaignIntakeScreen({
               <li key={request.id}>
                 <strong>{campaignStatusLabel(request.status)}</strong>
                 <span> · {request.brief}</span>
+                {request.status === "ready_for_review" ? (
+                  <button
+                    className="gx-choice-chip"
+                    data-testid={`campaign-review-open-${request.id}`}
+                    disabled={campaignReviewBusy}
+                    onClick={() => onCampaignReviewOpen(request.id)}
+                    type="button"
+                  >
+                    소재 확인하기
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
+        </FlowCard>
+      ) : null}
+      {campaignReviewNotice !== null ? (
+        <div role={campaignReviewNotice.tone === "error" ? "alert" : "status"}>
+          <ChatMessage
+            message={campaignReviewNotice.message}
+            speaker="assistant"
+          />
+        </div>
+      ) : null}
+      {campaignReviewing !== null ? (
+        <FlowCard title="완성된 소재">
+          <div className="gx-campaign-review" data-testid="campaign-review">
+            <div className="gx-campaign-review-assets">
+              {campaignReviewing.assets
+                .filter((asset) => asset.kind === "processed")
+                .map((asset) =>
+                  asset.signedUrl === null ? null : (
+                    /* eslint-disable-next-line @next/next/no-img-element --
+                       signed Blob URLs expire, so the optimizer's cache would
+                       serve dead links. */
+                    <img
+                      alt="완성된 홍보 소재"
+                      className="gx-campaign-review-asset"
+                      key={asset.id}
+                      src={asset.signedUrl}
+                    />
+                  )
+                )}
+            </div>
+            {campaignReviewing.finalCopy === null ? null : (
+              <p
+                className="gx-campaign-review-copy"
+                data-testid="campaign-review-copy"
+              >
+                {campaignReviewing.finalCopy}
+              </p>
+            )}
+            <label className="gx-intent-field">
+              <span>수정이 필요하면 어떤 부분인지 알려주세요</span>
+              <textarea
+                onChange={(event) =>
+                  onCampaignReviewNoteChange(event.currentTarget.value)
+                }
+                value={campaignReviewNote}
+              />
+            </label>
+            <div className="gx-campaign-review-actions">
+              <button
+                className="gx-choice-chip"
+                data-testid="campaign-review-go"
+                disabled={campaignReviewBusy}
+                onClick={() => onCampaignReviewDecision("go")}
+                type="button"
+              >
+                승인하고 게시 요청
+              </button>
+              <button
+                className="gx-choice-chip"
+                data-testid="campaign-review-changes"
+                disabled={campaignReviewBusy}
+                onClick={() => onCampaignReviewDecision("changes_requested")}
+                type="button"
+              >
+                수정 요청
+              </button>
+              <button
+                className="gx-choice-chip"
+                data-testid="campaign-review-no-go"
+                disabled={campaignReviewBusy}
+                onClick={() => onCampaignReviewDecision("no_go")}
+                type="button"
+              >
+                반려
+              </button>
+              <button
+                className="gx-choice-chip"
+                disabled={campaignReviewBusy}
+                onClick={onCampaignReviewClose}
+                type="button"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
         </FlowCard>
       ) : null}
     </>

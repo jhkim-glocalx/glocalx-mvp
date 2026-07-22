@@ -22,8 +22,10 @@ import type {
 import { CampaignIntakeScreen } from "./campaign-intake-screen"
 import type {
   CampaignIntakeState,
+  CampaignRequestDetail,
   CampaignRequestSummary,
 } from "./campaign-model"
+import type { CampaignReviewNotice } from "./use-campaign-review"
 import { OnboardingSnapshot } from "./onboarding-snapshot"
 import { PhotoScreen } from "./reference-flow-photo-screen"
 import { PostingScreen } from "./reference-flow-posting-screen"
@@ -42,8 +44,16 @@ export type ReferenceFlowScreensProps = {
   readonly campaignIntake: CampaignIntakeState
   readonly campaignRequests: readonly CampaignRequestSummary[]
   readonly campaignSelectedFiles: readonly File[]
+  readonly campaignReviewBusy: boolean
+  readonly campaignReviewNote: string
+  readonly campaignReviewNotice: CampaignReviewNotice | null
+  readonly campaignReviewing: CampaignRequestDetail | null
   readonly onCampaignBriefChange: (brief: string) => void
   readonly onCampaignFiles: (files: FileList | null) => void
+  readonly onCampaignReviewClose: () => void
+  readonly onCampaignReviewDecision: (decision: string) => void
+  readonly onCampaignReviewNoteChange: (note: string) => void
+  readonly onCampaignReviewOpen: (requestId: string) => void
   readonly onCampaignSubmit: () => void
   readonly draft: DraftState
   readonly imageAssets: readonly MarketingImageAsset[]
@@ -83,7 +93,15 @@ export function ReferenceFlowScreens({
   campaignBrief,
   campaignIntake,
   campaignRequests,
+  campaignReviewBusy,
+  campaignReviewNote,
+  campaignReviewNotice,
+  campaignReviewing,
   campaignSelectedFiles,
+  onCampaignReviewClose,
+  onCampaignReviewDecision,
+  onCampaignReviewNoteChange,
+  onCampaignReviewOpen,
   onCampaignBriefChange,
   onCampaignFiles,
   onCampaignSubmit,
@@ -174,9 +192,17 @@ export function ReferenceFlowScreens({
           campaignBrief={campaignBrief}
           campaignIntake={campaignIntake}
           campaignRequests={campaignRequests}
+          campaignReviewBusy={campaignReviewBusy}
+          campaignReviewNote={campaignReviewNote}
+          campaignReviewNotice={campaignReviewNotice}
+          campaignReviewing={campaignReviewing}
           campaignSelectedFiles={campaignSelectedFiles}
           onCampaignBriefChange={onCampaignBriefChange}
           onCampaignFiles={onCampaignFiles}
+          onCampaignReviewClose={onCampaignReviewClose}
+          onCampaignReviewDecision={onCampaignReviewDecision}
+          onCampaignReviewNoteChange={onCampaignReviewNoteChange}
+          onCampaignReviewOpen={onCampaignReviewOpen}
           onCampaignSubmit={onCampaignSubmit}
         />
       ) : null}

@@ -27,6 +27,7 @@ import { AppWorkspaceTopBar } from "./app-workspace-topbar"
 import { ReferenceFlowScreens } from "./reference-flow-screens"
 import { useAppOnboarding } from "./use-app-onboarding"
 import { useCampaignIntake } from "./use-campaign-intake"
+import { useCampaignReview } from "./use-campaign-review"
 import { usePostingWorkspace } from "./use-posting-workspace"
 
 type AppWorkspaceProps = {
@@ -56,6 +57,9 @@ export function AppWorkspace({
     storeId,
   })
   const campaigns = useCampaignIntake()
+  // The review card and the status list read the same requests, so a decision
+  // refreshes the list the card was opened from.
+  const campaignReview = useCampaignReview(campaigns.refreshRequests)
 
   useEffect(() => {
     const hasOnboardingResult =
@@ -173,9 +177,21 @@ export function AppWorkspace({
           campaignBrief={campaigns.brief}
           campaignIntake={campaigns.intake}
           campaignRequests={campaigns.requests}
+          campaignReviewBusy={campaignReview.busy}
+          campaignReviewNote={campaignReview.note}
+          campaignReviewNotice={campaignReview.notice}
+          campaignReviewing={campaignReview.reviewing}
           campaignSelectedFiles={campaigns.selectedFiles}
           onCampaignBriefChange={campaigns.setBrief}
           onCampaignFiles={campaigns.handleFiles}
+          onCampaignReviewClose={campaignReview.closeReview}
+          onCampaignReviewDecision={(decision) =>
+            void campaignReview.decide(decision)
+          }
+          onCampaignReviewNoteChange={campaignReview.setNote}
+          onCampaignReviewOpen={(requestId) =>
+            void campaignReview.openReview(requestId)
+          }
           onCampaignSubmit={() => void campaigns.submit()}
           draft={posting.draft}
           imageAssets={posting.imageAssets}

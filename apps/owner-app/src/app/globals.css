@@ -2393,3 +2393,35 @@ body {
 .gx-chat-send:not(:disabled):hover {
   background: var(--accent-press);
 }
+
+/* Owner go/no-go review card: the finished material plus the three decisions. */
+.gx-campaign-review {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gx-campaign-review-assets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gx-campaign-review-asset {
+  width: 100%;
+  max-width: 260px;
+  border-radius: 12px;
+}
+
+.gx-campaign-review-copy {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.gx-campaign-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
