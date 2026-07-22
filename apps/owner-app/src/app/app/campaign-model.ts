@@ -1,4 +1,7 @@
 import { isRecord, readString } from "@/app/_components/json-value"
+import { campaignStatusLabel } from "@/campaigns/status-labels"
+
+export { campaignStatusLabel }
 
 export type CampaignRequestSummary = {
   readonly id: string
@@ -7,25 +10,6 @@ export type CampaignRequestSummary = {
   readonly createdAt: string
   readonly updatedAt: string
   readonly assetCount: number
-}
-
-// Owner-facing labels for the status timeline — later phases (review/publish)
-// add UI for approved/publishing/etc.; PR2 only ever produces "submitted".
-const campaignStatusLabels: Record<string, string> = {
-  submitted: "제출됨",
-  in_production: "제작 중",
-  ready_for_review: "검토 대기",
-  approved: "승인됨",
-  changes_requested: "수정 요청됨",
-  rejected: "반려됨",
-  publishing: "게시 중",
-  published: "게시 완료",
-  partially_published: "일부 게시 완료",
-  failed: "실패",
-}
-
-export function campaignStatusLabel(status: string): string {
-  return campaignStatusLabels[status] ?? status
 }
 
 export type CampaignIntakeState =
@@ -81,6 +65,103 @@ export function toCampaignRequestList(
     const summary = readCampaignRequestSummary(row)
     return summary === undefined ? [] : [summary]
   })
+}
+
+export type CampaignAssetView = {
+  readonly id: string
+  readonly kind: string
+  readonly signedUrl: string | null
+}
+
+export type CampaignReviewEventView = {
+  readonly id: string
+  readonly actor: string
+  readonly decision: string
+  readonly note: string | null
+  readonly createdAt: string
+}
+
+export type CampaignRequestDetail = {
+  readonly id: string
+  readonly brief: string
+  readonly status: string
+  readonly finalCopy: string | null
+  readonly assets: readonly CampaignAssetView[]
+  readonly reviewEvents: readonly CampaignReviewEventView[]
+}
+
+function readCampaignAssetView(value: unknown): CampaignAssetView | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+  const id = readString(value["id"])
+  const kind = readString(value["kind"])
+  if (id === undefined || kind === undefined) {
+    return undefined
+  }
+  return { id, kind, signedUrl: readString(value["signedUrl"]) ?? null }
+}
+
+function readCampaignReviewEventView(
+  value: unknown
+): CampaignReviewEventView | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+  const id = readString(value["id"])
+  const actor = readString(value["actor"])
+  const decision = readString(value["decision"])
+  const createdAt = readString(value["createdAt"])
+  if (
+    id === undefined ||
+    actor === undefined ||
+    decision === undefined ||
+    createdAt === undefined
+  ) {
+    return undefined
+  }
+  return {
+    id,
+    actor,
+    decision,
+    note: readString(value["note"]) ?? null,
+    createdAt,
+  }
+}
+
+export function toCampaignRequestDetail(
+  payload: unknown
+): CampaignRequestDetail | undefined {
+  if (!isRecord(payload) || !isRecord(payload["request"])) {
+    return undefined
+  }
+  const request = payload["request"]
+  const id = readString(request["id"])
+  const brief = readString(request["brief"])
+  const status = readString(request["status"])
+  if (id === undefined || brief === undefined || status === undefined) {
+    return undefined
+  }
+
+  const assets = Array.isArray(request["assets"]) ? request["assets"] : []
+  const reviewEvents = Array.isArray(request["reviewEvents"])
+    ? request["reviewEvents"]
+    : []
+
+  return {
+    id,
+    brief,
+    status,
+    finalCopy: readString(request["finalCopy"]) ?? null,
+    assets: assets.flatMap((row) => {
+      const asset = readCampaignAssetView(row)
+      return asset === undefined ? [] : [asset]
+    }),
+    reviewEvents: reviewEvents.flatMap((row) => {
+      const event = readCampaignReviewEventView(row)
+      return event === undefined ? [] : [event]
+    }),
+  }
 }
 
 export type CreatedCampaignRequest = {

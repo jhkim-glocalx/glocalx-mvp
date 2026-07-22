@@ -291,4 +291,6 @@ export function applyMigrations(database: SqliteDatabase): void {
        ON cs_messages (conversation_id, created_at, id)
       WHERE status = 'sent'`
   )
+  // Phase 3 (matches postgres/migrations/0010_campaign_final_copy.sql).
+  ensureColumn(database, "campaign_requests", "final_copy", "TEXT")
 }

@@ -32,6 +32,28 @@ export async function requestUploadToken(
   return readAppJsonResponse(response, "업로드를 준비하지 못했습니다.")
 }
 
+export async function fetchCampaignRequestDetail(
+  requestId: string
+): Promise<unknown> {
+  const response = await fetch(`${requestsUrl}/${requestId}`)
+  return readAppJsonResponse(response, "요청을 불러오지 못했습니다.")
+}
+
+export async function submitCampaignReviewDecision(
+  requestId: string,
+  decision: string,
+  note?: string
+): Promise<unknown> {
+  const response = await fetch(`${requestsUrl}/${requestId}/review`, {
+    body: JSON.stringify(
+      note === undefined ? { decision } : { decision, note }
+    ),
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  })
+  return readAppJsonResponse(response, "결정을 저장하지 못했습니다.")
+}
+
 export async function registerCampaignAsset(
   requestId: string,
   blobUrl: string

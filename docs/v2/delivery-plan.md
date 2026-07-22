@@ -182,6 +182,31 @@ Acceptance criteria:
 Goal: the full loop — owner uploads, operators produce, owner approves,
 dashboard publishes to multiple platforms.
 
+Decisions taken while building tasks 4–5 (PR3):
+
+- **Final copy lives on `campaign_requests.final_copy`** (migration 0010),
+  not on a processed asset's `meta`. The copy is per-request — one campaign
+  publishes one body of copy across every channel — so per-asset storage
+  would have the wrong cardinality and be invisible to request-level reads.
+- **The status column is the concurrency token.** Every transition does
+  `UPDATE … WHERE id = ? AND status = <the status the caller read>`, so a
+  caller whose view went stale matches zero rows and is told it lost rather
+  than overwriting the winner. The owner's decision wraps that guard and the
+  `campaign_review_events` insert in one transaction, which is what makes a
+  double-submit produce exactly one row. The domain transition function stays
+  in `packages/domain` — `@glocalx/db` depends on it for types only.
+- **`ready_for_review` requires finished material.** The state machine only
+  knows that `in_production` is a legal source state, so the route
+  additionally refuses the hand-off until at least one processed asset _and_
+  final copy exist — an owner should never open an empty approval screen.
+- **A "request changes" decision requires a note** (schema-enforced); `go`
+  and `no_go` do not. Returning a campaign to production with nothing for the
+  operator to act on is not a useful state.
+- **Owner-facing outcome handling:** a settled or stale request closes the
+  review card (with a confirmation or the conflict message respectively) and
+  refreshes the status list; any other error keeps the card open so the owner
+  can simply tap again.
+
 Tasks:
 
 1. **Migrations:** `campaign_requests`, `campaign_assets`,

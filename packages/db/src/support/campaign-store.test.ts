@@ -205,3 +205,193 @@ describe("campaign store", () => {
     expect(result).toBeUndefined()
   })
 })
+
+describe("campaign queue and review writes", () => {
+  async function submittedRequest(brief = "Promote our new brunch menu") {
+    return campaigns.createCampaignRequest({
+      id: randomUUID(),
+      storeId,
+      brief,
+      now: at(0),
+    })
+  }
+
+  async function countReviewEvents(requestId: string): Promise<number> {
+    const rows = await queryable.query(
+      "SELECT id FROM campaign_review_events WHERE request_id = ?",
+      [requestId]
+    )
+    return rows.length
+  }
+
+  it("stores and reads back the operator's final copy", async () => {
+    const request = await submittedRequest()
+
+    const updated = await campaigns.setCampaignFinalCopy({
+      requestId: request.id,
+      finalCopy: "Brunch is back — every Saturday from 10am.",
+      now: at(5),
+    })
+
+    expect(updated?.finalCopy).toBe(
+      "Brunch is back — every Saturday from 10am."
+    )
+    const detail = await campaigns.getCampaignRequestForOperator(request.id)
+    expect(detail?.finalCopy).toBe("Brunch is back — every Saturday from 10am.")
+  })
+
+  it("applies a status update when the expected status still holds", async () => {
+    const request = await submittedRequest()
+
+    const updated = await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "submitted",
+      nextStatus: "in_production",
+      now: at(5),
+    })
+
+    expect(updated?.status).toBe("in_production")
+  })
+
+  // The stale-view guard: whoever read an older status loses, and learns it.
+  it("refuses a status update whose expected status no longer holds", async () => {
+    const request = await submittedRequest()
+    await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "submitted",
+      nextStatus: "in_production",
+      now: at(5),
+    })
+
+    const late = await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "submitted",
+      nextStatus: "in_production",
+      now: at(6),
+    })
+
+    expect(late).toBeUndefined()
+    const detail = await campaigns.getCampaignRequestForOperator(request.id)
+    expect(detail?.status).toBe("in_production")
+  })
+
+  it("records a review decision with its note and flips the status", async () => {
+    const request = await submittedRequest()
+    await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "submitted",
+      nextStatus: "ready_for_review",
+      now: at(5),
+    })
+
+    const updated = await campaigns.recordCampaignReviewDecision({
+      id: randomUUID(),
+      requestId: request.id,
+      expectedStatus: "ready_for_review",
+      nextStatus: "changes_requested",
+      actor: "owner",
+      decision: "changes_requested",
+      note: "Please brighten the second photo.",
+      now: at(6),
+    })
+
+    expect(updated?.status).toBe("changes_requested")
+    const detail = await campaigns.getCampaignRequestForOperator(request.id)
+    expect(detail?.reviewEvents).toHaveLength(1)
+    expect(detail?.reviewEvents[0]?.decision).toBe("changes_requested")
+    expect(detail?.reviewEvents[0]?.note).toBe(
+      "Please brighten the second photo."
+    )
+  })
+
+  // Delivery-plan acceptance: rapid duplicate go/no-go actions create exactly
+  // one campaign_review_events row.
+  it("writes exactly one review event for a double-submitted decision", async () => {
+    const request = await submittedRequest()
+    await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "submitted",
+      nextStatus: "ready_for_review",
+      now: at(5),
+    })
+
+    const decision = {
+      requestId: request.id,
+      expectedStatus: "ready_for_review",
+      nextStatus: "approved",
+      actor: "owner",
+      decision: "go",
+      now: at(6),
+    } as const
+
+    const first = await campaigns.recordCampaignReviewDecision({
+      ...decision,
+      id: randomUUID(),
+    })
+    const second = await campaigns.recordCampaignReviewDecision({
+      ...decision,
+      id: randomUUID(),
+    })
+
+    expect(first?.status).toBe("approved")
+    expect(second).toBeUndefined()
+    expect(await countReviewEvents(request.id)).toBe(1)
+  })
+
+  it("lists the queue across stores with names and split asset counts", async () => {
+    const mine = await submittedRequest("Store 1 campaign")
+    await campaigns.createCampaignRequest({
+      id: randomUUID(),
+      storeId: otherStoreId,
+      brief: "Store 2 campaign",
+      now: at(1),
+    })
+    await campaigns.registerCampaignAsset({
+      id: randomUUID(),
+      requestId: mine.id,
+      storeId,
+      kind: "original",
+      blobUrl: "https://blob.example/original.jpg",
+      contentType: "image/jpeg",
+      sizeBytes: 1024,
+      uploadedBy: "owner",
+      now: at(2),
+    })
+    await campaigns.registerCampaignAsset({
+      id: randomUUID(),
+      requestId: mine.id,
+      storeId,
+      kind: "processed",
+      blobUrl: "https://blob.example/processed.jpg",
+      contentType: "image/jpeg",
+      sizeBytes: 2048,
+      uploadedBy: "admin",
+      now: at(3),
+    })
+
+    const queue = await campaigns.listCampaignQueue()
+
+    expect(queue).toHaveLength(2)
+    const entry = queue.find((row) => row.id === mine.id)
+    expect(entry?.storeName).toBe(storeId)
+    expect(entry?.originalCount).toBe(1)
+    expect(entry?.processedCount).toBe(1)
+  })
+
+  it("keeps the owner's detail read scoped to their own store", async () => {
+    const foreign = await campaigns.createCampaignRequest({
+      id: randomUUID(),
+      storeId: otherStoreId,
+      brief: "Not visible to store-1",
+      now: at(0),
+    })
+
+    expect(
+      await campaigns.getCampaignRequestDetail(foreign.id, storeId)
+    ).toBeUndefined()
+    // The operator view spans every store, so the same row does resolve there.
+    expect(
+      await campaigns.getCampaignRequestForOperator(foreign.id)
+    ).toBeDefined()
+  })
+})

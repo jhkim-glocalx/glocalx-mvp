@@ -13,13 +13,20 @@ export type AdminAuditAction =
   | "cs_set_mode"
   | "cs_send_draft"
   | "cs_discard_draft"
+  | "campaign_start_production"
+  | "campaign_register_asset"
+  | "campaign_set_final_copy"
+  | "campaign_submit_for_review"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction
   readonly adminUserId: string
   readonly storeId: string
-  readonly conversationId: string
-  // Codes/ids only — never message bodies or other owner content.
+  // Whichever subject the action acts on: chat actions carry a conversation,
+  // production-queue actions carry a campaign request.
+  readonly conversationId?: string
+  readonly campaignRequestId?: string
+  // Codes/ids only — never message bodies, briefs, copy, or other owner content.
   readonly detail?: Readonly<Record<string, string>>
 }
 
@@ -34,7 +41,12 @@ export function createAdminAuditLogStore(
     async record(entry) {
       const payload = {
         adminUserId: entry.adminUserId,
-        conversationId: entry.conversationId,
+        ...(entry.conversationId === undefined
+          ? {}
+          : { conversationId: entry.conversationId }),
+        ...(entry.campaignRequestId === undefined
+          ? {}
+          : { campaignRequestId: entry.campaignRequestId }),
         ...entry.detail,
       }
       await queryable.execute(

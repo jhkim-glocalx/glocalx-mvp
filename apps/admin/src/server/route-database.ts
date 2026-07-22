@@ -10,6 +10,8 @@ import {
   type AdminAuditLogStore,
 } from "@/server/audit-log-store"
 import { openDatabaseContext } from "@glocalx/db"
+import { createDatabaseCampaignStore } from "@glocalx/db/support/campaign-store"
+import type { CampaignStore } from "@glocalx/db/support/campaign-store"
 import { createDatabaseCsConversationStore } from "@glocalx/db/support/conversation-store"
 import type { CsConversationStore } from "@glocalx/db/support/conversation-store"
 import { createDatabaseCsMessageContextStore } from "@glocalx/db/support/message-context-store"
@@ -20,11 +22,16 @@ import { createDatabaseSupportMetricsStore } from "@glocalx/db/support/metrics-s
 import type { SupportMetricsStore } from "@glocalx/db/support/metrics-store"
 import { parseRoutePayload } from "@glocalx/domain"
 import type { ParsedValidationIssue } from "@glocalx/domain"
+import { createIntegrationAdapters } from "@glocalx/integrations"
 
 export type AdminRouteContext = {
   readonly session: AdminSession
   readonly adminUserId: string
+  // Same adapter boundary the owner app uses — the queue needs MediaStore for
+  // processed-asset uploads and for signing the originals it renders.
+  readonly adapters: ReturnType<typeof createIntegrationAdapters>
   readonly auditLogStore: AdminAuditLogStore
+  readonly campaignStore: CampaignStore
   readonly csConversationStore: CsConversationStore
   readonly csMessageContextStore: CsMessageContextStore
   readonly csMessageStore: CsMessageStore
@@ -121,7 +128,9 @@ export async function withAdminRoute(
     return await handler({
       session,
       adminUserId: session.adminUserId,
+      adapters: createIntegrationAdapters(),
       auditLogStore: createAdminAuditLogStore(queryable),
+      campaignStore: createDatabaseCampaignStore(queryable),
       csConversationStore: createDatabaseCsConversationStore(queryable),
       csMessageContextStore: createDatabaseCsMessageContextStore(queryable),
       csMessageStore: createDatabaseCsMessageStore(queryable),

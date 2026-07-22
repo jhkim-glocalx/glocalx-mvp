@@ -2,10 +2,13 @@ import type {
   CampaignAsset,
   CampaignRequest,
   CampaignRequestWithAssets,
+  CampaignReviewEvent,
 } from "@glocalx/domain/campaign-contracts"
 import type {
   CampaignAssetKind,
   CampaignAssetUploadedBy,
+  CampaignReviewActor,
+  CampaignReviewDecision,
   CampaignStatus,
 } from "@glocalx/domain/campaign-state-machine"
 import { z } from "zod"
@@ -40,6 +43,44 @@ export type CampaignRequestSummary = CampaignRequest & {
   readonly assetCount: number
 }
 
+// The operator queue spans every store, so unlike the owner reads it carries
+// the store name and splits the asset counts the kanban card shows.
+export type CampaignQueueEntry = CampaignRequest & {
+  readonly storeName: string
+  readonly originalCount: number
+  readonly processedCount: number
+}
+
+export type CampaignRequestDetail = CampaignRequestWithAssets & {
+  readonly storeName: string
+  readonly reviewEvents: readonly CampaignReviewEvent[]
+}
+
+// `expectedStatus` is the status the caller read before computing nextStatus
+// through the domain transition function. It becomes the WHERE clause, so the
+// status column itself is the concurrency token: a caller that lost the race
+// updates zero rows and gets `undefined` back rather than clobbering whatever
+// the winner wrote. Mirrors CsMessageStore.sendDraft's guarded no-op.
+export type UpdateCampaignStatusInput = {
+  readonly requestId: string
+  readonly expectedStatus: CampaignStatus
+  readonly nextStatus: CampaignStatus
+  readonly now: Date
+}
+
+export type RecordCampaignReviewDecisionInput = UpdateCampaignStatusInput & {
+  readonly id: string
+  readonly actor: CampaignReviewActor
+  readonly decision: CampaignReviewDecision
+  readonly note?: string
+}
+
+export type SetCampaignFinalCopyInput = {
+  readonly requestId: string
+  readonly finalCopy: string
+  readonly now: Date
+}
+
 export interface CampaignStore {
   createCampaignRequest(
     input: CreateCampaignRequestInput
@@ -56,6 +97,28 @@ export interface CampaignStore {
     requestId: string,
     storeId: string
   ): Promise<CampaignRequestWithAssets | undefined>
+  // Owner-facing detail for the go/no-go screen: assets plus the decision
+  // trail, still scoped to the owning store.
+  getCampaignRequestDetail(
+    requestId: string,
+    storeId: string
+  ): Promise<CampaignRequestDetail | undefined>
+  // Operator reads span every store, so these take no storeId.
+  listCampaignQueue(): Promise<readonly CampaignQueueEntry[]>
+  getCampaignRequestForOperator(
+    requestId: string
+  ): Promise<CampaignRequestDetail | undefined>
+  // Returns undefined when the guard missed — the row is gone or its status
+  // moved on. Callers surface that as a stale-view conflict, never a retry.
+  updateCampaignRequestStatus(
+    input: UpdateCampaignStatusInput
+  ): Promise<CampaignRequest | undefined>
+  recordCampaignReviewDecision(
+    input: RecordCampaignReviewDecisionInput
+  ): Promise<CampaignRequest | undefined>
+  setCampaignFinalCopy(
+    input: SetCampaignFinalCopyInput
+  ): Promise<CampaignRequest | undefined>
 }
 
 export class CampaignRequestNotFoundError extends Error {
@@ -70,8 +133,18 @@ const campaignRequestRowSchema = z.object({
   storeId: z.string(),
   brief: z.string(),
   status: z.string(),
+  finalCopy: z.string().nullable(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
+})
+
+const campaignReviewEventRowSchema = z.object({
+  id: z.string(),
+  requestId: z.string(),
+  actor: z.string(),
+  decision: z.string(),
+  note: z.string().nullable(),
+  createdAt: timestampSchema,
 })
 
 const assetMetaSchema = z.object({
@@ -96,8 +169,29 @@ const campaignRequestProjection = `
   store_id AS "storeId",
   brief,
   status,
+  final_copy AS "finalCopy",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
+`
+
+// Table-qualified twin for the queue's join against stores.
+const queueRequestProjection = `
+  r.id,
+  r.store_id AS "storeId",
+  r.brief,
+  r.status,
+  r.final_copy AS "finalCopy",
+  r.created_at AS "createdAt",
+  r.updated_at AS "updatedAt"
+`
+
+const campaignReviewEventProjection = `
+  id,
+  request_id AS "requestId",
+  actor,
+  decision,
+  note,
+  created_at AS "createdAt"
 `
 
 const campaignAssetProjection = `
@@ -118,6 +212,15 @@ function toCampaignRequest(row: unknown): CampaignRequest {
   return {
     ...parsed,
     status: parsed.status as CampaignStatus,
+  }
+}
+
+function toCampaignReviewEvent(row: unknown): CampaignReviewEvent {
+  const parsed = campaignReviewEventRowSchema.parse(row)
+  return {
+    ...parsed,
+    actor: parsed.actor as CampaignReviewActor,
+    decision: parsed.decision as CampaignReviewDecision,
   }
 }
 
@@ -154,6 +257,7 @@ export function createDatabaseCampaignStore(
         storeId: input.storeId,
         brief: input.brief,
         status: "submitted",
+        finalCopy: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -246,5 +350,151 @@ export function createDatabaseCampaignStore(
         assets: assetRows.map(toCampaignAsset),
       }
     },
+
+    async getCampaignRequestDetail(requestId, storeId) {
+      return loadDetail(queryable, requestId, storeId)
+    },
+
+    async getCampaignRequestForOperator(requestId) {
+      return loadDetail(queryable, requestId, undefined)
+    },
+
+    async listCampaignQueue() {
+      const rows = await queryable.query(
+        `SELECT ${queueRequestProjection},
+                s.name AS "storeName",
+                (SELECT COUNT(*) FROM campaign_assets a
+                  WHERE a.request_id = r.id AND a.kind = 'original') AS "originalCount",
+                (SELECT COUNT(*) FROM campaign_assets a
+                  WHERE a.request_id = r.id AND a.kind = 'processed') AS "processedCount"
+           FROM campaign_requests r
+           JOIN stores s ON s.id = r.store_id
+          ORDER BY r.updated_at DESC`
+      )
+      return rows.map((row) => ({
+        ...toCampaignRequest(row),
+        storeName: z.string().parse(row["storeName"]),
+        originalCount: z.coerce.number().parse(row["originalCount"]),
+        processedCount: z.coerce.number().parse(row["processedCount"]),
+      }))
+    },
+
+    async updateCampaignRequestStatus(input) {
+      return applyGuardedStatusUpdate(queryable, input)
+    },
+
+    async recordCampaignReviewDecision(input) {
+      // The guarded status flip and the decision row have to land together: a
+      // review event without its transition would let a second submit write a
+      // duplicate, and a transition without its event would lose the owner's
+      // note. Both live in one transaction, and the status guard inside it is
+      // what makes a rapid double-submit a no-op rather than a second row.
+      let updated: CampaignRequest | undefined
+      await queryable.transaction(async (transaction) => {
+        updated = await applyGuardedStatusUpdate(transaction, input)
+        if (updated === undefined) {
+          return
+        }
+        await transaction.execute(
+          `INSERT INTO campaign_review_events (
+             id, request_id, actor, decision, note, created_at
+           ) VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            input.id,
+            input.requestId,
+            input.actor,
+            input.decision,
+            input.note ?? null,
+            input.now.toISOString(),
+          ]
+        )
+      })
+      return updated
+    },
+
+    async setCampaignFinalCopy(input) {
+      const now = input.now.toISOString()
+      const result = await queryable.execute(
+        `UPDATE campaign_requests
+            SET final_copy = ?, updated_at = ?
+          WHERE id = ?`,
+        [input.finalCopy, now, input.requestId]
+      )
+      if (result.changes === 0) {
+        return undefined
+      }
+      const row = await queryable.queryOne(
+        `SELECT ${campaignRequestProjection} FROM campaign_requests WHERE id = ?`,
+        [input.requestId]
+      )
+      return row === undefined ? undefined : toCampaignRequest(row)
+    },
   }
+}
+
+// Shared by the owner-scoped and operator-wide detail reads — the only
+// difference is whether the store ownership predicate applies.
+async function loadDetail(
+  queryable: Queryable,
+  requestId: string,
+  storeId: string | undefined
+): Promise<CampaignRequestDetail | undefined> {
+  const requestRow = await queryable.queryOne(
+    `SELECT ${queueRequestProjection}, s.name AS "storeName"
+       FROM campaign_requests r
+       JOIN stores s ON s.id = r.store_id
+      WHERE r.id = ?${storeId === undefined ? "" : " AND r.store_id = ?"}`,
+    storeId === undefined ? [requestId] : [requestId, storeId]
+  )
+  if (requestRow === undefined) {
+    return undefined
+  }
+
+  const assetRows = await queryable.query(
+    `SELECT ${campaignAssetProjection}
+       FROM campaign_assets
+      WHERE request_id = ?
+      ORDER BY created_at ASC`,
+    [requestId]
+  )
+  const reviewRows = await queryable.query(
+    `SELECT ${campaignReviewEventProjection}
+       FROM campaign_review_events
+      WHERE request_id = ?
+      ORDER BY created_at ASC`,
+    [requestId]
+  )
+
+  return {
+    ...toCampaignRequest(requestRow),
+    storeName: z.string().parse(requestRow["storeName"]),
+    assets: assetRows.map(toCampaignAsset),
+    reviewEvents: reviewRows.map(toCampaignReviewEvent),
+  }
+}
+
+// The whole concurrency story in one statement: the caller's expectedStatus is
+// the status it read before asking the domain transition function for
+// nextStatus, so if anyone else moved the row in between, this matches zero
+// rows and the caller learns it lost rather than overwriting the winner.
+async function applyGuardedStatusUpdate(
+  queryable: Queryable,
+  input: UpdateCampaignStatusInput
+): Promise<CampaignRequest | undefined> {
+  const now = input.now.toISOString()
+  const result = await queryable.execute(
+    `UPDATE campaign_requests
+        SET status = ?, updated_at = ?
+      WHERE id = ? AND status = ?`,
+    [input.nextStatus, now, input.requestId, input.expectedStatus]
+  )
+  if (result.changes === 0) {
+    return undefined
+  }
+
+  const row = await queryable.queryOne(
+    `SELECT ${campaignRequestProjection} FROM campaign_requests WHERE id = ?`,
+    [input.requestId]
+  )
+  return row === undefined ? undefined : toCampaignRequest(row)
 }
