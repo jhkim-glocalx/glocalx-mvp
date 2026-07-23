@@ -1,7 +1,8 @@
 import type { CampaignRequestDetail } from "@glocalx/db/support/campaign-store"
-import type { MediaStore } from "@glocalx/integrations/media-store"
 
+import { resolvePublishEligibility } from "@/server/campaign-publish"
 import { toQueueRequestView, type QueueRequestView } from "@/server/queue-view"
+import type { AdminRouteContext } from "@/server/route-database"
 
 export function campaignRequestNotFoundResponse(): Response {
   return Response.json(
@@ -48,20 +49,29 @@ export function assetRejectedResponse(message: string): Response {
   return Response.json({ status: "ASSET_REJECTED", message }, { status: 422 })
 }
 
-// Originals and processed assets are private in Blob, so the console only ever
-// receives short-lived signed URLs. A store that can't sign (missing
-// credentials) yields a null URL rather than failing the whole detail read —
-// the operator still gets the brief, the copy, and the status controls.
-export async function signQueueAssets(
-  mediaStore: MediaStore,
+// The one place a campaign request becomes an API response. Originals and
+// processed assets are private in Blob, so the console only ever receives
+// short-lived signed URLs; a store that can't sign (missing credentials) yields
+// a null URL rather than failing the whole detail read — the operator still
+// gets the brief, the copy, and the status controls. Publish jobs and per-
+// channel eligibility ride along so the panel and the publish route always
+// agree on what is publishable.
+export async function toQueueRequestResponse(
+  context: AdminRouteContext,
   detail: CampaignRequestDetail
 ): Promise<QueueRequestView> {
   const signed = new Map<string, string>()
   for (const asset of detail.assets) {
-    const result = await mediaStore.getSignedUrl(asset.blobUrl)
+    const result = await context.adapters.mediaStore.getSignedUrl(asset.blobUrl)
     if (result.kind === "ok") {
       signed.set(asset.id, result.value)
     }
   }
-  return toQueueRequestView(detail, signed)
+
+  const [publishJobs, eligibility] = await Promise.all([
+    context.publishJobStore.listPublishJobs(detail.id),
+    resolvePublishEligibility(context.publishTargetStore, detail.storeId),
+  ])
+
+  return toQueueRequestView(detail, signed, { publishJobs, eligibility })
 }

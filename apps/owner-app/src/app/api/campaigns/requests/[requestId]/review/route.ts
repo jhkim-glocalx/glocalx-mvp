@@ -122,7 +122,8 @@ export async function POST(
     return Response.json({
       request: await toOwnerCampaignRequestView(
         context.adapters.mediaStore,
-        detail
+        detail,
+        await context.publishJobStore.listPublishJobs(requestId)
       ),
     })
   })

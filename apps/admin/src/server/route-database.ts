@@ -20,6 +20,10 @@ import { createDatabaseCsMessageStore } from "@glocalx/db/support/message-store"
 import type { CsMessageStore } from "@glocalx/db/support/message-store"
 import { createDatabaseSupportMetricsStore } from "@glocalx/db/support/metrics-store"
 import type { SupportMetricsStore } from "@glocalx/db/support/metrics-store"
+import { createDatabasePublishJobStore } from "@glocalx/db/support/publish-job-store"
+import type { PublishJobStore } from "@glocalx/db/support/publish-job-store"
+import { createDatabasePublishTargetStore } from "@glocalx/db/support/publish-target-store"
+import type { PublishTargetStore } from "@glocalx/db/support/publish-target-store"
 import { parseRoutePayload } from "@glocalx/domain"
 import type { ParsedValidationIssue } from "@glocalx/domain"
 import { createIntegrationAdapters } from "@glocalx/integrations"
@@ -35,6 +39,8 @@ export type AdminRouteContext = {
   readonly csConversationStore: CsConversationStore
   readonly csMessageContextStore: CsMessageContextStore
   readonly csMessageStore: CsMessageStore
+  readonly publishJobStore: PublishJobStore
+  readonly publishTargetStore: PublishTargetStore
   readonly supportMetricsStore: SupportMetricsStore
 }
 
@@ -134,6 +140,8 @@ export async function withAdminRoute(
       csConversationStore: createDatabaseCsConversationStore(queryable),
       csMessageContextStore: createDatabaseCsMessageContextStore(queryable),
       csMessageStore: createDatabaseCsMessageStore(queryable),
+      publishJobStore: createDatabasePublishJobStore(queryable),
+      publishTargetStore: createDatabasePublishTargetStore(queryable),
       supportMetricsStore: createDatabaseSupportMetricsStore(queryable),
     })
   } finally {

@@ -33,10 +33,25 @@ export async function GET(request: NextRequest) {
       return requiredSessionResponse()
     }
 
-    const requests = await context.campaignStore.listCampaignRequestsForStore(
-      session.storeId
-    )
-    return Response.json({ requests })
+    const [requests, publishJobs] = await Promise.all([
+      context.campaignStore.listCampaignRequestsForStore(session.storeId),
+      // One store-wide read, grouped below — the alternative is a query per
+      // request just to badge each row with its channel outcomes.
+      context.publishJobStore.listPublishJobsForStore(session.storeId),
+    ])
+
+    return Response.json({
+      requests: requests.map((summary) => ({
+        ...summary,
+        publishJobs: publishJobs
+          .filter((job) => job.requestId === summary.id)
+          .map((job) => ({
+            channel: job.channel,
+            status: job.status,
+            updatedAt: job.updatedAt,
+          })),
+      })),
+    })
   })
 }
 

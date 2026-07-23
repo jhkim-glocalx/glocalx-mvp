@@ -6,6 +6,8 @@ import {
   campaignReviewActorSchema,
   campaignReviewDecisionSchema,
   campaignStatusSchema,
+  publishChannelSchema,
+  publishJobStatusSchema,
 } from "./campaign-state-machine"
 
 const nonEmptyStringSchema = z.string().trim().min(1)
@@ -67,6 +69,25 @@ export const campaignReviewEventSchema = z
   .strict()
 export type CampaignReviewEvent = z.infer<typeof campaignReviewEventSchema>
 
+// One row per (request, channel), carried across retries. `idempotencyKey` is
+// deliberately absent: it is the server's replay guard, never something a
+// client needs to see or could be trusted to supply.
+export const publishJobSchema = z
+  .object({
+    id: nonEmptyStringSchema,
+    requestId: nonEmptyStringSchema,
+    channel: publishChannelSchema,
+    status: publishJobStatusSchema,
+    // The channel's own post id once published — the link back to the live post.
+    externalRef: z.string().nullable(),
+    attemptCount: z.number().int().nonnegative(),
+    lastError: z.string().nullable(),
+    createdAt: nonEmptyStringSchema,
+    updatedAt: nonEmptyStringSchema,
+  })
+  .strict()
+export type PublishJob = z.infer<typeof publishJobSchema>
+
 // Route schemas are the single trust boundary for raw JSON payloads.
 export const createCampaignRequestSchema = z
   .object({
@@ -120,6 +141,30 @@ export const setCampaignFinalCopyRequestSchema = z
   .strict()
 export type SetCampaignFinalCopyRequest = z.infer<
   typeof setCampaignFinalCopyRequestSchema
+>
+
+// The operator's publish run. Duplicate channels are rejected rather than
+// deduplicated: the same channel twice in one payload means the caller's state
+// is confused, and silently collapsing it would hide that.
+export const startCampaignPublishRequestSchema = z
+  .object({
+    channels: z
+      .array(publishChannelSchema)
+      .min(1)
+      .max(publishChannelSchema.options.length),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (new Set(value.channels).size !== value.channels.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["channels"],
+        message: "Each channel may appear only once.",
+      })
+    }
+  })
+export type StartCampaignPublishRequest = z.infer<
+  typeof startCampaignPublishRequestSchema
 >
 
 // The owner's go/no-go. A "request changes" decision without a note would send

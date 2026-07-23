@@ -3,7 +3,10 @@ import type {
   CampaignRequestDetail,
   CampaignStore,
 } from "@glocalx/db/support/campaign-store"
-import type { CampaignAsset } from "@glocalx/domain/campaign-contracts"
+import type {
+  CampaignAsset,
+  PublishJob,
+} from "@glocalx/domain/campaign-contracts"
 import {
   InvalidCampaignTransitionError,
   transitionCampaignRequest,
@@ -12,6 +15,11 @@ import type {
   CampaignAction,
   CampaignStatus,
 } from "@glocalx/domain/campaign-state-machine"
+
+import {
+  publishChannels,
+  type PublishEligibilityByChannel,
+} from "./campaign-publish"
 
 // Wire shapes shared by the queue API routes and the ops client, mirroring
 // inbox-view.ts so the console and the endpoints feeding it never drift.
@@ -36,6 +44,24 @@ export type QueueReviewEventView = {
   readonly createdAt: string
 }
 
+export type QueuePublishJobView = {
+  readonly channel: string
+  readonly status: string
+  readonly externalRef: string | null
+  readonly attemptCount: number
+  readonly lastError: string | null
+  readonly updatedAt: string
+}
+
+// Why each channel can or cannot be published right now, so the panel can
+// explain a disabled button instead of just greying it out.
+export type QueueChannelEligibilityView = {
+  readonly channel: string
+  readonly eligible: boolean
+  readonly code: string | null
+  readonly message: string | null
+}
+
 export type QueueRequestView = {
   readonly id: string
   readonly storeId: string
@@ -47,6 +73,8 @@ export type QueueRequestView = {
   readonly updatedAt: string
   readonly assets: readonly QueueAssetView[]
   readonly reviewEvents: readonly QueueReviewEventView[]
+  readonly publishJobs: readonly QueuePublishJobView[]
+  readonly channelEligibility: readonly QueueChannelEligibilityView[]
 }
 
 export type QueueEntryView = {
@@ -75,9 +103,15 @@ export function toQueueEntryView(entry: CampaignQueueEntry): QueueEntryView {
   }
 }
 
+export type QueueRequestViewExtras = {
+  readonly publishJobs: readonly PublishJob[]
+  readonly eligibility: PublishEligibilityByChannel
+}
+
 export function toQueueRequestView(
   detail: CampaignRequestDetail,
-  signedUrlByAssetId: ReadonlyMap<string, string>
+  signedUrlByAssetId: ReadonlyMap<string, string>,
+  extras: QueueRequestViewExtras
 ): QueueRequestView {
   return {
     id: detail.id,
@@ -98,6 +132,23 @@ export function toQueueRequestView(
       note: event.note,
       createdAt: event.createdAt,
     })),
+    publishJobs: extras.publishJobs.map((job) => ({
+      channel: job.channel,
+      status: job.status,
+      externalRef: job.externalRef,
+      attemptCount: job.attemptCount,
+      lastError: job.lastError,
+      updatedAt: job.updatedAt,
+    })),
+    channelEligibility: publishChannels.map((channel) => {
+      const verdict = extras.eligibility[channel]
+      return {
+        channel,
+        eligible: verdict.kind === "eligible",
+        code: verdict.kind === "blocked" ? verdict.code : null,
+        message: verdict.kind === "blocked" ? verdict.message : null,
+      }
+    }),
   }
 }
 

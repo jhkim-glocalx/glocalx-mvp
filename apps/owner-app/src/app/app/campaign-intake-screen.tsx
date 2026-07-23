@@ -4,6 +4,11 @@ import type { FormEvent } from "react"
 
 import { ChatMessage } from "@/app/_components/chat-message"
 
+import {
+  publishChannelLabel,
+  publishJobStatusLabel,
+} from "@/campaigns/status-labels"
+
 import { campaignStatusLabel } from "./campaign-model"
 import { ChatDivider, FlowCard } from "./reference-flow-shared"
 import type { ReferenceFlowScreensProps } from "./reference-flow-screens"
@@ -113,6 +118,19 @@ export function CampaignIntakeScreen({
               <li key={request.id}>
                 <strong>{campaignStatusLabel(request.status)}</strong>
                 <span> · {request.brief}</span>
+                {request.publishJobs.length === 0 ? null : (
+                  <span
+                    className="gx-campaign-publish-status"
+                    data-testid={`campaign-publish-status-${request.id}`}
+                  >
+                    {request.publishJobs
+                      .map(
+                        (job) =>
+                          `${publishChannelLabel(job.channel)} ${publishJobStatusLabel(job.status)}`
+                      )
+                      .join(" · ")}
+                  </span>
+                )}
                 {request.status === "ready_for_review" ? (
                   <button
                     className="gx-choice-chip"

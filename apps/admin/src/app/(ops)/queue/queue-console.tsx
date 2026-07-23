@@ -7,6 +7,7 @@ import type { QueueEntryView, QueueRequestView } from "@/server/queue-view"
 import {
   fetchQueue,
   fetchQueueRequest,
+  publishCampaign,
   saveFinalCopy,
   startProduction,
   submitForReview,
@@ -16,9 +17,24 @@ import {
 
 const listPollMs = 5000
 
+// Publish attempts are capped at three per channel (architecture.md §2); the
+// panel mirrors the server's cap so an exhausted channel reads as "publish it
+// by hand", not as a button that will be refused.
+const maxPublishAttempts = 3
+
+const channelLabels: Readonly<Record<string, string>> = {
+  gbp: "Google Business Profile",
+  instagram: "Instagram",
+}
+
+// The statuses where a publish run is a legal next step: the owner's go, and
+// the two settled-but-incomplete outcomes a retry can resume from.
+const publishableStatuses = ["approved", "partially_published", "failed"]
+
 // Ten statuses would make ten near-empty columns, so the board groups them the
-// way an operator actually works: the four actionable buckets, then everything
-// the queue can't act on yet (publishing lands in a later PR).
+// way an operator actually works: the actionable buckets, then the ones nobody
+// has to touch again. "Publishing" holds every status a publish run can still
+// act on, including the two partial outcomes a retry resumes from.
 const columns = [
   { key: "submitted", label: "Submitted", statuses: ["submitted"] },
   { key: "in_production", label: "In production", statuses: ["in_production"] },
@@ -33,16 +49,14 @@ const columns = [
     statuses: ["changes_requested"],
   },
   {
+    key: "publishing",
+    label: "Publishing",
+    statuses: ["approved", "publishing", "partially_published", "failed"],
+  },
+  {
     key: "settled",
     label: "Settled",
-    statuses: [
-      "approved",
-      "rejected",
-      "publishing",
-      "published",
-      "partially_published",
-      "failed",
-    ],
+    statuses: ["published", "rejected"],
   },
 ] as const
 
@@ -50,11 +64,35 @@ type QueueConsoleProps = {
   readonly initialRequests: readonly QueueEntryView[]
 }
 
+// A channel is offered when the store's gates pass, it has not already gone
+// live, and it has attempts left — the same three conditions the publish route
+// enforces, so the panel never offers a click the server will refuse.
+function isPublishable(request: QueueRequestView, channel: string): boolean {
+  const eligibility = request.channelEligibility.find(
+    (entry) => entry.channel === channel
+  )
+  if (eligibility === undefined || !eligibility.eligible) {
+    return false
+  }
+  const job = request.publishJobs.find((entry) => entry.channel === channel)
+  if (job === undefined) {
+    return true
+  }
+  return job.status !== "published" && job.attemptCount < maxPublishAttempts
+}
+
+function defaultPublishChannels(request: QueueRequestView): readonly string[] {
+  return request.channelEligibility
+    .map((entry) => entry.channel)
+    .filter((channel) => isPublishable(request, channel))
+}
+
 export function QueueConsole({ initialRequests }: QueueConsoleProps) {
   const [entries, setEntries] =
     useState<readonly QueueEntryView[]>(initialRequests)
   const [selected, setSelected] = useState<QueueRequestView | null>(null)
   const [copyInput, setCopyInput] = useState("")
+  const [publishChannels, setPublishChannels] = useState<readonly string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const selectedIdRef = useRef<string | null>(null)
@@ -87,6 +125,9 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
     setSelected(result.request)
     selectedIdRef.current = result.request.id
     setCopyInput(result.request.finalCopy ?? "")
+    // Re-derived from the server's own view every time, so a channel that just
+    // published or just burned its last attempt drops out of the selection.
+    setPublishChannels(defaultPublishChannels(result.request))
     void pollList()
     return true
   }
@@ -146,7 +187,24 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
     }
   }
 
+  function toggleChannel(channel: string): void {
+    setPublishChannels((current) =>
+      current.includes(channel)
+        ? current.filter((entry) => entry !== channel)
+        : [...current, channel]
+    )
+  }
+
   const inProduction = selected?.status === "in_production"
+  // The panel stays visible through "publishing"/"published" so the operator
+  // keeps the per-channel history after the run, not just the controls.
+  const showPublishPanel =
+    selected !== null &&
+    (publishableStatuses.includes(selected.status) ||
+      selected.status === "publishing" ||
+      selected.status === "published")
+  const canPublish =
+    selected !== null && publishableStatuses.includes(selected.status)
   const claimable =
     selected?.status === "submitted" || selected?.status === "changes_requested"
   const processedAssets =
@@ -279,6 +337,99 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                   </li>
                 ))}
               </ul>
+            </div>
+          ) : null}
+
+          {showPublishPanel ? (
+            <div className="ops-queue-section" data-testid="publish-panel">
+              <h2>Publish</h2>
+              <ul className="ops-publish-channels">
+                {selected.channelEligibility.map((eligibility) => {
+                  const channel = eligibility.channel
+                  const job = selected.publishJobs.find(
+                    (entry) => entry.channel === channel
+                  )
+                  const selectable =
+                    canPublish && isPublishable(selected, channel)
+                  const exhausted =
+                    job !== undefined &&
+                    job.status === "failed" &&
+                    job.attemptCount >= maxPublishAttempts
+                  return (
+                    <li
+                      key={channel}
+                      className="ops-publish-channel"
+                      data-testid={`publish-channel-${channel}`}
+                    >
+                      <label className="ops-publish-channel-head">
+                        <input
+                          checked={publishChannels.includes(channel)}
+                          data-testid={`publish-select-${channel}`}
+                          disabled={busy || !selectable}
+                          onChange={() => toggleChannel(channel)}
+                          type="checkbox"
+                        />
+                        <span>{channelLabels[channel] ?? channel}</span>
+                        <span
+                          className="ops-queue-status"
+                          data-testid={`publish-status-${channel}`}
+                        >
+                          {job?.status ?? "not attempted"}
+                        </span>
+                      </label>
+                      <p className="ops-publish-channel-meta">
+                        {job === undefined
+                          ? null
+                          : `Attempt ${job.attemptCount} of ${maxPublishAttempts}`}
+                        {job?.externalRef === undefined ||
+                        job.externalRef === null
+                          ? null
+                          : ` · ${job.externalRef}`}
+                      </p>
+                      {eligibility.message === null ? null : (
+                        <p className="ops-publish-channel-blocked">
+                          {eligibility.message}
+                        </p>
+                      )}
+                      {job?.lastError === undefined ||
+                      job.lastError === null ? null : (
+                        <p
+                          className="ops-publish-channel-error"
+                          data-testid={`publish-error-${channel}`}
+                        >
+                          {job.lastError}
+                        </p>
+                      )}
+                      {exhausted ? (
+                        <p
+                          className="ops-publish-channel-blocked"
+                          data-testid={`publish-exhausted-${channel}`}
+                        >
+                          All {maxPublishAttempts} attempts used. Publish this
+                          channel by hand and record the result.
+                        </p>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+              {canPublish ? (
+                <div className="ops-queue-actions">
+                  <button
+                    type="button"
+                    className="ops-primary-button"
+                    data-testid="publish-selected"
+                    disabled={busy || publishChannels.length === 0}
+                    onClick={() =>
+                      void runAction((requestId) =>
+                        publishCampaign(requestId, publishChannels)
+                      )
+                    }
+                  >
+                    Publish selected
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

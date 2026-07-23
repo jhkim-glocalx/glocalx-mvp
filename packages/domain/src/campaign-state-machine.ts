@@ -45,6 +45,20 @@ export const publishJobStatusSchema = z.enum([
 ])
 export type PublishJobStatus = z.infer<typeof publishJobStatusSchema>
 
+// Per architecture.md §2 the third failure locks a job terminal — retries are
+// operator-triggered and never automatic, so the cap has to be a shared
+// constant rather than a magic number in the route.
+export const publishJobMaxAttempts = 3
+
+export const storeChannelLinkStatusSchema = z.enum([
+  "linked",
+  "expired",
+  "revoked",
+])
+export type StoreChannelLinkStatus = z.infer<
+  typeof storeChannelLinkStatusSchema
+>
+
 export type CampaignAction =
   | { readonly type: "START_PRODUCTION" }
   | { readonly type: "SUBMIT_FOR_REVIEW" }
@@ -54,6 +68,7 @@ export type CampaignAction =
       readonly note?: string
     }
   | { readonly type: "START_PUBLISHING" }
+  | { readonly type: "RETRY_PUBLISHING" }
   | {
       readonly type: "UPDATE_PUBLISH_PROGRESS"
       readonly channelStatuses: readonly PublishJobStatus[]
@@ -137,6 +152,24 @@ export function transitionCampaignRequest(
           currentStatus,
           action.type,
           `Cannot publish campaign with status "${currentStatus}". Explicit owner "go" (status "approved") is required.`
+        )
+      }
+      return "publishing"
+    }
+
+    // A retry re-enters "publishing" from a settled-but-incomplete outcome. It
+    // is deliberately not reachable from "published" (nothing left to retry)
+    // or from "approved" (that is START_PUBLISHING's job) — so the per-job
+    // attempt cap is the only thing that can grow, never the campaign's path.
+    case "RETRY_PUBLISHING": {
+      if (
+        currentStatus !== "failed" &&
+        currentStatus !== "partially_published"
+      ) {
+        throw new InvalidCampaignTransitionError(
+          currentStatus,
+          action.type,
+          `Cannot retry publishing a campaign with status "${currentStatus}". Must be "failed" or "partially_published".`
         )
       }
       return "publishing"

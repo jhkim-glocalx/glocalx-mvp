@@ -121,11 +121,37 @@ test("owner submits a campaign, an operator produces it, and the owner approves"
   await expect(ownerPage.getByText("승인됨")).toBeVisible()
 
   // The operator's board reflects the owner's decision on its next poll.
+  const approvedCard = operatorPage
+    .getByTestId("queue-column-publishing")
+    .locator(".ops-queue-card", { hasText: demoStoreName })
+  await expect(approvedCard).toBeVisible({ timeout: 15_000 })
+
+  // Publish panel: the demo store has a verified GBP location and a linked
+  // Instagram account, so both channels are offered and pre-selected.
+  await approvedCard.click()
+  await expect(operatorPage.getByTestId("publish-panel")).toBeVisible()
+  await expect(operatorPage.getByTestId("publish-select-gbp")).toBeChecked()
   await expect(
-    operatorPage
-      .getByTestId("queue-column-settled")
-      .locator(".ops-queue-card", { hasText: demoStoreName })
-  ).toBeVisible({ timeout: 15_000 })
+    operatorPage.getByTestId("publish-select-instagram")
+  ).toBeChecked()
+
+  await operatorPage.getByTestId("publish-selected").click()
+  await expect(operatorPage.getByTestId("queue-status")).toHaveText("published")
+  await expect(operatorPage.getByTestId("publish-status-gbp")).toHaveText(
+    "published"
+  )
+  await expect(operatorPage.getByTestId("publish-status-instagram")).toHaveText(
+    "published"
+  )
+
+  // Owner: the same history, in their own words, on the status timeline.
+  await refreshOwnerCampaignList(ownerPage)
+  await expect(ownerPage.getByText("게시 완료").first()).toBeVisible({
+    timeout: 10_000,
+  })
+  await expect(
+    ownerPage.locator('[data-testid^="campaign-publish-status-"]').first()
+  ).toContainText("인스타 게시 완료")
 })
 
 // The other half of the go/no-go seam: a change request returns the campaign to

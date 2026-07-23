@@ -207,6 +207,41 @@ Decisions taken while building tasks 4–5 (PR3):
   refreshes the status list; any other error keeps the card open so the owner
   can simply tap again.
 
+Decisions taken while building task 6 (PR4 — publish panel):
+
+- **`store_channel_links` lands here, not in task 7.** Instagram eligibility
+  needs a real per-store linkage source; without it the panel could only say
+  "the adapter is configured", which is not the same question. Migration 0011
+  adds the table (including the nullable `encrypted_token` column task 7 fills);
+  task 6 reads only `status`, so no token is stored or read yet.
+- **Publishing runs inline in the operator's request.** The operator triggered
+  it and is waiting, and two channel calls sit far inside the function timeout
+  at cohort scale — so there is no worker and no polling surface. The campaign's
+  own `publishing` status is the in-flight lock: a second click loses the
+  guarded update and is told it raced.
+- **One route for publish and retry.** `POST …/publish` picks
+  `START_PUBLISHING` (from `approved`) or the new `RETRY_PUBLISHING` (from
+  `failed` / `partially_published`) off the request's current status, so the
+  console never has to know which one it means. `RETRY_PUBLISHING` is
+  deliberately unreachable from `published` and `approved`.
+- **A run is refused whole if any selected channel is ineligible.** The panel
+  disables ineligible channels, so a POST naming one is a stale screen or a
+  hand-rolled request — half-running it would leave the campaign in `publishing`
+  with no job for the blocked channel.
+- **Progress is computed from every job on the request**, not just the channels
+  this run touched, so a retry that fixes the one failed channel can settle the
+  campaign as fully published.
+- **The idempotency key is derived, never supplied** —
+  `publish-<channel>-<requestId>` — so "held constant across attempts" is
+  structural rather than a caller convention.
+- **`canUseLiveGbpActions` and `token-encryption` moved to `packages/domain`,
+  and the GBP publishing-credentials read to `packages/db`.** The operator side
+  needs all three; the owner app re-exports from its old paths. One VERIFIED-only
+  gate and one credentials query, so the two publish paths cannot drift.
+- **The owner sees channel + status + timestamp only.** Attempt counts, the
+  operator-facing failure text, and the channel's own post id stay on the
+  operator side.
+
 Tasks:
 
 1. **Migrations:** `campaign_requests`, `campaign_assets`,

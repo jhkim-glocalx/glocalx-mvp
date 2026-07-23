@@ -61,6 +61,33 @@ describe("transitionCampaignRequest", () => {
     expect(status).toBe("publishing")
   })
 
+  it("resumes publishing only from a settled-but-incomplete outcome", () => {
+    expect(
+      transitionCampaignRequest("failed", { type: "RETRY_PUBLISHING" })
+    ).toBe("publishing")
+    expect(
+      transitionCampaignRequest("partially_published", {
+        type: "RETRY_PUBLISHING",
+      })
+    ).toBe("publishing")
+  })
+
+  it("refuses a retry that would re-open a settled or unstarted campaign", () => {
+    // "published" has nothing left to retry and "approved" is START_PUBLISHING's
+    // job; letting either through would give a campaign a second publish path.
+    for (const status of [
+      "published",
+      "approved",
+      "publishing",
+      "rejected",
+      "ready_for_review",
+    ] as const) {
+      expect(() =>
+        transitionCampaignRequest(status, { type: "RETRY_PUBLISHING" })
+      ).toThrow(InvalidCampaignTransitionError)
+    }
+  })
+
   it("evaluates publish progress statuses correctly", () => {
     // All published
     expect(

@@ -1,12 +1,10 @@
 import { locationStatusSchema } from "@glocalx/domain/location-status"
 import type {
   CurrentLocation,
-  GbpPublishingCredentials,
   PostPreview,
   StoredPostDraft,
   StoreProfile,
 } from "@/posts/post-types"
-import { decryptToken } from "@/auth/token-encryption"
 import type { MarketingPlatform } from "@glocalx/integrations/contracts"
 import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
@@ -31,46 +29,10 @@ const locationRowSchema = z.object({
   status: locationStatusSchema,
 })
 
-const publishingCredentialsRowSchema = z.object({
-  accountName: z.string(),
-  encryptedAccessToken: z.string(),
-  googleLocationId: z.string(),
-})
-
-export async function readGbpPublishingCredentials(
-  queryable: Queryable,
-  storeId: string
-): Promise<GbpPublishingCredentials | undefined> {
-  const row = await queryable.queryOne(
-    `SELECT account.account_name AS "accountName",
-      connection.encrypted_access_token AS "encryptedAccessToken",
-      location.google_location_id AS "googleLocationId"
-    FROM gbp_locations AS location
-    JOIN gbp_accounts AS account
-      ON account.id = location.gbp_account_id AND account.store_id = location.store_id
-    JOIN oauth_connections AS connection
-      ON connection.store_id = location.store_id AND connection.provider = 'GOOGLE'
-    WHERE location.store_id = ? AND location.status = 'VERIFIED'
-      AND location.google_location_id IS NOT NULL
-    ORDER BY connection.created_at DESC, location.updated_at DESC
-    LIMIT 1`,
-    [storeId]
-  )
-  if (row === undefined) {
-    return undefined
-  }
-  const parsed = publishingCredentialsRowSchema.parse(row)
-  const accessToken = decryptToken(parsed.encryptedAccessToken)
-  if (accessToken === undefined) {
-    return undefined
-  }
-  return {
-    accessToken,
-    parent: parsed.googleLocationId.startsWith("accounts/")
-      ? parsed.googleLocationId
-      : `${parsed.accountName}/${parsed.googleLocationId}`,
-  }
-}
+// The query moved to @glocalx/db/support/publish-target-store when the operator
+// publish panel needed the same credentials from the admin app — one read, so
+// the two publish paths can't drift on which location or token they pick.
+export { readGbpPublishingCredentials } from "@glocalx/db/support/publish-target-store"
 
 const postPreviewSchema = z
   .object({

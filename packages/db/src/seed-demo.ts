@@ -109,6 +109,23 @@ export function seedDemoData(database: SqliteDatabase): void {
       createdAt
     )
 
+  // Linked Instagram account so the demo store has both publish channels
+  // eligible — the campaign pipeline's "published on two channels" path.
+  database
+    .prepare(
+      "INSERT OR IGNORE INTO store_channel_links (id, store_id, channel, external_account_ref, encrypted_token, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    .run(
+      "demo-instagram-link",
+      "demo-store",
+      "instagram",
+      "17841400000000000",
+      null,
+      "linked",
+      createdAt,
+      createdAt
+    )
+
   database
     .prepare(
       "INSERT OR IGNORE INTO post_drafts (id, store_id, owner_intent, target_channel, status, korean_copy, english_copy, created_at, revision_of_draft_id, marketing_preview_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"

@@ -80,6 +80,35 @@ async function seedRequestAt(status: CampaignStatus): Promise<string> {
   }
 }
 
+async function seedPublishJob(
+  requestId: string,
+  channel: string,
+  status: string,
+  externalRef: string
+): Promise<void> {
+  const database = openDatabase()
+  try {
+    const now = new Date().toISOString()
+    database
+      .prepare(
+        "INSERT INTO publish_jobs (id, request_id, channel, status, external_ref, attempt_count, last_error, idempotency_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?)"
+      )
+      .run(
+        randomUUID(),
+        requestId,
+        channel,
+        status,
+        externalRef,
+        "operator-only failure detail",
+        `publish-${channel}-${requestId}`,
+        now,
+        now
+      )
+  } finally {
+    database.close()
+  }
+}
+
 async function readRequest(requestId: string) {
   const database = openDatabase()
   try {
@@ -299,5 +328,33 @@ describe("owner campaign review routes", () => {
 
     expect(response.status).toBe(200)
     expect((await readRequest(requestId))?.status).toBe("rejected")
+  })
+
+  // The owner's half of "history visible in both apps": per-channel outcomes,
+  // trimmed of the operator-side detail (attempt counts, failure text, the
+  // channel's own post id).
+  it("surfaces per-channel publish status without operator detail", async () => {
+    const requestId = await seedRequestAt("publishing")
+    await seedPublishJob(requestId, "gbp", "published", "gbp-post-1")
+
+    const response = await getRequestDetail(
+      getRequest(`${requestsUrl}/${requestId}`, demoCookieHeader),
+      routeParams(requestId)
+    )
+    const payload = (await response.json()) as {
+      readonly request: {
+        readonly publishJobs: readonly Record<string, unknown>[]
+      }
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.request.publishJobs).toHaveLength(1)
+    const [job] = payload.request.publishJobs
+    expect(job).toMatchObject({ channel: "gbp", status: "published" })
+    expect(Object.keys(job ?? {}).sort()).toEqual([
+      "channel",
+      "status",
+      "updatedAt",
+    ])
   })
 })
