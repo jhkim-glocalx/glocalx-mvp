@@ -246,10 +246,40 @@ export function resolveDefaultDatabasePath(
 
 export const defaultDatabasePath = resolveDefaultDatabasePath()
 
+// Deleting the database file breaks SQLite's cross-process locking: the lock
+// lives on the inode, so a process that still holds the old file and a process
+// that opens the recreated path both believe they own the write lock and then
+// stomp on a shared journal path. Only safe when no other process has the
+// database open — unit tests, which each run against their own temp path. The
+// e2e harness shares one file with a live dev server and must instead go
+// through clearAllTables (see reset-seed.ts).
 export function resetDatabaseFile(
   databasePath: string = resolveDefaultDatabasePath()
 ): void {
   rmSync(databasePath, { force: true })
+  // A journal/WAL left next to a recreated database reads as a hot journal
+  // belonging to it, which SQLite then tries to roll back over the new file.
+  for (const suffix of ["-journal", "-wal", "-shm"]) {
+    rmSync(`${databasePath}${suffix}`, { force: true })
+  }
+}
+
+// Empties every application table in place. Discovered from sqlite_master
+// rather than databaseTableNames so a table added to a migration can never be
+// silently left behind, leaking state between tests.
+export function clearAllTables(database: SqliteDatabase): void {
+  const tableNames = database
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+    )
+    .all() as ReadonlyArray<{ readonly name: string }>
+
+  for (const { name } of tableNames) {
+    if (!sqlIdentifierPattern.test(name)) {
+      throw new Error(`Refusing to clear table with unexpected name: ${name}`)
+    }
+    database.exec(`DELETE FROM "${name}"`)
+  }
 }
 
 export function openDatabase(
