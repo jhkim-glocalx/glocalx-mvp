@@ -12,8 +12,8 @@ import {
 } from "./postgres/migrations.ts"
 import {
   applyMigrations,
+  clearAllTables,
   openDatabase,
-  resetDatabaseFile,
   resolveDefaultDatabasePath,
   seedDemoData,
 } from "./sqlite.ts"
@@ -54,18 +54,48 @@ function assertNeverDatabaseConfig(config: never): never {
   })
 }
 
-function resetSqliteDatabaseForProvider(
-  env: DatabaseEnvironment
+// The e2e harness resets between tests while the dev server holds the same
+// file open, so the reset must keep the inode — SQLite's cross-process write
+// lock lives there, and unlinking it lets both processes write at once — and
+// swap the data in one transaction, so a concurrent request sees either the
+// old contents or the new ones and never a half-populated database.
+function replaceSqliteContents(
+  databasePath: string,
+  seed: boolean
 ): ProviderAwareDatabaseResult {
-  const databasePath = resolveDefaultDatabasePath(env)
-  resetDatabaseFile(databasePath)
   const database = openMigratedSqliteDatabase(databasePath)
-  database.close()
+
+  // PRAGMA foreign_keys is a no-op inside a transaction, so it has to be
+  // disabled out here for the wipe to ignore reference order.
+  database.pragma("foreign_keys = OFF")
+  try {
+    // .immediate() takes the write lock up front. A deferred transaction would
+    // start by reading sqlite_master and then upgrade on the first DELETE, and
+    // SQLite refuses a read-to-write upgrade with an instant SQLITE_BUSY —
+    // deadlock avoidance, so the busy timeout is never consulted.
+    database
+      .transaction(() => {
+        clearAllTables(database)
+        if (seed) {
+          seedDemoData(database)
+        }
+      })
+      .immediate()
+  } finally {
+    database.pragma("foreign_keys = ON")
+    database.close()
+  }
 
   return {
     provider: "sqlite",
     target: databasePath,
   }
+}
+
+function resetSqliteDatabaseForProvider(
+  env: DatabaseEnvironment
+): ProviderAwareDatabaseResult {
+  return replaceSqliteContents(resolveDefaultDatabasePath(env), false)
 }
 
 function seedSqliteDatabaseForProvider(
@@ -89,20 +119,7 @@ function seedSqliteDatabaseForProvider(
 function resetAndSeedSqliteDatabaseForProvider(
   env: DatabaseEnvironment
 ): ProviderAwareDatabaseResult {
-  const databasePath = resolveDefaultDatabasePath(env)
-  resetDatabaseFile(databasePath)
-  const database = openMigratedSqliteDatabase(databasePath)
-
-  try {
-    seedDemoData(database)
-  } finally {
-    database.close()
-  }
-
-  return {
-    provider: "sqlite",
-    target: databasePath,
-  }
+  return replaceSqliteContents(resolveDefaultDatabasePath(env), true)
 }
 
 async function resetPostgresDatabaseForProvider(

@@ -169,6 +169,11 @@ data, or unredacted env dumps in a comment.
   `gbp-performance.test.ts`) rather than live calls; `APP_INTEGRATION_MODE=production`
   can still leave some adapters request-spec-only.
 - Local SQLite state is file-backed and persists demo data between runs —
-  use `npm run db:reset` / `npm run db:seed` for a clean slate.
+  use `npm run db:reset` / `npm run db:seed` for a clean slate. Both wipe the
+  tables in place rather than deleting the file, so they are safe to run while
+  a dev server or the e2e harness holds the database open. They therefore
+  cannot rebuild a schema that predates a migration the `ensure*` helpers in
+  `packages/db/src/sqlite.ts` don't cover — for that, stop the dev server and
+  `rm -rf .glocalx` first.
 - Generated Next type output can go stale after route changes; regenerate
   it if `npm run typecheck` reports missing App Router helpers.
