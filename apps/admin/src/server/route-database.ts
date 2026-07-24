@@ -19,6 +19,8 @@ import type { CsMessageContextStore } from "@glocalx/db/support/message-context-
 import { createDatabaseCsMessageStore } from "@glocalx/db/support/message-store"
 import type { CsMessageStore } from "@glocalx/db/support/message-store"
 import { createDatabaseSupportMetricsStore } from "@glocalx/db/support/metrics-store"
+import type { OrgCredentialStore } from "@glocalx/db/support/org-credential-store"
+import { createDatabaseOrgCredentialStore } from "@glocalx/db/support/org-credential-store"
 import type { SupportMetricsStore } from "@glocalx/db/support/metrics-store"
 import { createDatabasePublishJobStore } from "@glocalx/db/support/publish-job-store"
 import type { PublishJobStore } from "@glocalx/db/support/publish-job-store"
@@ -39,6 +41,7 @@ export type AdminRouteContext = {
   readonly csConversationStore: CsConversationStore
   readonly csMessageContextStore: CsMessageContextStore
   readonly csMessageStore: CsMessageStore
+  readonly orgCredentialStore: OrgCredentialStore
   readonly publishJobStore: PublishJobStore
   readonly publishTargetStore: PublishTargetStore
   readonly supportMetricsStore: SupportMetricsStore
@@ -140,6 +143,7 @@ export async function withAdminRoute(
       csConversationStore: createDatabaseCsConversationStore(queryable),
       csMessageContextStore: createDatabaseCsMessageContextStore(queryable),
       csMessageStore: createDatabaseCsMessageStore(queryable),
+      orgCredentialStore: createDatabaseOrgCredentialStore(queryable),
       publishJobStore: createDatabasePublishJobStore(queryable),
       publishTargetStore: createDatabasePublishTargetStore(queryable),
       supportMetricsStore: createDatabaseSupportMetricsStore(queryable),

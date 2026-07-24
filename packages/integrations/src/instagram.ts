@@ -75,7 +75,10 @@ export function createProductionInstagramPosts(
 ): InstagramPostsAdapter {
   return {
     async createPost(input) {
-      const missing = missingEnvVars(env, instagramEnvVars)
+      // A per-store account carries its own token, so the global env pair is
+      // only required when the caller didn't supply one.
+      const missing =
+        input.account === undefined ? missingEnvVars(env, instagramEnvVars) : []
       if (missing.length > 0) {
         return blockedByCredentials(missing)
       }
@@ -85,8 +88,10 @@ export function createProductionInstagramPosts(
         )
       }
 
-      const accessToken = env["INSTAGRAM_ACCESS_TOKEN"] ?? ""
-      const igUserId = env["INSTAGRAM_USER_ID"] ?? ""
+      const accessToken =
+        input.account?.accessToken ?? env["INSTAGRAM_ACCESS_TOKEN"] ?? ""
+      const igUserId =
+        input.account?.accountRef ?? env["INSTAGRAM_USER_ID"] ?? ""
       let creationId: string
       if (input.mediaUrls.length === 1) {
         const imageUrl = input.mediaUrls[0]

@@ -132,6 +132,7 @@ export async function POST(
 
       const outcomes = await runCampaignPublish({
         adapters: context.adapters,
+        orgCredentialStore: context.orgCredentialStore,
         publishJobStore: context.publishJobStore,
         publishTargetStore: context.publishTargetStore,
         request: started.request,

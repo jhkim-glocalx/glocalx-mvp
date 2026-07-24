@@ -126,6 +126,24 @@ export function seedDemoData(database: SqliteDatabase): void {
       createdAt
     )
 
+  // The campaign publish path publishes GBP from the ORG account, so without
+  // this row every demo/e2e publish would correctly fail as unconfigured.
+  // Placeholder ciphertext, same convention as the oauth_connections rows above.
+  database
+    .prepare(
+      "INSERT OR IGNORE INTO org_credentials (id, provider, encrypted_token, encrypted_refresh_token, expires_at, scopes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    .run(
+      "demo-org-google",
+      "google_org",
+      "encrypted:demo-org-access-token",
+      "encrypted:demo-org-refresh-token",
+      null,
+      "https://www.googleapis.com/auth/business.manage",
+      createdAt,
+      createdAt
+    )
+
   database
     .prepare(
       "INSERT OR IGNORE INTO post_drafts (id, store_id, owner_intent, target_channel, status, korean_copy, english_copy, created_at, revision_of_draft_id, marketing_preview_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"

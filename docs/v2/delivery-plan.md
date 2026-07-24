@@ -242,6 +242,44 @@ Decisions taken while building task 6 (PR4 — publish panel):
   operator-facing failure text, and the channel's own post id stay on the
   operator side.
 
+Decisions taken while building task 7 (PR5 — org credential plumbing):
+
+- **The campaign path publishes GBP from the org account; v1 keeps the owner
+  token.** Migration 0012 adds `org_credentials` (unique per provider), and
+  campaign publishing reads `google_org` for the token while still deriving the
+  location `parent` from the store's own GBP records — so a store whose owner
+  never connected Google is still publishable. The v1 owner composer is
+  untouched, so the inversion carries no regression risk for the shipped path.
+- **"Refresh handling" is detect-and-fail, not a refresh round-trip.** An
+  expired credential fails the job with an operator-readable message
+  (architecture.md: "never a silent retry loop"). The refresh token is stored so
+  an operator can rotate deliberately, not so the publish path can retry past an
+  expiry. A 60-second grace treats a token about to expire as already expired,
+  keeping that failure on our side of the channel call rather than surfacing as
+  an opaque provider error.
+- **A missing credential is a job failure, not an eligibility gate.** The store
+  is publishable; the organization simply isn't connected. Eligibility stays
+  about the store (verified location, linked account), so an unconfigured org
+  doesn't render every store's panel as blocked.
+- **Three lookup outcomes, kept apart:** missing, undecryptable, and found.
+  Collapsing "we can't decrypt it" into "there isn't one" would send an operator
+  to re-paste a token when the real fault is a rotated `TOKEN_ENCRYPTION_KEY`.
+- **The expiry gate returns the token.** `evaluateOrgCredentialState` hands the
+  credential back only on the `usable` branch, so no caller can reach a token
+  without having passed the check — the invariant is structural, not a
+  convention.
+- **Instagram publishes with the store's own linked account.**
+  `store_channel_links.encrypted_token` now reaches the adapter as an optional
+  `account`; a link with no token yet falls back to the environment account,
+  which is what keeps stub mode and the v1 composer working unchanged. Reading
+  that token is a separate store method from reading the link, so token material
+  never enters a view model. `meta_app` is storable but unread — Instagram's
+  credential is the per-store one, and the app-level token waits on Meta review.
+- **The operator pastes credentials in Settings; nothing ever reads one back.**
+  The save response is the same summary list the panel renders, the audit row
+  records provider and whether an expiry was set, and a missing
+  `TOKEN_ENCRYPTION_KEY` returns a named 503 rather than a 500.
+
 Tasks:
 
 1. **Migrations:** `campaign_requests`, `campaign_assets`,

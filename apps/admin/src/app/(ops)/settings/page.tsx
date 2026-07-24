@@ -1,24 +1,37 @@
 import { openDatabaseContext } from "@glocalx/db"
 import { createDatabaseSupportMetricsStore } from "@glocalx/db/support/metrics-store"
 import {
+  createDatabaseOrgCredentialStore,
+  type OrgCredentialSummary,
+} from "@glocalx/db/support/org-credential-store"
+import {
   computeWeeklyKillMetrics,
   lastSevenDayWindow,
   type WeeklyKillMetrics,
 } from "@glocalx/domain/support/metrics"
+
+import { OrgCredentialsPanel } from "./org-credentials-panel"
 
 // Premise-2 instrumentation surfaced read-only (design-decisions.md §Premises/2).
 // The db store gathers the window's rows; the pure domain function computes —
 // this page only composes and renders. Median response time is the metric with
 // a kill threshold (compared against the Kakao baseline at week 4); activation
 // and owner-initiated count are context-only.
-async function loadWeeklyMetrics(): Promise<WeeklyKillMetrics> {
+async function loadSettings(): Promise<{
+  readonly metrics: WeeklyKillMetrics
+  readonly credentials: readonly OrgCredentialSummary[]
+}> {
   const window = lastSevenDayWindow(new Date())
   const databaseContext = await openDatabaseContext()
   try {
     const input = await createDatabaseSupportMetricsStore(
       databaseContext.queryable
     ).gatherWeeklyMetricsInput(window)
-    return computeWeeklyKillMetrics(input)
+    // Summaries only — this page never loads token material, even server-side.
+    const credentials = await createDatabaseOrgCredentialStore(
+      databaseContext.queryable
+    ).listOrgCredentialSummaries()
+    return { metrics: computeWeeklyKillMetrics(input), credentials }
   } finally {
     await databaseContext.close()
   }
@@ -38,7 +51,7 @@ function formatResponseTime(milliseconds: number | null): string {
 }
 
 export default async function SettingsPage() {
-  const metrics = await loadWeeklyMetrics()
+  const { metrics, credentials } = await loadSettings()
 
   return (
     <>
@@ -71,12 +84,11 @@ export default async function SettingsPage() {
         </div>
       </section>
 
+      <OrgCredentialsPanel initialCredentials={credentials} />
+
       <div className="ops-empty">
         <strong>More configuration coming</strong>
-        <p>
-          Operator accounts and org publishing credentials are managed here from
-          Phase 3 onward.
-        </p>
+        <p>Operator accounts are managed here from Phase 3 onward.</p>
       </div>
     </>
   )
