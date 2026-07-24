@@ -95,6 +95,16 @@ export async function submitForReview(
   )
 }
 
+// No body: the operator is asserting one fact — "I reached the owner" — and the
+// server stamps the time.
+export async function markOwnerNudged(
+  requestId: string
+): Promise<QueueActionResult> {
+  return readRequestResult(
+    await fetch(`${queueUrl}/${requestId}/nudge`, jsonInit({}))
+  )
+}
+
 // Both first publish and retry go through this one call — the route picks
 // START_PUBLISHING or RETRY_PUBLISHING from the request's current status, so
 // the console never has to track which one it means.

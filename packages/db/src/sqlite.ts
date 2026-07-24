@@ -327,4 +327,6 @@ export function applyMigrations(database: SqliteDatabase): void {
   )
   // Phase 3 (matches postgres/migrations/0010_campaign_final_copy.sql).
   ensureColumn(database, "campaign_requests", "final_copy", "TEXT")
+  // Phase 3 task 8 (matches postgres/migrations/0013_campaign_nudge.sql).
+  ensureColumn(database, "campaign_requests", "nudged_at", "TEXT")
 }

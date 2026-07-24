@@ -8,7 +8,10 @@ import type { PublishChannel } from "@glocalx/domain/campaign-state-machine"
 // channel they already use — the store's chat conversation. Written as
 // sender='assistant' so the owner keeps seeing one assistant (architecture §2),
 // with authorKind='admin' and no admin id: operations spoke, but no operator
-// typed it. Phase 3 task 8 extends this to the other status transitions.
+// typed it. Only two pipeline events post here — the material being ready for
+// the owner's go/no-go, and a publish that has stopped retrying. Both are
+// moments the owner has to act on; narrating every status change would turn the
+// concierge thread into a log.
 
 export type PostCampaignNoticeInput = {
   readonly csConversationStore: CsConversationStore
@@ -39,6 +42,13 @@ export async function postCampaignAssistantNotice(
     now: input.now,
   })
   await input.csConversationStore.touch(conversation.id, input.now)
+}
+
+// The owner's cue that the go/no-go screen has something on it. The queue's
+// separate nudge step covers the same event out-of-band, because nothing in v2
+// pushes this message to a phone that isn't already looking at the app.
+export function readyForReviewNoticeBody(): string {
+  return "요청하신 마케팅 소재가 준비됐어요. 앱에서 확인하시고 게시해도 될지 알려주세요."
 }
 
 const channelLabels: Readonly<Record<PublishChannel, string>> = {

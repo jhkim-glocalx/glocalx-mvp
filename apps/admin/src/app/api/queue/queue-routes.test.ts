@@ -22,6 +22,7 @@ import { POST as startProduction } from "./requests/[requestId]/production/route
 import { POST as setFinalCopy } from "./requests/[requestId]/final-copy/route"
 import { POST as submitForReview } from "./requests/[requestId]/review/route"
 import { POST as registerAsset } from "./requests/[requestId]/assets/route"
+import { POST as markNudged } from "./requests/[requestId]/nudge/route"
 
 const origin = "http://localhost:3100"
 const adminUserId = "admin-1"
@@ -94,6 +95,45 @@ async function seedProcessedAsset(requestId: string): Promise<void> {
       uploadedBy: "admin",
       now: new Date(),
     })
+  } finally {
+    database.close()
+  }
+}
+
+async function requestNudgedAt(requestId: string): Promise<string | null> {
+  const database = openDatabase()
+  try {
+    const detail = await createDatabaseCampaignStore(
+      createSqliteQueryable(database)
+    ).getCampaignRequestForOperator(requestId)
+    return detail?.nudgedAt ?? null
+  } finally {
+    database.close()
+  }
+}
+
+// The owner-facing side of a pipeline notice: what actually landed in the
+// store's chat thread, read the way the owner's transcript would.
+function storeAssistantMessages(): readonly {
+  body: string
+  authorKind: string
+  authorAdminId: string | null
+}[] {
+  const database = openDatabase()
+  try {
+    return database
+      .prepare(
+        `SELECT m.body, m.author_kind AS authorKind, m.author_admin_id AS authorAdminId
+           FROM cs_messages m
+           JOIN cs_conversations c ON c.id = m.conversation_id
+          WHERE c.store_id = ? AND m.sender = 'assistant' AND m.status = 'sent'
+          ORDER BY m.created_at ASC`
+      )
+      .all(storeId) as readonly {
+      body: string
+      authorKind: string
+      authorAdminId: string | null
+    }[]
   } finally {
     database.close()
   }
@@ -342,6 +382,137 @@ describe("submit for review", () => {
 
     expect(response.status).toBe(200)
     expect(await requestStatus(requestId)).toBe("ready_for_review")
+  })
+})
+
+describe("owner nudge", () => {
+  // The whole point of the step: the owner is told in-app, and the queue still
+  // holds an open task until an operator says they reached them out-of-band.
+  async function handToOwner(requestId: string, cookie: string): Promise<void> {
+    await startProduction(
+      postRequest(`${origin}/api/queue/requests/${requestId}/production`, {
+        cookie,
+      }),
+      queueParams(requestId)
+    )
+    await seedProcessedAsset(requestId)
+    await setFinalCopy(
+      postRequest(`${origin}/api/queue/requests/${requestId}/final-copy`, {
+        cookie,
+        body: { finalCopy: "Brunch is back." },
+      }),
+      queueParams(requestId)
+    )
+    await submitForReview(
+      postRequest(`${origin}/api/queue/requests/${requestId}/review`, {
+        cookie,
+      }),
+      queueParams(requestId)
+    )
+  }
+
+  it("posts one assistant notice to the store's chat on hand-off", async () => {
+    const requestId = await seedRequest()
+    await handToOwner(requestId, await adminSessionCookie())
+
+    const notices = storeAssistantMessages().filter((message) =>
+      message.body.includes("마케팅 소재가 준비됐어요")
+    )
+
+    expect(notices).toHaveLength(1)
+    // Operations spoke, but no operator typed it — the owner keeps seeing one
+    // assistant.
+    expect(notices[0]?.authorKind).toBe("admin")
+    expect(notices[0]?.authorAdminId).toBeNull()
+  })
+
+  it("rejects a cross-origin nudge before touching the database", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await handToOwner(requestId, cookie)
+
+    const response = await markNudged(
+      postRequest(`${origin}/api/queue/requests/${requestId}/nudge`, {
+        cookie,
+        withOrigin: false,
+      }),
+      queueParams(requestId)
+    )
+
+    expect(response.status).toBe(403)
+    expect(await requestNudgedAt(requestId)).toBeNull()
+  })
+
+  it("404s for an unknown request", async () => {
+    const response = await markNudged(
+      postRequest(`${origin}/api/queue/requests/missing/nudge`, {
+        cookie: await adminSessionCookie(),
+      }),
+      queueParams("missing")
+    )
+
+    expect(response.status).toBe(404)
+  })
+
+  it("records the nudge on a request awaiting the owner", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await handToOwner(requestId, cookie)
+
+    const response = await markNudged(
+      postRequest(`${origin}/api/queue/requests/${requestId}/nudge`, {
+        cookie,
+      }),
+      queueParams(requestId)
+    )
+    const payload = (await response.json()) as {
+      request: { nudgedAt: string | null }
+    }
+
+    expect(response.status).toBe(200)
+    expect(payload.request.nudgedAt).not.toBeNull()
+  })
+
+  // A double-click, or two operators on the same card: one nudge is recorded
+  // and the loser is told to reload rather than writing a second audit entry.
+  it("409s on a second nudge for the same review episode", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await handToOwner(requestId, cookie)
+    await markNudged(
+      postRequest(`${origin}/api/queue/requests/${requestId}/nudge`, {
+        cookie,
+      }),
+      queueParams(requestId)
+    )
+    const firstNudgedAt = await requestNudgedAt(requestId)
+
+    const second = await markNudged(
+      postRequest(`${origin}/api/queue/requests/${requestId}/nudge`, {
+        cookie,
+      }),
+      queueParams(requestId)
+    )
+    const payload = (await second.json()) as { currentStatus: string }
+
+    expect(second.status).toBe(409)
+    expect(payload.currentStatus).toBe("ready_for_review")
+    expect(await requestNudgedAt(requestId)).toBe(firstNudgedAt)
+  })
+
+  it("409s on a request the owner is not waiting on", async () => {
+    const requestId = await seedRequest()
+
+    const response = await markNudged(
+      postRequest(`${origin}/api/queue/requests/${requestId}/nudge`, {
+        cookie: await adminSessionCookie(),
+      }),
+      queueParams(requestId)
+    )
+    const payload = (await response.json()) as { currentStatus: string }
+
+    expect(response.status).toBe(409)
+    expect(payload.currentStatus).toBe("submitted")
   })
 })
 

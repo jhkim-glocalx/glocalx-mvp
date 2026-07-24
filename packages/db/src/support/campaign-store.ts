@@ -14,7 +14,11 @@ import type {
 import { z } from "zod"
 
 import type { Queryable } from "../types.ts"
-import { jsonColumnSchema, timestampSchema } from "./row-codecs.ts"
+import {
+  jsonColumnSchema,
+  nullableTimestampSchema,
+  timestampSchema,
+} from "./row-codecs.ts"
 
 export type CreateCampaignRequestInput = {
   readonly id: string
@@ -81,6 +85,11 @@ export type SetCampaignFinalCopyInput = {
   readonly now: Date
 }
 
+export type MarkCampaignNudgedInput = {
+  readonly requestId: string
+  readonly now: Date
+}
+
 export interface CampaignStore {
   createCampaignRequest(
     input: CreateCampaignRequestInput
@@ -119,6 +128,13 @@ export interface CampaignStore {
   setCampaignFinalCopy(
     input: SetCampaignFinalCopyInput
   ): Promise<CampaignRequest | undefined>
+  // Records that an operator personally notified the owner that their material
+  // is waiting. Guarded on the request still being unnudged and still in
+  // ready_for_review, so a double-click writes one row and the second caller is
+  // told it lost — the same status-as-token story every other write here uses.
+  markCampaignNudged(
+    input: MarkCampaignNudgedInput
+  ): Promise<CampaignRequest | undefined>
 }
 
 export class CampaignRequestNotFoundError extends Error {
@@ -134,6 +150,7 @@ const campaignRequestRowSchema = z.object({
   brief: z.string(),
   status: z.string(),
   finalCopy: z.string().nullable(),
+  nudgedAt: nullableTimestampSchema,
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 })
@@ -170,6 +187,7 @@ const campaignRequestProjection = `
   brief,
   status,
   final_copy AS "finalCopy",
+  nudged_at AS "nudgedAt",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 `
@@ -181,6 +199,7 @@ const queueRequestProjection = `
   r.brief,
   r.status,
   r.final_copy AS "finalCopy",
+  r.nudged_at AS "nudgedAt",
   r.created_at AS "createdAt",
   r.updated_at AS "updatedAt"
 `
@@ -258,6 +277,7 @@ export function createDatabaseCampaignStore(
         brief: input.brief,
         status: "submitted",
         finalCopy: null,
+        nudgedAt: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -429,6 +449,28 @@ export function createDatabaseCampaignStore(
       )
       return row === undefined ? undefined : toCampaignRequest(row)
     },
+
+    async markCampaignNudged(input) {
+      const now = input.now.toISOString()
+      // Both halves of the guard earn their place: the status keeps a nudge
+      // from being recorded against a request the owner is no longer waiting
+      // on, and the NULL check makes the write exactly-once, so a double-click
+      // produces one audit entry rather than two.
+      const result = await queryable.execute(
+        `UPDATE campaign_requests
+            SET nudged_at = ?, updated_at = ?
+          WHERE id = ? AND status = 'ready_for_review' AND nudged_at IS NULL`,
+        [now, now, input.requestId]
+      )
+      if (result.changes === 0) {
+        return undefined
+      }
+      const row = await queryable.queryOne(
+        `SELECT ${campaignRequestProjection} FROM campaign_requests WHERE id = ?`,
+        [input.requestId]
+      )
+      return row === undefined ? undefined : toCampaignRequest(row)
+    },
   }
 }
 
@@ -482,9 +524,14 @@ async function applyGuardedStatusUpdate(
   input: UpdateCampaignStatusInput
 ): Promise<CampaignRequest | undefined> {
   const now = input.now.toISOString()
+  // nudged_at is cleared on every transition rather than only on the way into
+  // ready_for_review: a nudge answers "does the owner know about the state
+  // they're in now", so a status change always ends the episode it belonged to.
+  // Keeping it here means no caller has to remember, and a request that loops
+  // back through production is owed a fresh nudge the second time.
   const result = await queryable.execute(
     `UPDATE campaign_requests
-        SET status = ?, updated_at = ?
+        SET status = ?, nudged_at = NULL, updated_at = ?
       WHERE id = ? AND status = ?`,
     [input.nextStatus, now, input.requestId, input.expectedStatus]
   )

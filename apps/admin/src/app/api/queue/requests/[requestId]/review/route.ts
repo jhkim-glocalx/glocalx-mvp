@@ -5,6 +5,10 @@ import {
   campaignRequestNotFoundResponse,
   toQueueRequestResponse,
 } from "@/app/api/queue/queue-responses"
+import {
+  postCampaignAssistantNotice,
+  readyForReviewNoticeBody,
+} from "@/server/campaign-chat-notice"
 import { applyCampaignAction } from "@/server/queue-view"
 import { withAdminRoute } from "@/server/route-database"
 
@@ -48,11 +52,12 @@ export async function POST(
         )
       }
 
+      const now = new Date()
       const outcome = await applyCampaignAction(
         context.campaignStore,
         requestId,
         { type: "SUBMIT_FOR_REVIEW" },
-        new Date()
+        now
       )
       if (outcome.kind === "not_found") {
         return campaignRequestNotFoundResponse()
@@ -60,6 +65,17 @@ export async function POST(
       if (outcome.kind === "conflict") {
         return campaignConflictResponse(outcome.currentStatus)
       }
+
+      // Posted only after the transition actually took: the guarded update is
+      // what makes this exactly-once, so an operator who lost the race never
+      // announces material the winner already moved on from.
+      await postCampaignAssistantNotice({
+        csConversationStore: context.csConversationStore,
+        csMessageStore: context.csMessageStore,
+        storeId: outcome.request.storeId,
+        body: readyForReviewNoticeBody(),
+        now,
+      })
 
       await context.auditLogStore.record({
         action: "campaign_submit_for_review",
