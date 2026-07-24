@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import type { CampaignRequestDetail } from "@glocalx/db/support/campaign-store"
+import type { OrgCredentialStore } from "@glocalx/db/support/org-credential-store"
 import type { PublishJobStore } from "@glocalx/db/support/publish-job-store"
 import type { PublishTargetStore } from "@glocalx/db/support/publish-target-store"
 import type { CampaignAsset } from "@glocalx/domain/campaign-contracts"
@@ -8,6 +9,7 @@ import {
   publishChannelSchema,
   type PublishChannel,
 } from "@glocalx/domain/campaign-state-machine"
+import { evaluateOrgCredentialState } from "@glocalx/domain/org-credentials"
 import { evaluatePublishEligibility } from "@glocalx/domain/publish-eligibility"
 import type { PublishEligibility } from "@glocalx/domain/publish-eligibility"
 import type { createIntegrationAdapters } from "@glocalx/integrations"
@@ -60,6 +62,7 @@ export type ChannelPublishOutcome = {
 
 export type RunCampaignPublishInput = {
   readonly adapters: IntegrationAdapters
+  readonly orgCredentialStore: OrgCredentialStore
   readonly publishJobStore: PublishJobStore
   readonly publishTargetStore: PublishTargetStore
   readonly request: CampaignRequestDetail
@@ -123,20 +126,31 @@ async function publishToChannel(
   const summary = input.request.finalCopy ?? ""
 
   if (channel === "gbp") {
-    const credentials =
-      await input.publishTargetStore.readGbpPublishingCredentials(
-        input.request.storeId
-      )
-    if (credentials === undefined) {
+    // v2 publishes from the ORG account, not the owner's Google token: one
+    // credential fans out across every store's location. The owner-token path
+    // (readGbpPublishingCredentials) stays behind v1's own composer.
+    const credential = evaluateOrgCredentialState(
+      await input.orgCredentialStore.readOrgCredential("google_org"),
+      input.now
+    )
+    if (credential.kind === "blocked") {
+      return { failureMessage: credential.message }
+    }
+
+    const parent = await input.publishTargetStore.readGbpPublishParent(
+      input.request.storeId
+    )
+    if (parent === undefined) {
       return {
         failureMessage:
-          "Google Business Profile publishing credentials are unavailable for this store.",
+          "This store has no verified Google Business Profile location to publish to.",
       }
     }
+
     const result = await input.adapters.gbpLocalPosts.createLocalPost({
-      accessToken: credentials.accessToken,
+      accessToken: credential.accessToken,
       mediaUrls,
-      parent: credentials.parent,
+      parent,
       summary,
     })
     return result.kind === "blocked_by_credentials"
@@ -147,9 +161,38 @@ async function publishToChannel(
       : { externalPostId: result.value.externalPostId }
   }
 
+  // Instagram's credential is the store's own linked business account. A link
+  // that carries no token yet falls through to the environment account, which
+  // is what keeps stub mode and the v1 composer working unchanged.
+  const channelToken = await input.publishTargetStore.readStoreChannelToken(
+    input.request.storeId,
+    "instagram"
+  )
+  if (channelToken.kind === "undecryptable") {
+    return {
+      failureMessage:
+        "The store's stored Instagram token could not be read. The encryption key may have rotated — re-link the account.",
+    }
+  }
+
+  const link =
+    channelToken.kind === "found"
+      ? await input.publishTargetStore.readStoreChannelLink(
+          input.request.storeId,
+          "instagram"
+        )
+      : undefined
+
   const result = await input.adapters.instagramPosts.createPost({
     caption: summary,
     mediaUrls,
+    account:
+      channelToken.kind === "found" && link !== undefined
+        ? {
+            accessToken: channelToken.accessToken,
+            accountRef: link.externalAccountRef,
+          }
+        : undefined,
   })
   return result.kind === "blocked_by_credentials"
     ? {

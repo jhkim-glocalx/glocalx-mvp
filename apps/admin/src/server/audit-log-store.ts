@@ -18,11 +18,14 @@ export type AdminAuditAction =
   | "campaign_set_final_copy"
   | "campaign_submit_for_review"
   | "campaign_publish"
+  | "org_credential_saved"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction
   readonly adminUserId: string
-  readonly storeId: string
+  // Optional because org-level actions (publishing credentials) belong to no
+  // single store; audit_logs.store_id is nullable for exactly this case.
+  readonly storeId?: string
   // Whichever subject the action acts on: chat actions carry a conversation,
   // production-queue actions carry a campaign request.
   readonly conversationId?: string
@@ -57,7 +60,7 @@ export function createAdminAuditLogStore(
          ) VALUES (?, ?, NULL, ?, NULL, ?, ?)`,
         [
           randomUUID(),
-          entry.storeId,
+          entry.storeId ?? null,
           entry.action,
           JSON.stringify(payload),
           new Date().toISOString(),

@@ -25,6 +25,11 @@ import type * as integrations from "@glocalx/integrations"
 // the Instagram publisher is swapped; everything else stays the real stub, so
 // the GBP leg still exercises the credentials read and the media signing.
 const instagramFails = { value: false }
+// The stub adapter discards its input, so the recorder is the only way to prove
+// which account a publish actually went out on.
+const instagramCalls: {
+  account?: { accessToken: string; accountRef: string } | undefined
+}[] = []
 vi.mock("@glocalx/integrations", async (importOriginal) => {
   const actual = await importOriginal<typeof integrations>()
   return {
@@ -36,14 +41,16 @@ vi.mock("@glocalx/integrations", async (importOriginal) => {
         instagramPosts: {
           createPost: async (
             input: Parameters<typeof adapters.instagramPosts.createPost>[0]
-          ) =>
-            instagramFails.value
+          ) => {
+            instagramCalls.push({ account: input.account })
+            return instagramFails.value
               ? ({
                   kind: "blocked_by_credentials",
                   code: "BLOCKED_BY_CREDENTIALS",
                   missingEnvVars: ["INSTAGRAM_ACCESS_TOKEN"],
                 } as const)
-              : adapters.instagramPosts.createPost(input),
+              : adapters.instagramPosts.createPost(input)
+          },
         },
       }
     },
@@ -153,6 +160,32 @@ async function setInstagramLinkStatus(status: string): Promise<void> {
   })
 }
 
+async function deleteOrgCredential(): Promise<void> {
+  await withDatabase(async (queryable) => {
+    await queryable.execute(
+      "DELETE FROM org_credentials WHERE provider = 'google_org'"
+    )
+  })
+}
+
+async function setOrgCredentialExpiry(expiresAt: string): Promise<void> {
+  await withDatabase(async (queryable) => {
+    await queryable.execute(
+      "UPDATE org_credentials SET expires_at = ? WHERE provider = 'google_org'",
+      [expiresAt]
+    )
+  })
+}
+
+async function setStoreInstagramToken(token: string | null): Promise<void> {
+  await withDatabase(async (queryable) => {
+    await queryable.execute(
+      "UPDATE store_channel_links SET encrypted_token = ? WHERE store_id = ? AND channel = 'instagram'",
+      [token, storeId]
+    )
+  })
+}
+
 async function ownerVisibleMessages(): Promise<readonly string[]> {
   return withDatabase(async (queryable) => {
     const conversation =
@@ -209,6 +242,7 @@ function queueParams(requestId: string): {
 
 beforeEach(async () => {
   instagramFails.value = false
+  instagramCalls.length = 0
   await useTempDatabase()
 })
 
@@ -274,6 +308,85 @@ describe("campaign publish", () => {
       "instagram:published",
     ])
     expect(jobs.every((job) => job.externalRef !== null)).toBe(true)
+  })
+
+  it("fails the GBP job when no org credential is configured", async () => {
+    const requestId = await seedApprovedRequest()
+    await deleteOrgCredential()
+
+    await publishCampaign(
+      publishRequest(requestId, { cookie: await adminSessionCookie() }),
+      queueParams(requestId)
+    )
+
+    // The credential is a *job* failure, not an eligibility gate: the store is
+    // publishable, the organization simply isn't connected yet, and Instagram
+    // still goes out on its own per-store credential.
+    const jobs = await publishJobs(requestId)
+    expect(jobs.map((job) => `${job.channel}:${job.status}`)).toEqual([
+      "gbp:failed",
+      "instagram:published",
+    ])
+    expect(await requestStatus(requestId)).toBe("partially_published")
+    expect(jobs[0]?.lastError).toContain(
+      "No organization publishing credential"
+    )
+  })
+
+  it("fails the GBP job when the org credential has expired", async () => {
+    const requestId = await seedApprovedRequest()
+    await setOrgCredentialExpiry("2020-01-01T00:00:00.000Z")
+
+    await publishCampaign(
+      publishRequest(requestId, { cookie: await adminSessionCookie() }),
+      queueParams(requestId)
+    )
+
+    const jobs = await publishJobs(requestId)
+    expect(jobs[0]).toMatchObject({ channel: "gbp", status: "failed" })
+    expect(jobs[0]?.lastError).toContain("expired")
+  })
+
+  it("publishes Instagram with the store's own token when the link carries one", async () => {
+    const requestId = await seedApprovedRequest()
+    await setStoreInstagramToken("encrypted:store-instagram-token")
+
+    await publishCampaign(
+      publishRequest(requestId, { cookie: await adminSessionCookie() }),
+      queueParams(requestId)
+    )
+
+    // The per-store account reaches the adapter — not the global env token that
+    // v1 published every store with.
+    expect(instagramCalls.at(-1)?.account).toEqual({
+      accessToken: "store-instagram-token",
+      accountRef: "17841400000000000",
+    })
+  })
+
+  it("falls back to the environment account when the link has no token yet", async () => {
+    const requestId = await seedApprovedRequest()
+
+    await publishCampaign(
+      publishRequest(requestId, { cookie: await adminSessionCookie() }),
+      queueParams(requestId)
+    )
+
+    expect(instagramCalls.at(-1)?.account).toBeUndefined()
+  })
+
+  it("fails the Instagram job when the stored token cannot be decrypted", async () => {
+    const requestId = await seedApprovedRequest()
+    await setStoreInstagramToken("v1:not:real:ciphertext")
+
+    await publishCampaign(
+      publishRequest(requestId, { cookie: await adminSessionCookie() }),
+      queueParams(requestId)
+    )
+
+    const jobs = await publishJobs(requestId)
+    expect(jobs[1]).toMatchObject({ channel: "instagram", status: "failed" })
+    expect(jobs[1]?.lastError).toContain("could not be read")
   })
 
   it("rejects a channel the store's gates do not allow, before any job exists", async () => {

@@ -830,3 +830,97 @@ select {
   font-size: 12px;
   color: #e0a85a;
 }
+
+/* Org publishing credentials: a status row per provider above the save form.
+   The list is the whole point of the panel — an operator needs to see which
+   credentials publishing will accept before they paste a new one. */
+.ops-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.ops-credential-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ops-credential-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--canvas-2);
+}
+
+.ops-credential-name {
+  font-weight: 600;
+}
+
+.ops-credential-status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ops-credential-status--linked {
+  background: rgba(90, 200, 145, 0.16);
+  color: #5ac891;
+}
+
+/* Amber literal, same as the publish-channel error above — @glocalx/ui has no
+   warning token. */
+.ops-credential-status--expired {
+  background: rgba(224, 168, 90, 0.16);
+  color: #e0a85a;
+}
+
+.ops-credential-status--missing {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.ops-credential-meta {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ops-credential-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--canvas-2);
+}
+
+.ops-field select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--canvas);
+  color: var(--foreground);
+}
+
+.ops-credential-error {
+  margin: 0;
+  font-size: 13px;
+  color: #e0a85a;
+}
+
+.ops-credential-saved {
+  margin: 0;
+  font-size: 13px;
+  color: #5ac891;
+}

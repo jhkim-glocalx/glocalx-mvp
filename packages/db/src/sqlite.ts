@@ -42,6 +42,7 @@ export const operationalTableNames = [
   "campaign_review_events",
   "publish_jobs",
   "store_channel_links",
+  "org_credentials",
 ] as const
 export const databaseTableNames = [
   ...requiredTableNames,
@@ -88,6 +89,7 @@ const migrationPaths = [
   join(currentDirectory, "migrations", "0007_cs_chat_activity.sql"),
   join(currentDirectory, "migrations", "0009_campaign_pipeline.sql"),
   join(currentDirectory, "migrations", "0011_store_channel_links.sql"),
+  join(currentDirectory, "migrations", "0012_org_credentials.sql"),
 ] as const
 
 const sqlIdentifierPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
