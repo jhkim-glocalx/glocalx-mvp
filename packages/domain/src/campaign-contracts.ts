@@ -23,6 +23,11 @@ export const campaignRequestSchema = z
     // The operator-authored caption that ships with the processed assets. Null
     // until an operator writes it during production (migration 0010).
     finalCopy: z.string().nullable(),
+    // When an operator confirmed they nudged the owner out-of-band about the
+    // state this request is in now (migration 0013). Null while that is still
+    // owed — and every status change resets it, since the nudge is about the
+    // state the owner is currently sitting in, not the request as a whole.
+    nudgedAt: z.string().nullable(),
     createdAt: nonEmptyStringSchema,
     updatedAt: nonEmptyStringSchema,
   })

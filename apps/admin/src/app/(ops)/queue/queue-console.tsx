@@ -7,6 +7,7 @@ import type { QueueEntryView, QueueRequestView } from "@/server/queue-view"
 import {
   fetchQueue,
   fetchQueueRequest,
+  markOwnerNudged,
   publishCampaign,
   saveFinalCopy,
   startProduction,
@@ -79,6 +80,17 @@ function isPublishable(request: QueueRequestView, channel: string): boolean {
     return true
   }
   return job.status !== "published" && job.attemptCount < maxPublishAttempts
+}
+
+// The owner is owed a personal message exactly while their material sits
+// unanswered and nobody has said they sent one. Both the board card and the
+// detail panel read this, so an operator scanning the board sees the same
+// outstanding step the panel would tell them about.
+function awaitsNudge(entry: {
+  readonly status: string
+  readonly nudgedAt: string | null
+}): boolean {
+  return entry.status === "ready_for_review" && entry.nudgedAt === null
 }
 
 function defaultPublishChannels(request: QueueRequestView): readonly string[] {
@@ -251,6 +263,14 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                         ? ` · ${entry.processedCount} processed`
                         : ""}
                     </span>
+                    {awaitsNudge(entry) ? (
+                      <span
+                        className="ops-queue-nudge-pending"
+                        data-testid={`nudge-pending-${entry.id}`}
+                      >
+                        Owner not notified yet
+                      </span>
+                    ) : null}
                   </button>
                 ))
               )}
@@ -288,6 +308,36 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
           {error !== null ? (
             <div className="ops-queue-error" role="alert">
               {error}
+            </div>
+          ) : null}
+
+          {selected.status === "ready_for_review" ? (
+            <div className="ops-queue-section" data-testid="nudge-panel">
+              <h2>Owner nudge</h2>
+              {selected.nudgedAt === null ? (
+                <>
+                  <p className="ops-queue-nudge-copy">
+                    The app told the owner their material is ready, but nothing
+                    pushes that to their phone. Message them on the channel you
+                    already use, then mark it here.
+                  </p>
+                  <div className="ops-queue-actions">
+                    <button
+                      type="button"
+                      className="ops-primary-button"
+                      data-testid="mark-nudged"
+                      disabled={busy}
+                      onClick={() => void runAction(markOwnerNudged)}
+                    >
+                      Mark owner notified
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="ops-queue-nudge-done" data-testid="nudge-done">
+                  Owner notified {new Date(selected.nudgedAt).toLocaleString()}
+                </p>
+              )}
             </div>
           ) : null}
 

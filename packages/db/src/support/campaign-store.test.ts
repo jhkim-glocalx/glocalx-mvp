@@ -275,6 +275,90 @@ describe("campaign queue and review writes", () => {
     expect(detail?.status).toBe("in_production")
   })
 
+  async function awaitingOwnerRequest() {
+    const request = await submittedRequest()
+    await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "submitted",
+      nextStatus: "ready_for_review",
+      now: at(5),
+    })
+    return request
+  }
+
+  it("records the operator's nudge on a request awaiting the owner", async () => {
+    const request = await awaitingOwnerRequest()
+
+    const updated = await campaigns.markCampaignNudged({
+      requestId: request.id,
+      now: at(10),
+    })
+
+    expect(updated?.nudgedAt).toBe(at(10).toISOString())
+    const detail = await campaigns.getCampaignRequestForOperator(request.id)
+    expect(detail?.nudgedAt).toBe(at(10).toISOString())
+  })
+
+  // Exactly-once, so a double-click leaves one nudge and one audit entry.
+  it("refuses a second nudge on the same review episode", async () => {
+    const request = await awaitingOwnerRequest()
+    await campaigns.markCampaignNudged({ requestId: request.id, now: at(10) })
+
+    const again = await campaigns.markCampaignNudged({
+      requestId: request.id,
+      now: at(11),
+    })
+
+    expect(again).toBeUndefined()
+    const detail = await campaigns.getCampaignRequestForOperator(request.id)
+    expect(detail?.nudgedAt).toBe(at(10).toISOString())
+  })
+
+  it("refuses a nudge on a request the owner is not waiting on", async () => {
+    const request = await submittedRequest()
+
+    const nudged = await campaigns.markCampaignNudged({
+      requestId: request.id,
+      now: at(10),
+    })
+
+    expect(nudged).toBeUndefined()
+  })
+
+  // A request that loops back through production is owed a fresh nudge when it
+  // reaches the owner again — the old one described a state they've left.
+  it("clears a recorded nudge when the request changes status", async () => {
+    const request = await awaitingOwnerRequest()
+    await campaigns.markCampaignNudged({ requestId: request.id, now: at(10) })
+
+    await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "ready_for_review",
+      nextStatus: "changes_requested",
+      now: at(15),
+    })
+    const backToProduction = await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "changes_requested",
+      nextStatus: "in_production",
+      now: at(16),
+    })
+    expect(backToProduction?.nudgedAt).toBeNull()
+
+    await campaigns.updateCampaignRequestStatus({
+      requestId: request.id,
+      expectedStatus: "in_production",
+      nextStatus: "ready_for_review",
+      now: at(17),
+    })
+    const second = await campaigns.markCampaignNudged({
+      requestId: request.id,
+      now: at(18),
+    })
+
+    expect(second?.nudgedAt).toBe(at(18).toISOString())
+  })
+
   it("records a review decision with its note and flips the status", async () => {
     const request = await submittedRequest()
     await campaigns.updateCampaignRequestStatus({

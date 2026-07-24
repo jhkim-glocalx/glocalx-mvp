@@ -100,6 +100,25 @@ test("owner submits a campaign, an operator produces it, and the owner approves"
     "ready_for_review"
   )
 
+  // Task 8: handing the material over leaves an open nudge on the queue, because
+  // nothing in v2 pushes the in-app notice to the owner's phone.
+  await expect(operatorPage.getByTestId("nudge-panel")).toBeVisible()
+  await expect(operatorPage.getByTestId("mark-nudged")).toBeVisible()
+  await operatorPage.getByTestId("mark-nudged").click()
+  await expect(operatorPage.getByTestId("nudge-done")).toBeVisible()
+  await expect(operatorPage.getByTestId("mark-nudged")).toHaveCount(0)
+
+  // The in-app half of the same event: one assistant message in the owner's own
+  // chat thread, indistinguishable from every other thing the assistant says.
+  // The widget mounts only on the composer-less dashboard, so return there
+  // rather than opening it from the campaigns tab.
+  await ownerPage.goto(`${ownerBaseUrl}/app`)
+  await ownerPage.getByTestId("chat-fab").click()
+  await expect(
+    ownerPage.getByText("요청하신 마케팅 소재가 준비됐어요", { exact: false })
+  ).toBeVisible({ timeout: 15_000 })
+  await ownerPage.getByTestId("chat-fab").click()
+
   // Owner: the request now offers a review, showing the operator's final copy.
   await refreshOwnerCampaignList(ownerPage)
   await expect(ownerPage.getByText("검토 대기")).toBeVisible({

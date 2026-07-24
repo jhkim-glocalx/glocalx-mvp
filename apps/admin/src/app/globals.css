@@ -683,6 +683,29 @@ select {
   font-size: 11px;
 }
 
+/* An outstanding owner nudge — the one queue step no automation covers in v2,
+   so it reads as an open task rather than as metadata. Same warm amber the
+   inbox flag uses; @glocalx/ui has no danger token. */
+.ops-queue-nudge-pending {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(224, 164, 88, 0.14);
+  color: #e0a458;
+  font-size: 11px;
+}
+
+.ops-queue-nudge-copy {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ops-queue-nudge-done {
+  color: #e0a458;
+  font-size: 13px;
+}
+
 .ops-queue-detail {
   display: flex;
   flex-direction: column;
