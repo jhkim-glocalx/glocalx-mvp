@@ -19,8 +19,24 @@ describe("campaign-contracts", () => {
       brief: "Promote our new brunch menu",
       status: "submitted",
       finalCopy: null,
+      nudgedAt: null,
       createdAt: "2026-07-21T00:00:00.000Z",
       updatedAt: "2026-07-21T00:00:00.000Z",
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  it("parses a campaign request the operator has already nudged", () => {
+    const result = campaignRequestSchema.safeParse({
+      id: "req_1",
+      storeId: "store_1",
+      brief: "Promote our new brunch menu",
+      status: "ready_for_review",
+      finalCopy: "Brunch is back.",
+      nudgedAt: "2026-07-25T01:00:00.000Z",
+      createdAt: "2026-07-21T00:00:00.000Z",
+      updatedAt: "2026-07-25T01:00:00.000Z",
     })
 
     expect(result.success).toBe(true)
@@ -33,6 +49,7 @@ describe("campaign-contracts", () => {
       brief: "Promote our new brunch menu",
       status: "not_a_real_status",
       finalCopy: null,
+      nudgedAt: null,
       createdAt: "2026-07-21T00:00:00.000Z",
       updatedAt: "2026-07-21T00:00:00.000Z",
     })

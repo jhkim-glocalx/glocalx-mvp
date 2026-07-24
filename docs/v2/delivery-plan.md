@@ -280,6 +280,35 @@ Decisions taken while building task 7 (PR5 — org credential plumbing):
   records provider and whether an expiry was set, and a missing
   `TOKEN_ENCRYPTION_KEY` returns a named 503 rather than a 500.
 
+Decisions taken while building task 8 (PR6 — chat linkage + operator nudge):
+
+- **One status posts a chat notice: `ready_for_review`.** It is the only
+  transition the owner has to act on; narrating production, approval, and
+  publishing into the same thread would turn the concierge conversation into a
+  status log and train the owner to ignore it. (The publish retry-cap notice
+  from task 6 stands — it also asks the owner for something, namely patience
+  with a human.) The notice is posted only after the guarded transition takes,
+  so an operator who lost the race never announces material the winner moved on
+  from.
+- **The nudge is a column, not an event row.** `campaign_requests.nudged_at`
+  (migration 0013) answers one question — is the owner still owed a personal
+  message about the state they are in now — and the queue reads it on every card.
+  A `campaign_review_events` row would carry who and when, but the queue would
+  then have to scan the trail to answer a boolean, and the trail is the owner's
+  decision history, not ops' worklist. The audit log already records which
+  operator marked it.
+- **Every status change clears `nudged_at`.** A nudge describes the state the
+  owner is sitting in, so a transition always ends the episode it belonged to.
+  Clearing it inside the one guarded UPDATE means no caller has to remember, and
+  a campaign that loops back through production is correctly owed a fresh nudge
+  the second time it reaches the owner.
+- **Marking a nudge is exactly-once.** The guard is
+  `status = 'ready_for_review' AND nudged_at IS NULL`, so a double-click writes
+  one row and one audit entry, and the loser is told to reload — the same
+  status-as-token story every other write in this pipeline uses. The route takes
+  no body: the operator asserts one fact, the server stamps the time, and what
+  they actually said stays in their own thread with the owner.
+
 Tasks:
 
 1. **Migrations:** `campaign_requests`, `campaign_assets`,
@@ -473,7 +502,7 @@ Synthesized from review findings; JSONL artifact for /autoplan at
 - [ ] **T7 (P2, ~0.5d / ~45m)** — publish — operator-triggered retry cap + tests (Issue 6)
 - [ ] **T8 (P2, ~0.25d / ~15m)** — db — polling-path indexes in table migrations (Issue 9)
 - [ ] **T9 (P2, ~2d / ~1h)** — tests — six coverage additions (Issue 8)
-- [ ] **T10 (P2, ~0.5d / ~30m)** — ops-queue — nudge tracking on ready_for_review (OV-5)
+- [x] **T10 (P2, ~0.5d / ~30m)** — ops-queue — nudge tracking on ready_for_review (OV-5)
 - [ ] **T11 (P3, ~0.25d / ~15m)** — publish — IG publish-time signed URL, 1h TTL (OV-8)
 
 ## GSTACK REVIEW REPORT

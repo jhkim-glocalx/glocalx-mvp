@@ -69,6 +69,9 @@ export type QueueRequestView = {
   readonly brief: string
   readonly status: string
   readonly finalCopy: string | null
+  // Null while the owner is still owed an out-of-band nudge about the state
+  // this request is in.
+  readonly nudgedAt: string | null
   readonly createdAt: string
   readonly updatedAt: string
   readonly assets: readonly QueueAssetView[]
@@ -84,6 +87,7 @@ export type QueueEntryView = {
   readonly brief: string
   readonly status: string
   readonly finalCopy: string | null
+  readonly nudgedAt: string | null
   readonly originalCount: number
   readonly processedCount: number
   readonly updatedAt: string
@@ -97,6 +101,7 @@ export function toQueueEntryView(entry: CampaignQueueEntry): QueueEntryView {
     brief: entry.brief,
     status: entry.status,
     finalCopy: entry.finalCopy,
+    nudgedAt: entry.nudgedAt,
     originalCount: entry.originalCount,
     processedCount: entry.processedCount,
     updatedAt: entry.updatedAt,
@@ -120,6 +125,7 @@ export function toQueueRequestView(
     brief: detail.brief,
     status: detail.status,
     finalCopy: detail.finalCopy,
+    nudgedAt: detail.nudgedAt,
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,
     assets: detail.assets.map((asset) =>
