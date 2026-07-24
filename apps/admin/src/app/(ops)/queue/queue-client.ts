@@ -95,6 +95,18 @@ export async function submitForReview(
   )
 }
 
+// Both first publish and retry go through this one call — the route picks
+// START_PUBLISHING or RETRY_PUBLISHING from the request's current status, so
+// the console never has to track which one it means.
+export async function publishCampaign(
+  requestId: string,
+  channels: readonly string[]
+): Promise<QueueActionResult> {
+  return readRequestResult(
+    await fetch(`${queueUrl}/${requestId}/publish`, jsonInit({ channels }))
+  )
+}
+
 type UploadToken = {
   readonly mode: "stub" | "production"
   readonly uploadToken: string

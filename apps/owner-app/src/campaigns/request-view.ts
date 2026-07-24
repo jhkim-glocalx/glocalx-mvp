@@ -1,4 +1,5 @@
 import type { CampaignRequestDetail } from "@glocalx/db/support/campaign-store"
+import type { PublishJob } from "@glocalx/domain/campaign-contracts"
 import type { MediaStore } from "@glocalx/integrations/media-store"
 
 // The owner-facing shape of a campaign request. Deliberately narrower than the
@@ -20,6 +21,15 @@ export type OwnerCampaignReviewEventView = {
   readonly createdAt: string
 }
 
+// Per-channel publish outcome, trimmed to what the owner needs: which channel,
+// where it stands, and when it last moved. The attempt count, the operator-
+// facing failure text, and the channel's own post id stay on the operator side.
+export type OwnerCampaignPublishJobView = {
+  readonly channel: string
+  readonly status: string
+  readonly updatedAt: string
+}
+
 export type OwnerCampaignRequestView = {
   readonly id: string
   readonly brief: string
@@ -29,11 +39,13 @@ export type OwnerCampaignRequestView = {
   readonly updatedAt: string
   readonly assets: readonly OwnerCampaignAssetView[]
   readonly reviewEvents: readonly OwnerCampaignReviewEventView[]
+  readonly publishJobs: readonly OwnerCampaignPublishJobView[]
 }
 
 export async function toOwnerCampaignRequestView(
   mediaStore: MediaStore,
-  detail: CampaignRequestDetail
+  detail: CampaignRequestDetail,
+  publishJobs: readonly PublishJob[]
 ): Promise<OwnerCampaignRequestView> {
   const assets: OwnerCampaignAssetView[] = []
   for (const asset of detail.assets) {
@@ -62,6 +74,11 @@ export async function toOwnerCampaignRequestView(
       decision: event.decision,
       note: event.note,
       createdAt: event.createdAt,
+    })),
+    publishJobs: publishJobs.map((job) => ({
+      channel: job.channel,
+      status: job.status,
+      updatedAt: job.updatedAt,
     })),
   }
 }

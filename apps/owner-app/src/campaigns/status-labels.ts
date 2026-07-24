@@ -1,4 +1,8 @@
-import type { CampaignStatus } from "@glocalx/domain/campaign-state-machine"
+import type {
+  CampaignStatus,
+  PublishChannel,
+  PublishJobStatus,
+} from "@glocalx/domain/campaign-state-machine"
 
 // Owner-facing Korean labels for every campaign status. Lives outside the
 // client model so route handlers can build the same wording into their
@@ -19,4 +23,26 @@ const campaignStatusLabels: Record<CampaignStatus, string> = {
 
 export function campaignStatusLabel(status: string): string {
   return campaignStatusLabels[status as CampaignStatus] ?? status
+}
+
+const publishChannelLabels: Record<PublishChannel, string> = {
+  gbp: "구글",
+  instagram: "인스타",
+}
+
+export function publishChannelLabel(channel: string): string {
+  return publishChannelLabels[channel as PublishChannel] ?? channel
+}
+
+// The owner sees where each channel stands, not how many attempts it took —
+// the attempt count and the failure text are operator detail.
+const publishJobStatusLabels: Record<PublishJobStatus, string> = {
+  queued: "대기 중",
+  publishing: "게시 중",
+  published: "게시 완료",
+  failed: "실패",
+}
+
+export function publishJobStatusLabel(status: string): string {
+  return publishJobStatusLabels[status as PublishJobStatus] ?? status
 }

@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import {
   campaignConflictResponse,
   campaignRequestNotFoundResponse,
-  signQueueAssets,
+  toQueueRequestResponse,
 } from "@/app/api/queue/queue-responses"
 import { applyCampaignAction } from "@/server/queue-view"
 import { withAdminRoute } from "@/server/route-database"
@@ -69,10 +69,7 @@ export async function POST(
       })
 
       return Response.json({
-        request: await signQueueAssets(
-          context.adapters.mediaStore,
-          outcome.request
-        ),
+        request: await toQueueRequestResponse(context, outcome.request),
       })
     },
     { requireSameOrigin: true }

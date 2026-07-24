@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server"
 
 import {
   campaignRequestNotFoundResponse,
-  signQueueAssets,
+  toQueueRequestResponse,
 } from "@/app/api/queue/queue-responses"
 import { withAdminRoute } from "@/server/route-database"
 
@@ -23,7 +23,7 @@ export async function GET(
       return campaignRequestNotFoundResponse()
     }
     return Response.json({
-      request: await signQueueAssets(context.adapters.mediaStore, detail),
+      request: await toQueueRequestResponse(context, detail),
     })
   })
 }

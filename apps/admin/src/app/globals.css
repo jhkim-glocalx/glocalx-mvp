@@ -791,3 +791,42 @@ select {
   gap: 8px;
   margin-top: 10px;
 }
+
+.ops-publish-channels {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.ops-publish-channel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ops-publish-channel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.ops-publish-channel-meta {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ops-publish-channel-blocked {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ops-publish-channel-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #e0a85a;
+}

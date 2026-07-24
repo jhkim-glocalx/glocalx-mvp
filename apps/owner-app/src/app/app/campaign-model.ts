@@ -10,6 +10,7 @@ export type CampaignRequestSummary = {
   readonly createdAt: string
   readonly updatedAt: string
   readonly assetCount: number
+  readonly publishJobs: readonly CampaignPublishJobView[]
 }
 
 export type CampaignIntakeState =
@@ -51,7 +52,22 @@ function readCampaignRequestSummary(
     return undefined
   }
 
-  return { id, brief, status, createdAt, updatedAt, assetCount }
+  const publishJobs = Array.isArray(value["publishJobs"])
+    ? value["publishJobs"]
+    : []
+
+  return {
+    id,
+    brief,
+    status,
+    createdAt,
+    updatedAt,
+    assetCount,
+    publishJobs: publishJobs.flatMap((row) => {
+      const job = readCampaignPublishJobView(row)
+      return job === undefined ? [] : [job]
+    }),
+  }
 }
 
 export function toCampaignRequestList(
@@ -81,6 +97,12 @@ export type CampaignReviewEventView = {
   readonly createdAt: string
 }
 
+export type CampaignPublishJobView = {
+  readonly channel: string
+  readonly status: string
+  readonly updatedAt: string
+}
+
 export type CampaignRequestDetail = {
   readonly id: string
   readonly brief: string
@@ -88,6 +110,7 @@ export type CampaignRequestDetail = {
   readonly finalCopy: string | null
   readonly assets: readonly CampaignAssetView[]
   readonly reviewEvents: readonly CampaignReviewEventView[]
+  readonly publishJobs: readonly CampaignPublishJobView[]
 }
 
 function readCampaignAssetView(value: unknown): CampaignAssetView | undefined {
@@ -100,6 +123,25 @@ function readCampaignAssetView(value: unknown): CampaignAssetView | undefined {
     return undefined
   }
   return { id, kind, signedUrl: readString(value["signedUrl"]) ?? null }
+}
+
+function readCampaignPublishJobView(
+  value: unknown
+): CampaignPublishJobView | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+  const channel = readString(value["channel"])
+  const status = readString(value["status"])
+  const updatedAt = readString(value["updatedAt"])
+  if (
+    channel === undefined ||
+    status === undefined ||
+    updatedAt === undefined
+  ) {
+    return undefined
+  }
+  return { channel, status, updatedAt }
 }
 
 function readCampaignReviewEventView(
@@ -147,6 +189,9 @@ export function toCampaignRequestDetail(
   const reviewEvents = Array.isArray(request["reviewEvents"])
     ? request["reviewEvents"]
     : []
+  const publishJobs = Array.isArray(request["publishJobs"])
+    ? request["publishJobs"]
+    : []
 
   return {
     id,
@@ -160,6 +205,10 @@ export function toCampaignRequestDetail(
     reviewEvents: reviewEvents.flatMap((row) => {
       const event = readCampaignReviewEventView(row)
       return event === undefined ? [] : [event]
+    }),
+    publishJobs: publishJobs.flatMap((row) => {
+      const job = readCampaignPublishJobView(row)
+      return job === undefined ? [] : [job]
     }),
   }
 }

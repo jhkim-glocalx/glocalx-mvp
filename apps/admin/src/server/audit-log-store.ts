@@ -17,6 +17,7 @@ export type AdminAuditAction =
   | "campaign_register_asset"
   | "campaign_set_final_copy"
   | "campaign_submit_for_review"
+  | "campaign_publish"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction

@@ -20,6 +20,8 @@ import { createDatabaseActivityEventStore } from "@glocalx/db/support/activity-s
 import type { ActivityEventStore } from "@glocalx/db/support/activity-store"
 import { createDatabaseCampaignStore } from "@glocalx/db/support/campaign-store"
 import type { CampaignStore } from "@glocalx/db/support/campaign-store"
+import { createDatabasePublishJobStore } from "@glocalx/db/support/publish-job-store"
+import type { PublishJobStore } from "@glocalx/db/support/publish-job-store"
 import { createDatabaseCsConversationStore } from "@glocalx/db/support/conversation-store"
 import type { CsConversationStore } from "@glocalx/db/support/conversation-store"
 import { createDatabaseCsMessageContextStore } from "@glocalx/db/support/message-context-store"
@@ -83,6 +85,7 @@ export type QueryableRouteDatabaseContext = {
     typeof createDatabaseOnboardingExtractionRepository
   >
   readonly postStore: ReturnType<typeof createDatabasePostStore>
+  readonly publishJobStore: PublishJobStore
   readonly sessionStore: SessionStore
   readonly storeProfileRepository: ReturnType<
     typeof createDatabaseStoreProfileRepository
@@ -241,6 +244,7 @@ function buildRouteDatabaseContext(
     onboardingExtractionRepository:
       createDatabaseOnboardingExtractionRepository(queryable),
     postStore: createDatabasePostStore(queryable),
+    publishJobStore: createDatabasePublishJobStore(queryable),
     sessionStore: createDatabaseSessionStore(queryable),
     storeProfileRepository: createDatabaseStoreProfileRepository(queryable),
   }

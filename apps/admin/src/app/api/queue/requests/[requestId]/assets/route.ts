@@ -8,7 +8,7 @@ import {
   campaignConflictResponse,
   campaignRequestNotFoundResponse,
   mediaStoreUnavailableResponse,
-  signQueueAssets,
+  toQueueRequestResponse,
 } from "@/app/api/queue/queue-responses"
 import { parseAdminJson, withAdminRoute } from "@/server/route-database"
 import { registerProcessedAssetRequestSchema } from "@glocalx/domain/campaign-contracts"
@@ -110,7 +110,7 @@ export async function POST(
       }
       return Response.json(
         {
-          request: await signQueueAssets(context.adapters.mediaStore, detail),
+          request: await toQueueRequestResponse(context, detail),
         },
         { status: 201 }
       )
