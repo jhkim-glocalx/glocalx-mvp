@@ -17,6 +17,30 @@ export type GbpAccessState = z.infer<typeof gbpAccessStateSchema>
 
 export const gbpAccessStates = gbpAccessStateSchema.options
 
+// The owner sees a coarse three-way status, not the six operator states: the
+// flow is either still moving toward access, done, or stuck and needing a human.
+// Both the owner status route (which returns the phase) and the owner UI (which
+// renders copy per phase) read this one mapping so they can't disagree.
+export type GbpAccessOwnerPhase = "in_progress" | "granted" | "attention"
+
+const ownerPhaseByState: Readonly<Record<GbpAccessState, GbpAccessOwnerPhase>> =
+  {
+    not_requested: "in_progress",
+    invited: "in_progress",
+    pending: "in_progress",
+    granted: "granted",
+    // revoked/blocked are the only states an owner can't wait their way out of —
+    // they route to chat ("attention"), never a dead end.
+    revoked: "attention",
+    blocked: "attention",
+  }
+
+export function gbpAccessOwnerPhase(
+  state: GbpAccessState
+): GbpAccessOwnerPhase {
+  return ownerPhaseByState[state]
+}
+
 // The natural operator vocabulary (SEND_INVITE/MARK_PENDING/GRANT/REVOKE/BLOCK)
 // walks the owner-visible progression; OVERRIDE is the audited escape hatch for
 // out-of-band grants and corrections. Keeping the two apart lets the audit log
@@ -26,8 +50,38 @@ export type GbpAccessAction =
   | { readonly type: "MARK_PENDING" }
   | { readonly type: "GRANT" }
   | { readonly type: "REVOKE" }
-  | { readonly type: "BLOCK"; readonly reason?: string }
+  // reason is `string | undefined` (not just optional) so the value parsed from
+  // gbpAccessActionRequestSchema assigns cleanly under exactOptionalPropertyTypes.
+  | { readonly type: "BLOCK"; readonly reason?: string | undefined }
   | { readonly type: "OVERRIDE"; readonly targetState: GbpAccessState }
+
+// Wire form of GbpAccessAction the admin transition route accepts. Parses
+// straight into the action union, so the route never hand-assembles an action
+// from loose fields. `.strict()` on each member keeps a BLOCK from smuggling a
+// targetState or an OVERRIDE from arriving without one.
+export const gbpAccessActionRequestSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("SEND_INVITE") }).strict(),
+  z.object({ type: z.literal("MARK_PENDING") }).strict(),
+  z.object({ type: z.literal("GRANT") }).strict(),
+  z.object({ type: z.literal("REVOKE") }).strict(),
+  z
+    .object({
+      type: z.literal("BLOCK"),
+      reason: z.string().trim().min(1).max(500).optional(),
+    })
+    .strict(),
+  z
+    .object({ type: z.literal("OVERRIDE"), targetState: gbpAccessStateSchema })
+    .strict(),
+])
+
+// Operator chase-note edit. Non-empty and bounded; the note is operator text
+// about the store, never owner content.
+export const gbpAccessNoteRequestSchema = z
+  .object({ note: z.string().trim().min(1).max(500) })
+  .strict()
+
+export type GbpAccessNoteRequest = z.infer<typeof gbpAccessNoteRequestSchema>
 
 export class InvalidGbpAccessTransitionError extends Error {
   constructor(

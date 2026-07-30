@@ -242,4 +242,16 @@ describe("gbp access store", () => {
       storeId
     )
   })
+
+  it("returns a single operator entry with the store name", async () => {
+    const created = await store.ensureGbpAccessRequest({
+      id: randomUUID(),
+      storeId,
+      now: at(0),
+    })
+    const entry = await store.getGbpAccessListEntryById(created.id)
+    expect(entry?.storeName).toBe("First Store")
+    expect(entry?.state).toBe("not_requested")
+    expect(await store.getGbpAccessListEntryById("missing")).toBeUndefined()
+  })
 })

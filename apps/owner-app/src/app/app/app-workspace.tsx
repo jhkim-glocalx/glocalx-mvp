@@ -24,10 +24,12 @@ const activitySectionByNav: Record<AppNavId, ActivitySection> = {
   targets: "marketing",
 }
 import { AppWorkspaceTopBar } from "./app-workspace-topbar"
+import { GbpAccessStatusCard } from "./gbp-access-status-card"
 import { ReferenceFlowScreens } from "./reference-flow-screens"
 import { useAppOnboarding } from "./use-app-onboarding"
 import { useCampaignIntake } from "./use-campaign-intake"
 import { useCampaignReview } from "./use-campaign-review"
+import { useGbpAccess } from "./use-gbp-access"
 import { usePostingWorkspace } from "./use-posting-workspace"
 
 type AppWorkspaceProps = {
@@ -60,6 +62,7 @@ export function AppWorkspace({
   // The review card and the status list read the same requests, so a decision
   // refreshes the list the card was opened from.
   const campaignReview = useCampaignReview(campaigns.refreshRequests)
+  const gbpAccess = useGbpAccess()
 
   useEffect(() => {
     const hasOnboardingResult =
@@ -94,6 +97,9 @@ export function AppWorkspace({
       setActiveNavId(navId)
       if (navId === "campaigns") {
         void campaigns.refreshRequests()
+      }
+      if (navId === "onboarding") {
+        void gbpAccess.refresh()
       }
     }
   }
@@ -208,6 +214,18 @@ export function AppWorkspace({
           onboardingSlotMessages={onboarding.slotMessages}
           onboardingSlotState={onboarding.slotState}
           onboardingSubmittedInput={onboarding.submittedInput}
+          onboardingGbpAccessCard={
+            <GbpAccessStatusCard
+              access={
+                gbpAccess.state.kind === "loaded"
+                  ? gbpAccess.state.access
+                  : null
+              }
+              // The CS chat FAB currently mounts only on the dashboard (Phase 1
+              // limitation), so a stuck owner is routed there to reach chat.
+              onContactSupport={() => setActiveNavId("dashboard")}
+            />
+          }
           onOnboardingCandidateSearchAgain={handleOnboardingSearchAgain}
           onOnboardingCandidateSelect={onboarding.selectCandidate}
           onOnboardingConfirm={onboarding.confirm}

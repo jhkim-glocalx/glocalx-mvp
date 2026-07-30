@@ -20,6 +20,8 @@ import { createDatabaseActivityEventStore } from "@glocalx/db/support/activity-s
 import type { ActivityEventStore } from "@glocalx/db/support/activity-store"
 import { createDatabaseCampaignStore } from "@glocalx/db/support/campaign-store"
 import type { CampaignStore } from "@glocalx/db/support/campaign-store"
+import { createDatabaseGbpAccessStore } from "@glocalx/db/support/gbp-access-store"
+import type { GbpAccessStore } from "@glocalx/db/support/gbp-access-store"
 import { createDatabasePublishJobStore } from "@glocalx/db/support/publish-job-store"
 import type { PublishJobStore } from "@glocalx/db/support/publish-job-store"
 import { createDatabaseCsConversationStore } from "@glocalx/db/support/conversation-store"
@@ -76,6 +78,7 @@ export type QueryableRouteDatabaseContext = {
   readonly emailCredentialsRepository: ReturnType<
     typeof createDatabaseEmailCredentialsRepository
   >
+  readonly gbpAccessStore: GbpAccessStore
   readonly gbpStore: ReturnType<typeof createDatabaseGbpStore>
   readonly legacySqliteDatabase?: SqliteDatabase
   readonly oauthIdentityRepository: ReturnType<
@@ -236,6 +239,7 @@ function buildRouteDatabaseContext(
     csMessageStore: createDatabaseCsMessageStore(queryable),
     emailCredentialsRepository:
       createDatabaseEmailCredentialsRepository(queryable),
+    gbpAccessStore: createDatabaseGbpAccessStore(queryable),
     gbpStore: createDatabaseGbpStore(queryable),
     ...(provider === "sqlite"
       ? { legacySqliteDatabase: databaseContext.legacySqliteDatabase }

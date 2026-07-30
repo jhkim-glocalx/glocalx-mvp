@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import type { NextRequest } from "next/server"
 
 import { gbpSetupRequestSchema } from "@glocalx/domain"
@@ -16,7 +18,13 @@ export async function POST(request: NextRequest) {
   }
 
   return withQueryableRouteDatabase(
-    async ({ adapters, gbpStore, sessionStore, storeProfileRepository }) => {
+    async ({
+      adapters,
+      gbpAccessStore,
+      gbpStore,
+      sessionStore,
+      storeProfileRepository,
+    }) => {
       const session = await readDatabaseSession(request, sessionStore)
       if (session === undefined) {
         return requiredSessionResponse()
@@ -29,6 +37,23 @@ export async function POST(request: NextRequest) {
         storeId: session.storeId,
         storeProfileRepository,
       })
+
+      // A result that reached Google (anything but blocked-before-connect) means
+      // the owner has connected their GBP, so start tracking the org
+      // manager-access request. Idempotent on the store: re-running setup returns
+      // the existing row and never resets operator-advanced state.
+      if (
+        result.status !== "BLOCKED_BY_CREDENTIALS" &&
+        result.status !== "STORE_PROFILE_REQUIRED"
+      ) {
+        await gbpAccessStore.ensureGbpAccessRequest({
+          id: randomUUID(),
+          storeId: session.storeId,
+          gbpLocationRef: result.googleLocationId,
+          now: adapters.clock.now(),
+        })
+      }
+
       return Response.json(result)
     }
   )

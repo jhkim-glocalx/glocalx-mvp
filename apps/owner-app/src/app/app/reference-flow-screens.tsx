@@ -1,5 +1,7 @@
 "use client"
 
+import type { ReactNode } from "react"
+
 import type { StoreProfileField } from "@/app/onboarding/onboarding-components"
 import type {
   ConfirmationState,
@@ -70,6 +72,10 @@ export type ReferenceFlowScreensProps = {
   readonly onboardingSlotMessages: readonly OnboardingChatTurn[]
   readonly onboardingSlotState: OnboardingSlotTurnState
   readonly onboardingSubmittedInput: string
+  // The org manager-access status card, rendered above the onboarding flow. A
+  // node rather than data+handlers so this screen stays agnostic to the access
+  // model — app-workspace owns the hook and the card.
+  readonly onboardingGbpAccessCard: ReactNode
   readonly onOnboardingCandidateSearchAgain: () => void
   readonly onOnboardingCandidateSelect: (candidate: StoreProfileDraft) => void
   readonly onOnboardingConfirm: () => void
@@ -120,6 +126,7 @@ export function ReferenceFlowScreens({
   onboardingSlotMessages,
   onboardingSlotState,
   onboardingSubmittedInput,
+  onboardingGbpAccessCard,
   onOnboardingCandidateSearchAgain,
   onOnboardingCandidateSelect,
   onOnboardingConfirm,
@@ -145,6 +152,7 @@ export function ReferenceFlowScreens({
   return (
     <section className="gx-chat-stage" aria-label="글로컬엑스 작업 흐름">
       <FlowNav activeNavId={activeNavId} onSelect={onSelect} />
+      {activeNavId === "onboarding" ? onboardingGbpAccessCard : null}
       {activeNavId === "onboarding" ? (
         <OnboardingSnapshot
           confirmation={onboardingConfirmation}

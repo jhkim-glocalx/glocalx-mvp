@@ -10,6 +10,7 @@ import type { DemoSession } from "@/auth/session"
 import type * as ServerHttp from "@/server/http"
 
 import {
+  createGbpAccessStore,
   createGbpStore,
   createPerformanceRequest,
   createRouteContext,
@@ -92,9 +93,11 @@ describe("Postgres route database boundary", () => {
   it("persists GBP setup through the injected provider-neutral stores", async () => {
     const sessionStore = createSessionStore(demoSession)
     const gbpStore = createGbpStore()
+    const gbpAccess = createGbpAccessStore()
     const storeProfileRepository = createStoreProfileRepository()
     installRouteContext(
       createRouteContext({
+        gbpAccessStore: gbpAccess.store,
         gbpStore: gbpStore.store,
         sessionStore: sessionStore.store,
         storeProfileRepository: storeProfileRepository.repository,
@@ -131,6 +134,14 @@ describe("Postgres route database boundary", () => {
         status: "VERIFICATION_PENDING",
         storeId: demoStoreId,
         subjectId: "stub-google-owner",
+      },
+    ])
+    // A successful connect auto-starts org access tracking, seeded with the
+    // Google location id the setup returned.
+    expect(gbpAccess.ensureCalls).toEqual([
+      {
+        storeId: demoStoreId,
+        gbpLocationRef: "route-boundary-google-location",
       },
     ])
   })

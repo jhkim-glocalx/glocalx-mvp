@@ -947,3 +947,137 @@ select {
   font-size: 13px;
   color: #5ac891;
 }
+
+/* Stores — GBP org manager-access tracking (Phase 4). */
+.ops-stores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.ops-stores-error {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(224, 112, 90, 0.14);
+  color: #e0705a;
+  font-size: 13px;
+}
+
+.ops-store-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--canvas-2);
+}
+
+.ops-store-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ops-store-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ops-store-state {
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(224, 168, 90, 0.14);
+  color: #e0a85a;
+}
+
+.ops-store-state-granted {
+  background: rgba(90, 200, 145, 0.14);
+  color: #5ac891;
+}
+
+.ops-store-state-not_requested {
+  background: var(--canvas);
+  color: var(--muted);
+}
+
+.ops-store-state-revoked,
+.ops-store-state-blocked {
+  background: rgba(224, 112, 90, 0.14);
+  color: #e0705a;
+}
+
+.ops-store-age {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.ops-store-meta,
+.ops-store-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ops-store-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ops-store-override,
+.ops-store-note-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ops-store-override-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ops-store-override select,
+.ops-store-note-input {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: inherit;
+  font-size: 12px;
+}
+
+.ops-store-note-input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.ops-store-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ops-store-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ops-store-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

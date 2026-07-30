@@ -68,6 +68,11 @@ export interface GbpAccessStore {
   getGbpAccessRequestById(
     requestId: string
   ): Promise<GbpAccessRequest | undefined>
+  // Operator single-row read that carries the store name, so a transition can
+  // return a fully-rendered list entry without a second query.
+  getGbpAccessListEntryById(
+    requestId: string
+  ): Promise<GbpAccessRequestListEntry | undefined>
   listGbpAccessRequests(): Promise<readonly GbpAccessRequestListEntry[]>
   // Returns undefined when the guard missed — the row is gone or its state
   // moved on. Callers surface that as a stale-view conflict, never a retry.
@@ -171,6 +176,24 @@ export function createDatabaseGbpAccessStore(
 
     async getGbpAccessRequestById(requestId) {
       return readById(queryable, requestId)
+    },
+
+    async getGbpAccessListEntryById(requestId) {
+      const row = await queryable.queryOne(
+        `SELECT ${gbpAccessListProjection},
+                s.name AS "storeName"
+           FROM gbp_access_requests r
+           JOIN stores s ON s.id = r.store_id
+          WHERE r.id = ?`,
+        [requestId]
+      )
+      if (row === undefined) {
+        return undefined
+      }
+      return {
+        ...toGbpAccessRequest(row),
+        storeName: z.string().parse(row["storeName"]),
+      }
     },
 
     async listGbpAccessRequests() {
