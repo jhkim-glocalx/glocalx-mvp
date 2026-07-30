@@ -15,7 +15,7 @@ import {
   clearAllTables,
   openDatabase,
   resolveDefaultDatabasePath,
-  seedDemoData,
+  seedFullDemoData,
 } from "./sqlite.ts"
 import type { SqliteDatabase } from "./sqlite.ts"
 import {
@@ -77,7 +77,7 @@ function replaceSqliteContents(
       .transaction(() => {
         clearAllTables(database)
         if (seed) {
-          seedDemoData(database)
+          seedFullDemoData(database)
         }
       })
       .immediate()
@@ -105,7 +105,7 @@ function seedSqliteDatabaseForProvider(
   const database = openMigratedSqliteDatabase(databasePath)
 
   try {
-    seedDemoData(database)
+    seedFullDemoData(database)
   } finally {
     database.close()
   }

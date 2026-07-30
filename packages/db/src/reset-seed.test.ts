@@ -136,3 +136,103 @@ describe("sqlite reset with a concurrent connection open", () => {
     await rm(temporaryDirectory, { force: true, recursive: true })
   })
 })
+
+// The demo/staging seed (db:reset && db:seed) must write the full cohort — the
+// unit-test fixture only writes the base happy-path store, so this is the one
+// place that exercises the cohort tier end-to-end through the real seed path.
+describe("reset and seed writes the full demo cohort", () => {
+  async function withSeededDatabase(
+    run: (database: ReturnType<typeof openDatabase>) => void
+  ): Promise<void> {
+    const temporaryDirectory = await mkdtemp(join(tmpdir(), "glocalx-cohort-"))
+    const databasePath = join(temporaryDirectory, "dev.db")
+    await resetAndSeedDatabaseForProvider({ GLOCALX_DB_PATH: databasePath })
+    const database = openDatabase(databasePath)
+    try {
+      run(database)
+    } finally {
+      database.close()
+      await rm(temporaryDirectory, { force: true, recursive: true })
+    }
+  }
+
+  it("keeps the happy-path demo-store intact for the e2e/login flows", async () => {
+    await withSeededDatabase((database) => {
+      const store = database
+        .prepare("SELECT onboarding_status FROM stores WHERE id = 'demo-store'")
+        .get() as { readonly onboarding_status: string } | undefined
+      expect(store?.onboarding_status).toBe("COMPLETED")
+
+      const location = database
+        .prepare(
+          "SELECT status FROM gbp_locations WHERE id = 'demo-gbp-location'"
+        )
+        .get() as { readonly status: string } | undefined
+      expect(location?.status).toBe("VERIFIED")
+
+      // demo-store is still the oldest store so the owner-app "oldest store"
+      // login resolves it rather than a cohort store.
+      const oldest = database
+        .prepare(
+          "SELECT id FROM stores WHERE owner_user_id = 'demo-owner' ORDER BY created_at ASC LIMIT 1"
+        )
+        .get() as { readonly id: string } | undefined
+      expect(oldest?.id).toBe("demo-store")
+    })
+  })
+
+  it("populates every operator-visible pipeline state", async () => {
+    await withSeededDatabase((database) => {
+      const storeCount = database
+        .prepare("SELECT COUNT(*) AS count FROM stores")
+        .get() as { readonly count: number }
+      expect(storeCount.count).toBe(7)
+
+      const campaignStatuses = (
+        database
+          .prepare("SELECT DISTINCT status FROM campaign_requests")
+          .all() as ReadonlyArray<{ readonly status: string }>
+      ).map((row) => row.status)
+      expect(new Set(campaignStatuses)).toEqual(
+        new Set([
+          "submitted",
+          "in_production",
+          "ready_for_review",
+          "changes_requested",
+          "partially_published",
+          "published",
+        ])
+      )
+
+      const accessStates = (
+        database
+          .prepare("SELECT DISTINCT state FROM gbp_access_requests")
+          .all() as ReadonlyArray<{ readonly state: string }>
+      ).map((row) => row.state)
+      for (const state of ["invited", "pending", "granted", "blocked"]) {
+        expect(accessStates).toContain(state)
+      }
+
+      const inboxModes = (
+        database
+          .prepare("SELECT DISTINCT mode FROM cs_conversations")
+          .all() as ReadonlyArray<{ readonly mode: string }>
+      ).map((row) => row.mode)
+      expect(inboxModes).toContain("human")
+      expect(inboxModes).toContain("ai_draft")
+    })
+  })
+
+  it("leaves no orphaned campaign rows after seeding", async () => {
+    await withSeededDatabase((database) => {
+      const orphans = database
+        .prepare(
+          `SELECT COUNT(*) AS count FROM campaign_requests c
+           LEFT JOIN stores s ON s.id = c.store_id
+           WHERE s.id IS NULL`
+        )
+        .get() as { readonly count: number }
+      expect(orphans.count).toBe(0)
+    })
+  })
+})
