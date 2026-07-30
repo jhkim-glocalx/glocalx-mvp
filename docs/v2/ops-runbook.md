@@ -34,7 +34,7 @@ console renders, so you can rehearse every action against a known store:
 
 | Store                              | Queue                              | Stores (GBP access) | Inbox             |
 | ---------------------------------- | ---------------------------------- | ------------------- | ----------------- |
-| 브런치모먼트 홍대점 (`demo-store`) | Settled (published, both channels) | Granted             | —                 |
+| 브런치모먼트 홍대점 (`demo-store`) | Settled (published, both channels) | — (e2e-owned)       | —                 |
 | 김밥천국 신촌점                    | — (onboarding IN_PROGRESS)         | not requested       | open (human)      |
 | 동네빵집 망원점                    | Submitted                          | Invited             | —                 |
 | 헤어살롱 연남점                    | In production                      | Pending             | AI draft (unsent) |
