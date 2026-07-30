@@ -401,13 +401,17 @@ Acceptance criteria:
 
 ## Phase 5 — Cohort readiness
 
-- Seed script producing a realistic demo dataset (stores in each pipeline
-  state) for staging and investor demos.
-- Operator runbook (`docs/v2/ops-runbook.md`): daily queue workflow, chat
-  SLAs, publish checklist, incident basics.
-- Full `/qa` pass on both apps (staging, stub mode), fix cycle, then
-  production cutover checklist (env matrix for both Vercel projects,
-  migration order, rollback posture per the existing deployment docs).
+- [x] Seed script producing a realistic demo dataset (stores in each
+      pipeline state) for staging and investor demos — shared `demo-dataset.ts`
+      two-tier seed (base happy-path store + cohort across every operator state),
+      SQLite + Postgres parity (PR #25).
+- [x] Operator runbook (`docs/v2/ops-runbook.md`): daily queue workflow, chat
+      SLAs, publish checklist, GBP-access console, incident basics.
+- [x] `/qa` pass on both apps (stub mode) — admin Queue/Inbox/Stores walked
+      against the seed, zero console/network errors (PR #25). Production cutover
+      checklist delivered (`docs/deployment/v2-production-cutover.md`): env
+      matrix for both Vercel projects, migration order, stub→production flip
+      caveat, rollback posture per the existing deployment docs.
 
 ---
 
@@ -425,9 +429,11 @@ Acceptance criteria:
 
 - [ ] Phase 0–5 landed on `main`, both Vercel projects serving production.
 - [ ] `docs/v2/` kept current with any in-flight design changes.
-- [ ] Operator runbook delivered and dry-run with a founder.
+- [x] Operator runbook delivered (`docs/v2/ops-runbook.md`); founder
+      dry-run still to schedule.
 - [ ] Investor pitch deck (`01_documents/glocalx-v2-pitch.pptx`).
-- [ ] Demo dataset + scripted walkthrough for investor/customer demos.
+- [x] Demo dataset delivered (`packages/db/src/demo-dataset.ts`); scripted
+      walkthrough for investor/customer demos still to write.
 
 ## Review appendix (2026-07-17 engineering review)
 
