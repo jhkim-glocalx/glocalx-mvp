@@ -571,21 +571,12 @@ export const demoCohortTables: readonly DemoTable[] = [
     // gbp_access_requests (Phase 4): the operator Stores console works this
     // table. One row per cohort store that has requested access, covering the
     // states the console renders. The onboarding store is deliberately absent
-    // (its owner phase is "not yet requested"). demo-store's granted row lives
-    // here (not in the base fixture) so the unit-test fixture stays minimal.
+    // (its owner phase is "not yet requested"). demo-store is also absent on
+    // purpose — the cross-app e2e harness seeds its own not_requested row for
+    // demo-store and drives it through the flow, so a seeded row here would
+    // collide on the one-request-per-store unique index.
     table: "gbp_access_requests",
     rows: [
-      {
-        id: "demo-gbp-access",
-        store_id: demoStoreId,
-        gbp_location_ref: "locations/demo",
-        state: "granted",
-        note: "Manager access confirmed during onboarding.",
-        requested_at: HAPPY_PATH_AT,
-        granted_at: HAPPY_PATH_AT,
-        created_at: HAPPY_PATH_AT,
-        updated_at: HAPPY_PATH_AT,
-      },
       {
         id: "demo-gbp-access-invited",
         store_id: demoCohortStoreIds.invited,
