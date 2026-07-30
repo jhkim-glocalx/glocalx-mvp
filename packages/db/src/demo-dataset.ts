@@ -1,4 +1,8 @@
-import { demoCohortStoreIds, demoStoreId, demoUserId } from "./demo-identifiers.ts"
+import {
+  demoCohortStoreIds,
+  demoStoreId,
+  demoUserId,
+} from "./demo-identifiers.ts"
 
 // Single source of truth for the deterministic demo dataset (Phase 5 cohort
 // readiness). The two seeders — SQLite (INSERT OR IGNORE) and Postgres
@@ -269,7 +273,10 @@ export const demoBaseTables: readonly DemoTable[] = [
         status: "active",
         selected_candidate_id: "naver-demo-candidate",
         selected_candidate_json: { name: "브런치모먼트 홍대점" },
-        support_metadata_json: { channel: "support", phone: "[REDACTED_PHONE]" },
+        support_metadata_json: {
+          channel: "support",
+          phone: "[REDACTED_PHONE]",
+        },
         created_at: HAPPY_PATH_AT,
         updated_at: HAPPY_PATH_AT,
         completed_at: null,

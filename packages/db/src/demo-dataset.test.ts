@@ -10,7 +10,10 @@ import {
 
 const sqlIdentifierPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
 
-function rowsFor(tables: readonly DemoTable[], table: string): readonly DemoRow[] {
+function rowsFor(
+  tables: readonly DemoTable[],
+  table: string
+): readonly DemoRow[] {
   return tables
     .filter((entry) => entry.table === table)
     .flatMap((entry) => entry.rows)
@@ -71,15 +74,31 @@ describe("demo-dataset referential integrity", () => {
     readonly childColumn: string
     readonly parentTable: string
   }> = [
-    { childTable: "stores", childColumn: "owner_user_id", parentTable: "users" },
+    {
+      childTable: "stores",
+      childColumn: "owner_user_id",
+      parentTable: "users",
+    },
     {
       childTable: "business_profile_extractions",
       childColumn: "store_id",
       parentTable: "stores",
     },
-    { childTable: "oauth_connections", childColumn: "store_id", parentTable: "stores" },
-    { childTable: "gbp_accounts", childColumn: "store_id", parentTable: "stores" },
-    { childTable: "gbp_locations", childColumn: "store_id", parentTable: "stores" },
+    {
+      childTable: "oauth_connections",
+      childColumn: "store_id",
+      parentTable: "stores",
+    },
+    {
+      childTable: "gbp_accounts",
+      childColumn: "store_id",
+      parentTable: "stores",
+    },
+    {
+      childTable: "gbp_locations",
+      childColumn: "store_id",
+      parentTable: "stores",
+    },
     {
       childTable: "gbp_locations",
       childColumn: "gbp_account_id",
@@ -95,7 +114,11 @@ describe("demo-dataset referential integrity", () => {
       childColumn: "store_id",
       parentTable: "stores",
     },
-    { childTable: "campaign_requests", childColumn: "store_id", parentTable: "stores" },
+    {
+      childTable: "campaign_requests",
+      childColumn: "store_id",
+      parentTable: "stores",
+    },
     {
       childTable: "campaign_assets",
       childColumn: "request_id",
@@ -111,15 +134,27 @@ describe("demo-dataset referential integrity", () => {
       childColumn: "request_id",
       parentTable: "campaign_requests",
     },
-    { childTable: "post_drafts", childColumn: "store_id", parentTable: "stores" },
+    {
+      childTable: "post_drafts",
+      childColumn: "store_id",
+      parentTable: "stores",
+    },
     {
       childTable: "post_publish_attempts",
       childColumn: "draft_id",
       parentTable: "post_drafts",
     },
     { childTable: "reviews", childColumn: "store_id", parentTable: "stores" },
-    { childTable: "review_replies", childColumn: "review_id", parentTable: "reviews" },
-    { childTable: "cs_conversations", childColumn: "store_id", parentTable: "stores" },
+    {
+      childTable: "review_replies",
+      childColumn: "review_id",
+      parentTable: "reviews",
+    },
+    {
+      childTable: "cs_conversations",
+      childColumn: "store_id",
+      parentTable: "stores",
+    },
     {
       childTable: "cs_messages",
       childColumn: "conversation_id",
@@ -146,7 +181,11 @@ describe("demo-dataset referential integrity", () => {
       parentTable: "conversation_sessions",
     },
     { childTable: "job_runs", childColumn: "store_id", parentTable: "stores" },
-    { childTable: "audit_logs", childColumn: "store_id", parentTable: "stores" },
+    {
+      childTable: "audit_logs",
+      childColumn: "store_id",
+      parentTable: "stores",
+    },
   ]
 
   it.each(foreignKeys)(
@@ -154,9 +193,10 @@ describe("demo-dataset referential integrity", () => {
     ({ childTable, childColumn, parentTable }) => {
       const parentIds = idsFor(parentTable)
       for (const value of valuesFor(childTable, childColumn)) {
-        expect(parentIds.has(value), `${childTable}.${childColumn}=${value}`).toBe(
-          true
-        )
+        expect(
+          parentIds.has(value),
+          `${childTable}.${childColumn}=${value}`
+        ).toBe(true)
       }
     }
   )
