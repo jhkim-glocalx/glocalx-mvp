@@ -43,6 +43,7 @@ export const operationalTableNames = [
   "publish_jobs",
   "store_channel_links",
   "org_credentials",
+  "gbp_access_requests",
 ] as const
 export const databaseTableNames = [
   ...requiredTableNames,
@@ -90,6 +91,10 @@ const migrationPaths = [
   join(currentDirectory, "migrations", "0009_campaign_pipeline.sql"),
   join(currentDirectory, "migrations", "0011_store_channel_links.sql"),
   join(currentDirectory, "migrations", "0012_org_credentials.sql"),
+  // 0010 (campaign final_copy) and 0013 (campaign nudged_at) are Postgres-only
+  // ADD COLUMN migrations; SQLite applies them via ensureColumn below because
+  // applyMigrations re-runs every file on open and ALTER TABLE is not idempotent.
+  join(currentDirectory, "migrations", "0014_gbp_access_requests.sql"),
 ] as const
 
 const sqlIdentifierPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
