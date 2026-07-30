@@ -63,6 +63,7 @@ function baseProps(
     onboardingSlotMessages: [],
     onboardingSlotState: { kind: "idle" },
     onboardingSubmittedInput: "",
+    onboardingGbpAccessCard: null,
     postingChatTurns: [],
     postingDecision: overrides.postingDecision ?? { kind: "idle" },
     publish: { kind: "idle" },

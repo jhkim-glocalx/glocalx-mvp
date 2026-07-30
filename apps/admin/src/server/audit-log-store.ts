@@ -20,6 +20,17 @@ export type AdminAuditAction =
   | "campaign_mark_nudged"
   | "campaign_publish"
   | "org_credential_saved"
+  // GBP org manager-access transitions. The natural operator actions carry their
+  // own code; gbp_access_override marks a forced out-of-band state change, kept
+  // distinct so the log separates "the flow advanced" from "an operator forced
+  // it". gbp_access_note is a chase-note edit with no state change.
+  | "gbp_access_send_invite"
+  | "gbp_access_mark_pending"
+  | "gbp_access_grant"
+  | "gbp_access_revoke"
+  | "gbp_access_block"
+  | "gbp_access_override"
+  | "gbp_access_note"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction

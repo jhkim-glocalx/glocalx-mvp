@@ -12,6 +12,8 @@ import {
 import { openDatabaseContext } from "@glocalx/db"
 import { createDatabaseCampaignStore } from "@glocalx/db/support/campaign-store"
 import type { CampaignStore } from "@glocalx/db/support/campaign-store"
+import { createDatabaseGbpAccessStore } from "@glocalx/db/support/gbp-access-store"
+import type { GbpAccessStore } from "@glocalx/db/support/gbp-access-store"
 import { createDatabaseCsConversationStore } from "@glocalx/db/support/conversation-store"
 import type { CsConversationStore } from "@glocalx/db/support/conversation-store"
 import { createDatabaseCsMessageContextStore } from "@glocalx/db/support/message-context-store"
@@ -38,6 +40,7 @@ export type AdminRouteContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
   readonly auditLogStore: AdminAuditLogStore
   readonly campaignStore: CampaignStore
+  readonly gbpAccessStore: GbpAccessStore
   readonly csConversationStore: CsConversationStore
   readonly csMessageContextStore: CsMessageContextStore
   readonly csMessageStore: CsMessageStore
@@ -140,6 +143,7 @@ export async function withAdminRoute(
       adapters: createIntegrationAdapters(),
       auditLogStore: createAdminAuditLogStore(queryable),
       campaignStore: createDatabaseCampaignStore(queryable),
+      gbpAccessStore: createDatabaseGbpAccessStore(queryable),
       csConversationStore: createDatabaseCsConversationStore(queryable),
       csMessageContextStore: createDatabaseCsMessageContextStore(queryable),
       csMessageStore: createDatabaseCsMessageStore(queryable),

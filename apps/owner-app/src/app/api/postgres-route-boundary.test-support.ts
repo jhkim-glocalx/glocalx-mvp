@@ -2,12 +2,14 @@ import { NextRequest } from "next/server"
 
 import type { DemoSession, SessionCookieValues } from "@/auth/session"
 import { createIntegrationAdapters } from "@glocalx/integrations"
+import type { GbpAccessStore } from "@glocalx/db/support/gbp-access-store"
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import type { SessionStore } from "@/server/repositories/session-store"
 import type { StoreProfileRepository } from "@/server/repositories/store-profile"
 
 export type RouteBoundaryContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
+  readonly gbpAccessStore: GbpAccessStore
   readonly gbpStore: GbpStore
   readonly legacySqliteDatabase: never
   readonly sessionStore: SessionStore
@@ -162,13 +164,70 @@ function createMissingStoreProfileRepository(): StoreProfileRepository {
   }
 }
 
+// A GBP-access store stub that records ensure calls (the only method the setup
+// route touches) and rejects the rest — the setup route auto-creates the access
+// request on a successful connect.
+export function createGbpAccessStore(): {
+  readonly store: GbpAccessStore
+  readonly ensureCalls: {
+    readonly storeId: string
+    readonly gbpLocationRef: string | undefined
+  }[]
+} {
+  const ensureCalls: {
+    readonly storeId: string
+    readonly gbpLocationRef: string | undefined
+  }[] = []
+  const store: GbpAccessStore = {
+    async ensureGbpAccessRequest(input) {
+      ensureCalls.push({
+        storeId: input.storeId,
+        gbpLocationRef: input.gbpLocationRef,
+      })
+      const timestamp = input.now.toISOString()
+      return {
+        id: "route-boundary-access",
+        storeId: input.storeId,
+        gbpLocationRef: input.gbpLocationRef ?? null,
+        state: "not_requested",
+        note: null,
+        requestedAt: timestamp,
+        grantedAt: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }
+    },
+    async getGbpAccessRequestForStore() {
+      return unexpectedCall("gbpAccessStore.getGbpAccessRequestForStore")
+    },
+    async getGbpAccessRequestById() {
+      return unexpectedCall("gbpAccessStore.getGbpAccessRequestById")
+    },
+    async getGbpAccessListEntryById() {
+      return unexpectedCall("gbpAccessStore.getGbpAccessListEntryById")
+    },
+    async listGbpAccessRequests() {
+      return unexpectedCall("gbpAccessStore.listGbpAccessRequests")
+    },
+    async updateGbpAccessState() {
+      return unexpectedCall("gbpAccessStore.updateGbpAccessState")
+    },
+    async setGbpAccessNote() {
+      return unexpectedCall("gbpAccessStore.setGbpAccessNote")
+    },
+  }
+  return { store, ensureCalls }
+}
+
 export function createRouteContext(options: {
   readonly gbpStore: GbpStore
   readonly sessionStore: SessionStore
   readonly storeProfileRepository?: StoreProfileRepository
+  readonly gbpAccessStore?: GbpAccessStore
 }): RouteBoundaryContext {
   return {
     adapters: createIntegrationAdapters(),
+    gbpAccessStore: options.gbpAccessStore ?? createGbpAccessStore().store,
     gbpStore: options.gbpStore,
     get legacySqliteDatabase() {
       return unexpectedCall("legacySqliteDatabase")

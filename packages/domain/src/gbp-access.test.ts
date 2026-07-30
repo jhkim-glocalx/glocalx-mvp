@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   type GbpAccessState,
   InvalidGbpAccessTransitionError,
+  gbpAccessOwnerPhase,
   gbpAccessStates,
   transitionGbpAccess,
 } from "./gbp-access.ts"
@@ -101,5 +102,30 @@ describe("transitionGbpAccess", () => {
         ).toBe(targetState)
       }
     })
+  })
+})
+
+describe("gbpAccessOwnerPhase", () => {
+  it("collapses the pre-grant states to in_progress", () => {
+    expect(gbpAccessOwnerPhase("not_requested")).toBe("in_progress")
+    expect(gbpAccessOwnerPhase("invited")).toBe("in_progress")
+    expect(gbpAccessOwnerPhase("pending")).toBe("in_progress")
+  })
+
+  it("reports granted on its own", () => {
+    expect(gbpAccessOwnerPhase("granted")).toBe("granted")
+  })
+
+  it("routes the stuck states to attention", () => {
+    expect(gbpAccessOwnerPhase("revoked")).toBe("attention")
+    expect(gbpAccessOwnerPhase("blocked")).toBe("attention")
+  })
+
+  it("maps every state (no unhandled member)", () => {
+    for (const state of gbpAccessStates) {
+      expect(["in_progress", "granted", "attention"]).toContain(
+        gbpAccessOwnerPhase(state)
+      )
+    }
   })
 })

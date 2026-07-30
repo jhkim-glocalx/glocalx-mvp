@@ -2425,3 +2425,43 @@ body {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* GBP org manager-access status card (Phase 4), shown atop the onboarding
+   section so the owner sees a coarse "we're on it / done / let's talk" status
+   rather than the six operator states. */
+.gx-gbp-access-card {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 640px);
+  align-self: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.gx-gbp-access-card-granted {
+  border-left-color: #3fae74;
+}
+
+.gx-gbp-access-card-attention {
+  border-left-color: #e0705a;
+}
+
+.gx-gbp-access-card strong {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.gx-gbp-access-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.gx-gbp-access-card button {
+  justify-self: flex-start;
+  margin-top: 4px;
+}
