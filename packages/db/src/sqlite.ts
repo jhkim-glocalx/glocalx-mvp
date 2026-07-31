@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url"
 
 import Database from "better-sqlite3"
 
-export { seedDemoData } from "./seed-demo.ts"
+export {
+  seedDemoCohortData,
+  seedDemoData,
+  seedFullDemoData,
+} from "./seed-demo.ts"
 
 export const requiredTableNames = [
   "users",

@@ -1,73 +1,27 @@
-import { demoStoreId, demoUserId } from "../demo-identifiers.ts"
+import { demoTables } from "../demo-dataset.ts"
 
 import type { PostgresClient } from "./connection.ts"
 
+// Seeds the full demo/staging dataset (base happy-path store + cohort stores)
+// from the shared demo-dataset module, so Postgres and SQLite can never drift.
+// postgres.js sends parameters with an unspecified type, so the server infers
+// each column's type from the target column: ISO strings become timestamptz,
+// numbers become integer, and JS objects/arrays are serialized and cast to
+// jsonb. ON CONFLICT DO NOTHING mirrors SQLite's INSERT OR IGNORE, so a re-seed
+// (db:pg:seed) is idempotent and both dialects behave identically.
 export async function seedPostgresDemoData(sql: PostgresClient): Promise<void> {
-  await sql`
-    INSERT INTO users (id, email, display_name, role, created_at)
-    VALUES (
-      ${demoUserId},
-      'demo-owner@glocalx.example',
-      'Demo Owner',
-      'OWNER',
-      now()
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      email = EXCLUDED.email,
-      display_name = EXCLUDED.display_name,
-      role = EXCLUDED.role
-  `
-  await sql`
-    INSERT INTO stores (
-      id,
-      owner_user_id,
-      name,
-      address,
-      category,
-      onboarding_status,
-      created_at
-    )
-    VALUES (
-      ${demoStoreId},
-      ${demoUserId},
-      'GlocalX Demo Store',
-      'Seoul, Korea',
-      'Cafe',
-      'COMPLETED',
-      now()
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      owner_user_id = EXCLUDED.owner_user_id,
-      name = EXCLUDED.name,
-      address = EXCLUDED.address,
-      category = EXCLUDED.category,
-      onboarding_status = EXCLUDED.onboarding_status
-  `
-  await sql`
-    INSERT INTO audit_logs (
-      id,
-      store_id,
-      actor_user_id,
-      action,
-      idempotency_key,
-      redacted_payload_json,
-      created_at
-    )
-    VALUES (
-      'demo-seed-audit-log',
-      ${demoStoreId},
-      ${demoUserId},
-      'demo.seed',
-      'demo-seed-key',
-      '{}'::jsonb,
-      now()
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      store_id = EXCLUDED.store_id,
-      actor_user_id = EXCLUDED.actor_user_id,
-      action = EXCLUDED.action,
-      idempotency_key = EXCLUDED.idempotency_key,
-      redacted_payload_json = EXCLUDED.redacted_payload_json
-  `
-  console.log("Seeded Postgres deterministic demo owner and store")
+  for (const { table, rows } of demoTables) {
+    const [firstRow] = rows
+    if (firstRow === undefined) {
+      continue
+    }
+    const columns = Object.keys(firstRow)
+
+    await sql`
+      INSERT INTO ${sql(table)} ${sql(rows as Record<string, unknown>[], ...columns)}
+      ON CONFLICT (id) DO NOTHING
+    `
+  }
+
+  console.log("Seeded Postgres demo dataset (base store + cohort)")
 }
