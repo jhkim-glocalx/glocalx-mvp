@@ -8,7 +8,7 @@
 데모는 완전히 결정적이고 몇 번을 돌려도 똑같이 재현됩니다.
 
 - **구동 대상:** `db:reset && db:seed`로 로드되는 데모 코호트
-  ([ops-runbook.md](./ops-runbook.md#the-demo-dataset-dry-run-before-you-touch-real-stores)의
+  ([ops-runbook.ko.md](./ops-runbook.ko.md)의
   시드 표 참고).
 - **소요 시간:** 투자자용 컷 약 10분(Act 1–2), 운영자 교육용 컷 약 20분(콜아웃과
   마지막 리셋까지 포함).
@@ -185,7 +185,7 @@ AI 초안 이음매가 스토리입니다: _"AI가 초안을 쓰지만, 운영�
 설계상 `APP_INTEGRATION_MODE=stub`로 돕니다.** 프로덕션 어댑터는 존재하며
 안전하게 실패합니다(`blocked_by_credentials`). 라이브 전환은 채널별 크레덴셜 +
 프리뷰 검증 단계이며,
-[v2-production-cutover.md](../deployment/v2-production-cutover.md#the-stub--production-integration-flip-read-before-flipping)에
+[v2-production-cutover.ko.md](../deployment/v2-production-cutover.ko.md)에
 문서화돼 있습니다.
 
 ---
@@ -200,7 +200,7 @@ AI 초안 이음매가 스토리입니다: _"AI가 초안을 쓰지만, 운영�
   전환하지 않는 한 아닙니다. 기본값은 Human이고 AI 초안은 검토 없이 발송되지
   않습니다(2c).
 - **"운영자 한 명이 얼마나 감당하나요?"** → 이 코호트가 측정하려는 바입니다.
-  [ops-runbook.md](./ops-runbook.md#suggested-slas-cohort-scale)의 SLA가 시작
+  [ops-runbook.ko.md](./ops-runbook.ko.md)의 SLA가 시작
   가설입니다.
 - **"완벽하지 않은 매장을 보여주세요."** → 코호트 전체가 그렇습니다: 접근 Blocked,
   수정 요청, 실패한 채널, 미발송 AI 초안.
@@ -216,6 +216,6 @@ npm run db:reset && npm run db:seed
 
 ## 참고
 
-- 시드 내용 & 운영자 액션: [ops-runbook.md](./ops-runbook.md)
-- "라이브 전환"이 무엇을 수반하는지: [../deployment/v2-production-cutover.md](../deployment/v2-production-cutover.md)
-- 파이프라인 상태 머신: [architecture.md](./architecture.md)
+- 시드 내용 & 운영자 액션: [ops-runbook.ko.md](./ops-runbook.ko.md)
+- "라이브 전환"이 무엇을 수반하는지: [../deployment/v2-production-cutover.ko.md](../deployment/v2-production-cutover.ko.md)
+- 파이프라인 상태 머신: [architecture.ko.md](./architecture.ko.md)

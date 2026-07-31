@@ -1,5 +1,7 @@
 # GlocalX v2 — Program Overview
 
+> **한국어:** [README.ko.md](README.ko.md)
+
 Status: Proposed (founder-approved direction, engineering plan pending review)
 Date: 2026-07-16
 Audience: founders, investors, and the engineering team. Sections 1–4 are

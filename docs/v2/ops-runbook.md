@@ -1,5 +1,7 @@
 # Operator runbook — GlocalX v2
 
+> **한국어:** [ops-runbook.ko.md](ops-runbook.ko.md)
+
 The daily playbook for the person running the operator console
 (`apps/admin`, the dark "GlocalX Ops" dashboard). It covers the three
 consoles an operator lives in — **Queue**, **Inbox**, **Stores** — plus
