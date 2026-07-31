@@ -432,8 +432,8 @@ Acceptance criteria:
 - [x] Operator runbook delivered (`docs/v2/ops-runbook.md`); founder
       dry-run still to schedule.
 - [ ] Investor pitch deck (`01_documents/glocalx-v2-pitch.pptx`).
-- [x] Demo dataset delivered (`packages/db/src/demo-dataset.ts`); scripted
-      walkthrough for investor/customer demos still to write.
+- [x] Demo dataset delivered (`packages/db/src/demo-dataset.ts`).
+- [x] Scripted demo walkthrough delivered (`docs/v2/demo-walkthrough.md`).
 
 ## Review appendix (2026-07-17 engineering review)
 
