@@ -62,7 +62,10 @@ const accountName = rawAccountId.startsWith("accounts/")
 
 const name = process.env.GBP_VALIDATE_NAME ?? "글로컬엑스 검증 매장"
 const address = process.env.GBP_VALIDATE_ADDRESS ?? "서울 마포구 양화로 19"
-const phone = process.env.GBP_VALIDATE_PHONE ?? "02-000-0000"
+// A format-valid Seoul placeholder — Google rejects obviously-fake subscriber
+// numbers like 000-0000 with INVALID_PHONE_NUMBER, which would false-fail the
+// default run. Override with a real store number via GBP_VALIDATE_PHONE.
+const phone = process.env.GBP_VALIDATE_PHONE ?? "02-1234-5678"
 const categoryId =
   process.env.GBP_VALIDATE_CATEGORY_GCID ?? "categories/gcid:restaurant"
 const storeCode =
