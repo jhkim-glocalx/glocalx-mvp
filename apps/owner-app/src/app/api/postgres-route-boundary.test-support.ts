@@ -85,6 +85,12 @@ export function createGbpStore(): {
       async persistClaimRequiredRecords() {
         return unexpectedCall("gbpStore.persistClaimRequiredRecords")
       },
+      async persistLiveClaimRequiredRecords() {
+        return unexpectedCall("gbpStore.persistLiveClaimRequiredRecords")
+      },
+      async persistLiveSetupRecords() {
+        return unexpectedCall("gbpStore.persistLiveSetupRecords")
+      },
       async persistSetupRecords(options) {
         setupRecords.push(options)
         return {

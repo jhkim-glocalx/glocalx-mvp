@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
 
       const result = await setupGoogleBusinessProfile({
         adapters,
+        env: process.env,
         gbpStore,
         mode: parsed.value.mode,
         storeId: session.storeId,
@@ -44,7 +45,8 @@ export async function POST(request: NextRequest) {
       // the existing row and never resets operator-advanced state.
       if (
         result.status !== "BLOCKED_BY_CREDENTIALS" &&
-        result.status !== "STORE_PROFILE_REQUIRED"
+        result.status !== "STORE_PROFILE_REQUIRED" &&
+        result.status !== "SETUP_UPSTREAM_ERROR"
       ) {
         await gbpAccessStore.ensureGbpAccessRequest({
           id: randomUUID(),
