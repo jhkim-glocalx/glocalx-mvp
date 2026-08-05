@@ -62,6 +62,7 @@ Never commit real values; set them in the Vercel dashboard.
 | `NEXT_PUBLIC_APP_NAME`                                                         | Display name.                                        |
 | **Production-mode only** (all blocked-by-credentials in stub):                 |                                                      |
 | `GOOGLE_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI`, `GOOGLE_BUSINESS_ACCOUNT_ID` | GBP + Google login                                   |
+| `GOOGLE_ORG_REFRESH_TOKEN`, `GOOGLE_GEOCODING_API_KEY`                         | Live GBP setup: org access token + address geocoding |
 | `KAKAO_REST_API_KEY` / `_CLIENT_SECRET` / `_REDIRECT_URI`                      | Kakao login                                          |
 | `NAVER_CLIENT_ID` / `_SECRET`                                                  | Naver business extraction                            |
 | `OPENAI_API_KEY` (+ `OPENAI_*_MODEL`)                                          | Onboarding / marketing / image AI                    |
@@ -86,8 +87,10 @@ DATABASE_URL_DIRECT=postgres://... npm run db:pg:migrate
 DATABASE_URL_DIRECT=postgres://... npm run db:pg:verify
 ```
 
-For the initial cutover the target schema is **0014** (`gbp_access_requests`).
-Confirm `db:pg:verify` reports the expected table count before deploying.
+For the initial cutover the target schema is **0015**
+(`stores.gbp_primary_category_id` — the owner-picked GBP category; 0014 added
+`gbp_access_requests`). Confirm `db:pg:verify` reports the expected table count
+before deploying.
 
 Optionally seed the demo cohort into a **staging** database for demos:
 `DATABASE_URL_DIRECT=... npm run db:pg:seed` (idempotent — safe to run
@@ -112,6 +115,21 @@ the adapter has been validated on a preview:
 3. Exercise that channel's flow against the preview; confirm real calls
    succeed (not `blocked_by_credentials`).
 4. Only then set `APP_INTEGRATION_MODE=production` on Production.
+
+For **GBP setup** specifically, the live `locations.create` body is geocoded and
+carries the owner-picked category, so validate it without creating a real
+listing first:
+
+```bash
+GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=… GOOGLE_ORG_REFRESH_TOKEN=… \
+GOOGLE_GEOCODING_API_KEY=… GOOGLE_BUSINESS_ACCOUNT_ID=… \
+GBP_VALIDATE_ADDRESS="서울 …" GBP_VALIDATE_CATEGORY_GCID="categories/gcid:…" \
+node apps/owner-app/scripts/validate-gbp-location.mjs
+```
+
+It geocodes the address, assembles the exact production body, and POSTs it with
+`validateOnly=true` — proving Google accepts it, and **never** creating a
+location. A green run is the gate for trusting live GBP setup.
 
 Preview previews fall back to the stub Naver adapter when production mode
 lacks Naver credentials (`runtime-diagnostics.ts`), so a preview can be
