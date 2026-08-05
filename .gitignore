@@ -23,3 +23,5 @@ npm-debug.log*
 01_documents/
 02_assets/
 workspace/
+.vercel
+.env*

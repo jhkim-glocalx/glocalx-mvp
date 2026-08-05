@@ -12,9 +12,18 @@ Three Vercel projects exist; only ONE deploys from this repo:
 
 | Project               | Team                       | Role                                                                                                          |
 | --------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `glocalx-mvp`         | `admin-10456072s-projects` | **Repo-connected.** Deploys `main` → `glocalx-mvp.vercel.app` and per-PR previews.                            |
+| `glocalx-mvp`         | `admin-10456072s-projects` | **Repo-connected.** Deploys `main` → **`glocalx-mvp-six.vercel.app`** and per-PR previews.                    |
 | `glocalx-mvp-private` | `admin-10456072s-projects` | Git-disconnected. Holds the purchased customer domain; promote builds to it deliberately, not on every merge. |
-| `glocalx-mvp`         | `glocal-x`                 | Frozen v1 snapshot (`glocalx-mvp-v1.vercel.app`). Leave alone.                                                |
+| `glocalx-mvp`         | `glocal-x`                 | Frozen v1 snapshot. **Owns the `glocalx-mvp.vercel.app` hostname globally** — do not treat that URL as v2.    |
+
+> **Production URL gotcha (verified 2026-07-25).** The repo-connected
+> project's public alias is **`https://glocalx-mvp-six.vercel.app`**, not
+> `glocalx-mvp.vercel.app`. Vercel auto-suffixed `-six` because the frozen
+> v1 project (`glocal-x` team) already claimed the plain hostname, and a
+> `.vercel.app` name is globally unique to one project. `glocalx-mvp.vercel.app`
+> returns 200 on `/` but 404s on every real route (`/login`, `/onboarding`,
+> `/app`, …) — it is serving the other/stale build. Verify deploys and hand
+> pilot users the `-six` URL until a clean custom domain is attached.
 
 ## Owner app — repo-connected project (`glocalx-mvp`)
 
@@ -32,7 +41,8 @@ Three Vercel projects exist; only ONE deploys from this repo:
    `glocalx-mvp-private` was the deploy target, so copy over anything
    missing.
 4. Redeploy `main` once after re-rooting and verify
-   `glocalx-mvp.vercel.app` serves the app.
+   `glocalx-mvp-six.vercel.app` serves the app (see the production-URL
+   gotcha above — `glocalx-mvp.vercel.app` is the frozen v1 project).
 
 ## Admin — new project (`glocalx-admin`)
 

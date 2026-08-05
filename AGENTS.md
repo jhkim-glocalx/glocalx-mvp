@@ -16,7 +16,7 @@ noticed, which defeats the point of `main` being the source of truth.
 
 | Branch | Purpose | Deploys to |
 |--------|---------|-----------|
-| `main` | Production — always deployable | Vercel production (`glocalx-mvp.vercel.app`) |
+| `main` | Production — always deployable | Vercel production (`glocalx-mvp-six.vercel.app` — **not** `glocalx-mvp.vercel.app`, which is the frozen v1 project; see `docs/deployment/vercel-two-projects.md`) |
 | `feat/<name>` | Short-lived feature branches, branched off `main` | Vercel preview (per-push URL) |
 | `fix/<name>` | Short-lived bug fix branches, branched off `main` | Vercel preview (per-push URL) |
 
