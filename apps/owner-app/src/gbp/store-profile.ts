@@ -11,6 +11,7 @@ const confirmedStoreRowSchema = z.object({
   phone: z.string(),
   category: z.string(),
   hours: z.string().nullable(),
+  gbp_primary_category_id: z.string().nullable(),
 })
 
 export type ConfirmedGbpStoreProfile = {
@@ -20,6 +21,10 @@ export type ConfirmedGbpStoreProfile = {
   readonly phone: string
   readonly category: string
   readonly hours?: string
+  // The owner-selected `categories/gcid:*` resource name persisted during GBP
+  // setup. Absent on stub-mode setups and until the owner picks a category; the
+  // live locations.create path blocks without it.
+  readonly primaryCategoryId?: string
 }
 
 export type ConfirmedGbpStoreProfileResult =
@@ -38,7 +43,7 @@ export function getConfirmedGbpStoreProfile(
   // GBP setup only trusts owner-confirmed profiles with a phone number, not raw extraction guesses.
   const row = database
     .prepare(
-      "SELECT id, name, address, phone, category, hours FROM stores WHERE id = ? AND phone IS NOT NULL AND EXISTS (SELECT 1 FROM business_profile_extractions WHERE store_id = stores.id AND status = 'CONFIRMED')"
+      "SELECT id, name, address, phone, category, hours, gbp_primary_category_id FROM stores WHERE id = ? AND phone IS NOT NULL AND EXISTS (SELECT 1 FROM business_profile_extractions WHERE store_id = stores.id AND status = 'CONFIRMED')"
     )
     .get(storeId)
 
@@ -56,6 +61,9 @@ export function getConfirmedGbpStoreProfile(
       phone: parsed.data.phone,
       category: parsed.data.category,
       ...(parsed.data.hours === null ? {} : { hours: parsed.data.hours }),
+      ...(parsed.data.gbp_primary_category_id === null
+        ? {}
+        : { primaryCategoryId: parsed.data.gbp_primary_category_id }),
     },
   }
 }

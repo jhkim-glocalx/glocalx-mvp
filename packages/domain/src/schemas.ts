@@ -59,6 +59,15 @@ export const gbpSetupRequestSchema = z
   })
   .strict()
 
+export const gbpCategorySelectionRequestSchema = z
+  .object({
+    // A Google Business Profile category resource name (categories/gcid:*). The
+    // route additionally checks the id exists in the bundled KR catalog before
+    // persisting — the shape here just rejects obviously malformed input.
+    categoryId: z.string().regex(/^categories\/gcid:[a-z0-9_]+$/),
+  })
+  .strict()
+
 export const marketingSuggestionModeSchema = z.enum([
   "request",
   "accepted",
@@ -142,6 +151,9 @@ export type OnboardingExtractionRequest = z.infer<
   typeof onboardingExtractionRequestSchema
 >
 export type GbpSetupRequest = z.infer<typeof gbpSetupRequestSchema>
+export type GbpCategorySelectionRequest = z.infer<
+  typeof gbpCategorySelectionRequestSchema
+>
 export type PostDraftRequest = z.infer<typeof postDraftRequestSchema>
 export type PostPublishRequest = z.infer<typeof postPublishRequestSchema>
 export type OnboardingSlotTurnRequest = z.infer<

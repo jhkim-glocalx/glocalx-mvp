@@ -13,6 +13,7 @@ import type {
   PostingConversationAdapter,
 } from "./conversation-contracts"
 import type { CsAssistantAdapter } from "./cs-assistant-contracts"
+import type { GeocodingAdapter } from "./geocoding-contracts"
 import type { MediaStore } from "./media-store"
 
 export type {
@@ -71,6 +72,13 @@ export type {
   CsAssistantComposeOutput,
   CsAssistantTurn,
 } from "./cs-assistant-contracts"
+export type {
+  GeocodeAddressInput,
+  GeocodeOutcome,
+  GeocodeUpstreamReason,
+  GeocodedAddress,
+  GeocodingAdapter,
+} from "./geocoding-contracts"
 
 export type IntegrationMode = "stub" | "production"
 
@@ -173,6 +181,7 @@ export type IntegrationAdapters = {
   readonly gbpLocalPosts: GbpLocalPostsAdapter
   readonly gbpPerformance: GbpPerformanceAdapter
   readonly gbpReviews: GbpReviewsAdapter
+  readonly geocoding: GeocodingAdapter
   readonly instagramPosts: InstagramPostsAdapter
   readonly contentGeneration: ContentGenerationAdapter
   readonly marketingGeneration: MarketingGenerationAdapter

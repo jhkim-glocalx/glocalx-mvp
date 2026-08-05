@@ -22,6 +22,7 @@ export interface StoreProfileRepository {
 const confirmedStoreRowSchema = z.object({
   address: z.string(),
   category: z.string(),
+  gbp_primary_category_id: z.string().nullable(),
   hours: z.string().nullable(),
   id: z.string(),
   name: z.string(),
@@ -116,7 +117,7 @@ export function createDatabaseStoreProfileRepository(
 
     async readConfirmedGbpProfile(storeId) {
       const row = await queryable.queryOne(
-        "SELECT id, name, address, phone, category, hours FROM stores WHERE id = ? AND phone IS NOT NULL AND EXISTS (SELECT 1 FROM business_profile_extractions WHERE store_id = stores.id AND status = 'CONFIRMED')",
+        "SELECT id, name, address, phone, category, hours, gbp_primary_category_id FROM stores WHERE id = ? AND phone IS NOT NULL AND EXISTS (SELECT 1 FROM business_profile_extractions WHERE store_id = stores.id AND status = 'CONFIRMED')",
         [storeId]
       )
       const parsed = confirmedStoreRowSchema.safeParse(row)
@@ -130,6 +131,9 @@ export function createDatabaseStoreProfileRepository(
           address: parsed.data.address,
           category: parsed.data.category,
           ...(parsed.data.hours === null ? {} : { hours: parsed.data.hours }),
+          ...(parsed.data.gbp_primary_category_id === null
+            ? {}
+            : { primaryCategoryId: parsed.data.gbp_primary_category_id }),
           name: parsed.data.name,
           phone: parsed.data.phone,
           storeId: parsed.data.id,

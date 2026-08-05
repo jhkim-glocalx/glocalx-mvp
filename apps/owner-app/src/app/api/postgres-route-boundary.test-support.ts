@@ -3,6 +3,10 @@ import { NextRequest } from "next/server"
 import type { DemoSession, SessionCookieValues } from "@/auth/session"
 import { createIntegrationAdapters } from "@glocalx/integrations"
 import type { GbpAccessStore } from "@glocalx/db/support/gbp-access-store"
+import type {
+  GbpCategorySelectionState,
+  GbpCategoryStore,
+} from "@/server/repositories/gbp-category-store"
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import type { SessionStore } from "@/server/repositories/session-store"
 import type { StoreProfileRepository } from "@/server/repositories/store-profile"
@@ -10,6 +14,7 @@ import type { StoreProfileRepository } from "@/server/repositories/store-profile
 export type RouteBoundaryContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
   readonly gbpAccessStore: GbpAccessStore
+  readonly gbpCategoryStore: GbpCategoryStore
   readonly gbpStore: GbpStore
   readonly legacySqliteDatabase: never
   readonly sessionStore: SessionStore
@@ -130,6 +135,36 @@ export function createGbpStore(): {
   }
 }
 
+export function createGbpCategoryStore(options?: {
+  readonly selection?: GbpCategorySelectionState
+  readonly saveResult?: boolean
+}): {
+  readonly saves: readonly {
+    readonly storeId: string
+    readonly categoryId: string
+    readonly displayName: string
+  }[]
+  readonly store: GbpCategoryStore
+} {
+  const saves: {
+    readonly storeId: string
+    readonly categoryId: string
+    readonly displayName: string
+  }[] = []
+  return {
+    saves,
+    store: {
+      async savePrimaryCategory(input) {
+        saves.push(input)
+        return options?.saveResult ?? true
+      },
+      async readSelection() {
+        return options?.selection
+      },
+    },
+  }
+}
+
 export function createStoreProfileRepository(): {
   readonly profileReads: readonly string[]
   readonly repository: StoreProfileRepository
@@ -230,10 +265,13 @@ export function createRouteContext(options: {
   readonly sessionStore: SessionStore
   readonly storeProfileRepository?: StoreProfileRepository
   readonly gbpAccessStore?: GbpAccessStore
+  readonly gbpCategoryStore?: GbpCategoryStore
 }): RouteBoundaryContext {
   return {
     adapters: createIntegrationAdapters(),
     gbpAccessStore: options.gbpAccessStore ?? createGbpAccessStore().store,
+    gbpCategoryStore:
+      options.gbpCategoryStore ?? createGbpCategoryStore().store,
     gbpStore: options.gbpStore,
     get legacySqliteDatabase() {
       return unexpectedCall("legacySqliteDatabase")

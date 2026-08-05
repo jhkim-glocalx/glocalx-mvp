@@ -39,15 +39,14 @@ export async function POST(request: NextRequest) {
         storeProfileRepository,
       })
 
-      // A result that reached Google (anything but blocked-before-connect) means
-      // the owner has connected their GBP, so start tracking the org
-      // manager-access request. Idempotent on the store: re-running setup returns
-      // the existing row and never resets operator-advanced state.
-      if (
-        result.status !== "BLOCKED_BY_CREDENTIALS" &&
-        result.status !== "STORE_PROFILE_REQUIRED" &&
-        result.status !== "SETUP_UPSTREAM_ERROR"
-      ) {
+      // A result carrying a googleLocationId is one that reached Google (created
+      // or claim-required), which means the owner has connected their GBP, so
+      // start tracking the org manager-access request. Blocks before that point
+      // (missing credentials/profile/category, ungeocodable address, upstream
+      // error) carry no location ref and are skipped. Idempotent on the store:
+      // re-running setup returns the existing row and never resets
+      // operator-advanced state.
+      if ("googleLocationId" in result) {
         await gbpAccessStore.ensureGbpAccessRequest({
           id: randomUUID(),
           storeId: session.storeId,
