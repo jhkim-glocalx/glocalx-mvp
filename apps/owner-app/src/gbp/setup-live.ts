@@ -5,6 +5,8 @@ import type {
   AdapterEnvironment,
   ExternalFetch,
   GbpBusinessInformationAdapter,
+  GeocodedAddress,
+  GeocodingAdapter,
   HttpRequestSpec,
   SearchGoogleLocationsResult,
 } from "@glocalx/integrations/contracts"
@@ -13,6 +15,8 @@ import {
   createGoogleOrgTokenProvider,
   resolveGoogleOrgAccountName,
 } from "@glocalx/integrations/google-org-auth"
+
+import type { ConfirmedGbpStoreProfile } from "./store-profile"
 
 // The live (org-account) GBP provisioning path. Unlike the stub path — which
 // reads canned results straight off the adapter — production adapters return
@@ -45,6 +49,108 @@ export type LiveGbpProvisioningResult =
       readonly googleLocationId: string
     }
   | { readonly kind: "upstream_error"; readonly message: string }
+
+// Turning a confirmed store profile into a live locations.create body needs two
+// things the stub body never had: an owner-picked `categories/gcid:*` (Google
+// rejects a free-text category) and geocoded address parts + a pin (Google's
+// create wants administrativeArea/locality/postalCode + latlng, not one address
+// line). Each gap is a distinct owner- or operator-actionable block, so they
+// surface as separate result kinds rather than a single failure.
+export type BuildLiveLocationResult =
+  | {
+      readonly kind: "ok"
+      readonly location: Readonly<Record<string, unknown>>
+    }
+  | { readonly kind: "category_required" }
+  | { readonly kind: "address_unresolved"; readonly message: string }
+  | { readonly kind: "geocode_upstream_error" }
+  | {
+      readonly kind: "geocode_blocked_by_credentials"
+      readonly missingEnvVars: readonly string[]
+    }
+
+export async function buildLiveGoogleLocationBody(options: {
+  readonly profile: ConfirmedGbpStoreProfile
+  readonly geocoding: GeocodingAdapter
+}): Promise<BuildLiveLocationResult> {
+  const categoryId = options.profile.primaryCategoryId
+  if (categoryId === undefined) {
+    return { kind: "category_required" }
+  }
+
+  const geocodeResult = await options.geocoding.geocodeAddress({
+    address: options.profile.address,
+  })
+  if (geocodeResult.kind === "blocked_by_credentials") {
+    return {
+      kind: "geocode_blocked_by_credentials",
+      missingEnvVars: geocodeResult.missingEnvVars,
+    }
+  }
+
+  const outcome = geocodeResult.value
+  switch (outcome.kind) {
+    case "resolved":
+      return {
+        kind: "ok",
+        location: assembleLiveLocation(
+          options.profile,
+          categoryId,
+          outcome.address
+        ),
+      }
+    case "not_found":
+      return {
+        kind: "address_unresolved",
+        message: "주소를 지도에서 찾지 못했습니다. 주소를 다시 확인해주세요.",
+      }
+    case "incomplete":
+      return {
+        kind: "address_unresolved",
+        message:
+          "주소에서 우편번호를 확인하지 못했습니다. 도로명 주소를 다시 확인해주세요.",
+      }
+    case "upstream_error":
+      return { kind: "geocode_upstream_error" }
+  }
+}
+
+function assembleLiveLocation(
+  profile: ConfirmedGbpStoreProfile,
+  categoryId: string,
+  address: GeocodedAddress
+): Readonly<Record<string, unknown>> {
+  // languageCode ties the whole listing to Korean (immutable at create), and
+  // storeCode ties Google's record back to this local store for retries.
+  return {
+    languageCode: "ko",
+    title: profile.name,
+    storeCode: profile.storeId,
+    storefrontAddress: {
+      regionCode: "KR",
+      languageCode: "ko",
+      administrativeArea: address.administrativeArea,
+      locality: address.locality,
+      ...(address.sublocality === undefined
+        ? {}
+        : { sublocality: address.sublocality }),
+      postalCode: address.postalCode,
+      addressLines: [profile.address],
+    },
+    latlng: {
+      latitude: address.latitude,
+      longitude: address.longitude,
+    },
+    phoneNumbers: {
+      primaryPhone: profile.phone,
+    },
+    categories: {
+      primaryCategory: {
+        name: categoryId,
+      },
+    },
+  }
+}
 
 const GOOGLE_BUSINESS_ACCOUNT_ID_ENV = "GOOGLE_BUSINESS_ACCOUNT_ID"
 

@@ -3,6 +3,7 @@
 import { ChatMessage } from "@/app/_components/chat-message"
 import { StatusCard } from "@/app/_components/status-card"
 
+import { CategoryPicker } from "./category-picker"
 import {
   StatusPill,
   StoreProfileConfirmForm,
@@ -65,6 +66,7 @@ export function GbpHandoffPanel({
         <div className="grid gap-3">
           <ChatMessage message={confirmation.message} speaker="assistant" />
           <StatusCard label="확인 기록" value={confirmation.extractionId} />
+          <CategoryPicker />
           <button
             className="gx-onboarding-primary"
             disabled={setup.kind === "loading"}

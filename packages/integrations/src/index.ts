@@ -14,6 +14,7 @@ import {
   createProductionPostingConversation,
 } from "./openai-conversation"
 import { createProductionMarketingGeneration } from "./openai-production"
+import { createProductionGeocoding } from "./geocoding-production"
 import { createProductionCsAssistant } from "./openai-cs-assistant"
 import { createProductionPerformance } from "./production-performance"
 import {
@@ -31,6 +32,7 @@ import {
   createStubBusinessInformation,
   createStubClock,
   createStubContentGeneration,
+  createStubGeocoding,
   createStubGoogleOAuth,
   createStubJobScheduler,
   createStubLocalPosts,
@@ -67,6 +69,7 @@ export function createIntegrationAdapters(
       gbpLocalPosts: createProductionLocalPosts(env, fetchImpl),
       gbpPerformance: createProductionPerformance(env),
       gbpReviews: createProductionReviews(env),
+      geocoding: createProductionGeocoding(env, fetchImpl),
       instagramPosts: createProductionInstagramPosts(env, fetchImpl),
       contentGeneration: createStubContentGeneration(),
       marketingGeneration: createProductionMarketingGeneration(env, fetchImpl),
@@ -94,6 +97,7 @@ export function createIntegrationAdapters(
     gbpLocalPosts: createStubLocalPosts(),
     gbpPerformance: createStubPerformance(),
     gbpReviews: createStubReviews(),
+    geocoding: createStubGeocoding(),
     instagramPosts: createStubInstagramPosts(),
     contentGeneration: createStubContentGeneration(),
     marketingGeneration: createStubMarketingGeneration(),

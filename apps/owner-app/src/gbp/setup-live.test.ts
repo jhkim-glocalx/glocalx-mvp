@@ -8,13 +8,20 @@ import { z } from "zod"
 import { createIntegrationAdapters } from "@glocalx/integrations"
 import type {
   ExternalFetch,
+  GeocodeOutcome,
+  GeocodingAdapter,
   IntegrationAdapters,
 } from "@glocalx/integrations/contracts"
 import { createProductionBusinessInformation } from "@glocalx/integrations/production"
 import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
 
 import { setupGoogleBusinessProfile } from "./setup"
-import { resolveLiveGbpCredentials, runLiveGbpProvisioning } from "./setup-live"
+import {
+  buildLiveGoogleLocationBody,
+  resolveLiveGbpCredentials,
+  runLiveGbpProvisioning,
+} from "./setup-live"
+import type { ConfirmedGbpStoreProfile } from "./store-profile"
 
 const orgAppEnv = {
   GOOGLE_CLIENT_ID: "client-id",
@@ -69,6 +76,124 @@ function createFakeGoogle(options: FakeGoogleOptions = {}): ExternalFetch {
     throw new Error(`unexpected fetch to ${url}`)
   }
 }
+
+const confirmedProfile: ConfirmedGbpStoreProfile = {
+  storeId: "demo-store",
+  name: "라멘하우스 합정점",
+  address: "서울 마포구 양화로 19",
+  phone: "02-987-6543",
+  category: "라멘",
+  primaryCategoryId: "categories/gcid:ramen_restaurant",
+}
+
+function fixedGeocoding(outcome: GeocodeOutcome): GeocodingAdapter {
+  return {
+    async geocodeAddress() {
+      return { kind: "ok", value: outcome }
+    },
+  }
+}
+
+describe("buildLiveGoogleLocationBody", () => {
+  it("assembles a Korean location body with geocoded parts, latlng, and the gcid", async () => {
+    const result = await buildLiveGoogleLocationBody({
+      profile: confirmedProfile,
+      geocoding: fixedGeocoding({
+        kind: "resolved",
+        address: {
+          administrativeArea: "서울특별시",
+          locality: "마포구",
+          sublocality: "서교동",
+          postalCode: "04039",
+          latitude: 37.5563,
+          longitude: 126.9236,
+          formattedAddress: "대한민국 서울 마포구 양화로 19",
+        },
+      }),
+    })
+
+    expect(result).toEqual({
+      kind: "ok",
+      location: {
+        languageCode: "ko",
+        title: "라멘하우스 합정점",
+        storeCode: "demo-store",
+        storefrontAddress: {
+          regionCode: "KR",
+          languageCode: "ko",
+          administrativeArea: "서울특별시",
+          locality: "마포구",
+          sublocality: "서교동",
+          postalCode: "04039",
+          addressLines: ["서울 마포구 양화로 19"],
+        },
+        latlng: { latitude: 37.5563, longitude: 126.9236 },
+        phoneNumbers: { primaryPhone: "02-987-6543" },
+        categories: {
+          primaryCategory: { name: "categories/gcid:ramen_restaurant" },
+        },
+      },
+    })
+  })
+
+  it("blocks when the owner has not picked a GBP category", async () => {
+    const withoutCategory: ConfirmedGbpStoreProfile = {
+      storeId: confirmedProfile.storeId,
+      name: confirmedProfile.name,
+      address: confirmedProfile.address,
+      phone: confirmedProfile.phone,
+      category: confirmedProfile.category,
+    }
+    const result = await buildLiveGoogleLocationBody({
+      profile: withoutCategory,
+      // A category block short-circuits before geocoding runs at all.
+      geocoding: fixedGeocoding({ kind: "not_found" }),
+    })
+    expect(result).toEqual({ kind: "category_required" })
+  })
+
+  it("blocks with owner guidance when the address cannot be geocoded", async () => {
+    const notFound = await buildLiveGoogleLocationBody({
+      profile: confirmedProfile,
+      geocoding: fixedGeocoding({ kind: "not_found" }),
+    })
+    const incomplete = await buildLiveGoogleLocationBody({
+      profile: confirmedProfile,
+      geocoding: fixedGeocoding({
+        kind: "incomplete",
+        missingComponents: ["postal_code"],
+      }),
+    })
+    expect(notFound.kind).toBe("address_unresolved")
+    expect(incomplete.kind).toBe("address_unresolved")
+  })
+
+  it("distinguishes a transient geocoding failure from a missing key", async () => {
+    const upstream = await buildLiveGoogleLocationBody({
+      profile: confirmedProfile,
+      geocoding: fixedGeocoding({
+        kind: "upstream_error",
+        reason: "OVER_QUERY_LIMIT",
+      }),
+    })
+    const blocked = await buildLiveGoogleLocationBody({
+      profile: confirmedProfile,
+      geocoding: {
+        async geocodeAddress() {
+          return {
+            kind: "blocked_by_credentials",
+            missingEnvVars: ["GOOGLE_GEOCODING_API_KEY"],
+          }
+        },
+      },
+    })
+    expect(upstream).toEqual({ kind: "geocode_upstream_error" })
+    expect(blocked).toEqual({
+      kind: "geocode_blocked_by_credentials",
+      missingEnvVars: ["GOOGLE_GEOCODING_API_KEY"],
+    })
+  })
+})
 
 describe("resolveLiveGbpCredentials", () => {
   it("returns the org token and qualified account name when configured", async () => {
@@ -234,6 +359,13 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
     const database = openDatabase(join(tempPath, "gbp.db"))
     applyMigrations(database)
     seedDemoData(database)
+    // The live path builds a locations.create body from an owner-picked gcid, so
+    // the demo store needs one selected before it can reach credentials/creation.
+    database
+      .prepare(
+        "UPDATE stores SET gbp_primary_category_id = ?, gbp_primary_category_display_name = ? WHERE id = ?"
+      )
+      .run("categories/gcid:restaurant", "음식점", "demo-store")
     return database
   }
 
@@ -288,6 +420,46 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
       storeId: "demo-store",
     })
     expect(result.status).toBe("BLOCKED_BY_CREDENTIALS")
+    database.close()
+  })
+
+  it("blocks before Google when the owner has not picked a category", async () => {
+    const database = await createDatabase()
+    database
+      .prepare("UPDATE stores SET gbp_primary_category_id = NULL WHERE id = ?")
+      .run("demo-store")
+    let reachedGoogle = false
+    const result = await setupGoogleBusinessProfile({
+      adapters: productionAdapters(database),
+      database,
+      env: orgFullEnv,
+      fetchImpl: createFakeGoogle({ onCall: () => (reachedGoogle = true) }),
+      mode: "production",
+      storeId: "demo-store",
+    })
+    expect(result.status).toBe("CATEGORY_REQUIRED")
+    // Category is a precondition for building the request, so nothing hits Google.
+    expect(reachedGoogle).toBe(false)
+    database.close()
+  })
+
+  it("blocks before Google when the address cannot be geocoded", async () => {
+    const database = await createDatabase()
+    // The stub geocoder returns not_found for addresses carrying this marker.
+    database
+      .prepare("UPDATE stores SET address = ? WHERE id = ?")
+      .run("geocode-fail 123", "demo-store")
+    let reachedGoogle = false
+    const result = await setupGoogleBusinessProfile({
+      adapters: productionAdapters(database),
+      database,
+      env: orgFullEnv,
+      fetchImpl: createFakeGoogle({ onCall: () => (reachedGoogle = true) }),
+      mode: "production",
+      storeId: "demo-store",
+    })
+    expect(result.status).toBe("ADDRESS_NOT_GEOCODABLE")
+    expect(reachedGoogle).toBe(false)
     database.close()
   })
 })

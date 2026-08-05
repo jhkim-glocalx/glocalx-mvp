@@ -338,4 +338,8 @@ export function applyMigrations(database: SqliteDatabase): void {
   ensureColumn(database, "campaign_requests", "final_copy", "TEXT")
   // Phase 3 task 8 (matches postgres/migrations/0013_campaign_nudge.sql).
   ensureColumn(database, "campaign_requests", "nudged_at", "TEXT")
+  // Owner-selected GBP primary category (matches
+  // postgres/migrations/0015_store_gbp_category.sql).
+  ensureColumn(database, "stores", "gbp_primary_category_id", "TEXT")
+  ensureColumn(database, "stores", "gbp_primary_category_display_name", "TEXT")
 }

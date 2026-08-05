@@ -15,6 +15,7 @@ import type {
   TranslationAdapter,
 } from "./contracts"
 import { createStubMarketingDraft } from "./stub-marketing-generation"
+import type { GeocodingAdapter } from "./geocoding-contracts"
 import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
 
 const stubCandidate = {
@@ -269,6 +270,41 @@ export function createStubTranslation(): TranslationAdapter {
   return {
     translate(text) {
       return { kind: "ok", value: { text } }
+    },
+  }
+}
+
+const geocodeNotFoundTerms = ["지오코딩실패", "geocode-fail"] as const
+const geocodeIncompleteTerms = ["우편번호없음", "no-postal"] as const
+
+export function createStubGeocoding(): GeocodingAdapter {
+  return {
+    async geocodeAddress(input) {
+      const normalized = input.address.trim().toLowerCase()
+      if (geocodeNotFoundTerms.some((term) => normalized.includes(term))) {
+        return { kind: "ok", value: { kind: "not_found" } }
+      }
+      if (geocodeIncompleteTerms.some((term) => normalized.includes(term))) {
+        return {
+          kind: "ok",
+          value: { kind: "incomplete", missingComponents: ["postal_code"] },
+        }
+      }
+      return {
+        kind: "ok",
+        value: {
+          kind: "resolved",
+          address: {
+            administrativeArea: "서울특별시",
+            locality: "마포구",
+            sublocality: "서교동",
+            postalCode: "04039",
+            latitude: 37.5563,
+            longitude: 126.9236,
+            formattedAddress: `대한민국 ${input.address}`,
+          },
+        },
+      }
     },
   }
 }

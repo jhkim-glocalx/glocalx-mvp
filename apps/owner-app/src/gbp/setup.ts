@@ -19,12 +19,17 @@ import {
   persistLiveSetupRecords,
   persistSetupRecords,
 } from "./setup-records"
-import { resolveLiveGbpCredentials, runLiveGbpProvisioning } from "./setup-live"
+import {
+  buildLiveGoogleLocationBody,
+  resolveLiveGbpCredentials,
+  runLiveGbpProvisioning,
+} from "./setup-live"
 import {
   buildGoogleLocationBody,
   getConfirmedGbpStoreProfile,
   stableGbpSetupRequestId,
 } from "./store-profile"
+import type { ConfirmedGbpStoreProfile } from "./store-profile"
 
 const locationSpecBodySchema = z
   .object({
@@ -58,6 +63,18 @@ export type GbpSetupResult =
     }
   | {
       readonly status: "STORE_PROFILE_REQUIRED"
+      readonly message: string
+    }
+  | {
+      // Live path only: the owner has not yet chosen a GBP primary category, so
+      // there is no `categories/gcid:*` to send Google.
+      readonly status: "CATEGORY_REQUIRED"
+      readonly message: string
+    }
+  | {
+      // Live path only: geocoding could not turn the confirmed address into the
+      // administrativeArea/locality/postalCode + latlng Google's create requires.
+      readonly status: "ADDRESS_NOT_GEOCODABLE"
       readonly message: string
     }
   | {
@@ -145,16 +162,22 @@ export async function setupGoogleBusinessProfile(
     }
   }
 
-  const locationBody = buildGoogleLocationBody(storeProfileResult.profile)
   const requestId = stableGbpSetupRequestId(storeProfileResult.profile)
 
   // Production adapters return executable request specs rather than canned
-  // results, so the live path resolves the org token and runs them against
-  // Google instead of the stub flow below.
+  // results, so the live path resolves the org token, geocodes the address, and
+  // runs the specs against Google instead of the stub flow below. The stub body
+  // (built here) stays a simple display-name shape; only the live path needs the
+  // geocoded parts and owner-picked gcid.
   if (options.adapters.mode === "production") {
-    return setupGoogleBusinessProfileLive(options, locationBody, requestId)
+    return setupGoogleBusinessProfileLive(
+      options,
+      storeProfileResult.profile,
+      requestId
+    )
   }
 
+  const locationBody = buildGoogleLocationBody(storeProfileResult.profile)
   const oauthResult = options.adapters.googleOAuth.connect()
   if (oauthResult.kind === "blocked_by_credentials") {
     return {
@@ -238,9 +261,38 @@ export async function setupGoogleBusinessProfile(
 
 async function setupGoogleBusinessProfileLive(
   options: SetupGoogleBusinessProfileOptions,
-  location: Readonly<Record<string, unknown>>,
+  profile: ConfirmedGbpStoreProfile,
   requestId: string
 ): Promise<GbpSetupResult> {
+  const built = await buildLiveGoogleLocationBody({
+    profile,
+    geocoding: options.adapters.geocoding,
+  })
+  switch (built.kind) {
+    case "category_required":
+      return {
+        status: "CATEGORY_REQUIRED",
+        message: "GBP 대표 카테고리를 먼저 선택해주세요.",
+      }
+    case "address_unresolved":
+      return { status: "ADDRESS_NOT_GEOCODABLE", message: built.message }
+    case "geocode_upstream_error":
+      return {
+        status: "SETUP_UPSTREAM_ERROR",
+        message:
+          "주소 좌표 변환에 일시적으로 실패했습니다. 잠시 후 다시 시도해주세요.",
+      }
+    case "geocode_blocked_by_credentials":
+      return {
+        status: "BLOCKED_BY_CREDENTIALS",
+        missingEnvVars: built.missingEnvVars,
+        message: "주소 지오코딩 인증 정보가 설정되지 않았습니다.",
+      }
+    case "ok":
+      break
+  }
+  const location = built.location
+
   const env = options.env ?? {}
   const fetchImpl = options.fetchImpl ?? globalThis.fetch
   const credentials = await resolveLiveGbpCredentials({ env, fetchImpl })

@@ -9,6 +9,7 @@ test-results/
 .git/
 AGENTS.md
 02_assets/
+apps/owner-app/src/gbp/categories/gbp-categories-kr.json
 next-env.d.ts
 .omo/evidence/
 .omo/plans/

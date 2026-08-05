@@ -34,6 +34,8 @@ import { createDatabaseConversationStore } from "@/server/repositories/conversat
 import type { ConversationStore } from "@/server/repositories/conversation-store"
 import { createDatabaseAuthRateLimitRepository } from "@/server/repositories/auth-rate-limit"
 import { createDatabaseEmailCredentialsRepository } from "@/server/repositories/email-credentials"
+import { createDatabaseGbpCategoryStore } from "@/server/repositories/gbp-category-store"
+import type { GbpCategoryStore } from "@/server/repositories/gbp-category-store"
 import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
 import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
@@ -79,6 +81,7 @@ export type QueryableRouteDatabaseContext = {
     typeof createDatabaseEmailCredentialsRepository
   >
   readonly gbpAccessStore: GbpAccessStore
+  readonly gbpCategoryStore: GbpCategoryStore
   readonly gbpStore: ReturnType<typeof createDatabaseGbpStore>
   readonly legacySqliteDatabase?: SqliteDatabase
   readonly oauthIdentityRepository: ReturnType<
@@ -240,6 +243,7 @@ function buildRouteDatabaseContext(
     emailCredentialsRepository:
       createDatabaseEmailCredentialsRepository(queryable),
     gbpAccessStore: createDatabaseGbpAccessStore(queryable),
+    gbpCategoryStore: createDatabaseGbpCategoryStore(queryable),
     gbpStore: createDatabaseGbpStore(queryable),
     ...(provider === "sqlite"
       ? { legacySqliteDatabase: databaseContext.legacySqliteDatabase }

@@ -276,6 +276,8 @@ export function toSetupState(payload: unknown): SetupState {
 
   if (
     status === "STORE_PROFILE_REQUIRED" ||
+    status === "CATEGORY_REQUIRED" ||
+    status === "ADDRESS_NOT_GEOCODABLE" ||
     status === "AUTH_REQUIRED" ||
     status === "BLOCKED_BY_CREDENTIALS" ||
     status === "VALIDATION_ERROR"
