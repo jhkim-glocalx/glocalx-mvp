@@ -63,6 +63,11 @@ export type SetupState =
       readonly message: string
       readonly requestAdminRightsUrl: string
     }
+  // Live-path blocks the owner can clear in place: pick a GBP category, or fix an
+  // address geocoding couldn't resolve. Kept distinct from the generic `error`
+  // so the panel can show the corrective action instead of a dead-end alert.
+  | { readonly kind: "categoryRequired"; readonly message: string }
+  | { readonly kind: "addressUnresolved"; readonly message: string }
   | { readonly kind: "error"; readonly message: string }
 
 export type OnboardingChatTurn = {
@@ -274,10 +279,26 @@ export function toSetupState(payload: unknown): SetupState {
     }
   }
 
+  if (status === "CATEGORY_REQUIRED") {
+    return {
+      kind: "categoryRequired",
+      message:
+        readString(payload["message"]) ??
+        "GBP 대표 카테고리를 먼저 선택해주세요.",
+    }
+  }
+
+  if (status === "ADDRESS_NOT_GEOCODABLE") {
+    return {
+      kind: "addressUnresolved",
+      message:
+        readString(payload["message"]) ??
+        "매장 주소를 지도에서 찾지 못했습니다. 주소를 다시 확인해주세요.",
+    }
+  }
+
   if (
     status === "STORE_PROFILE_REQUIRED" ||
-    status === "CATEGORY_REQUIRED" ||
-    status === "ADDRESS_NOT_GEOCODABLE" ||
     status === "AUTH_REQUIRED" ||
     status === "BLOCKED_BY_CREDENTIALS" ||
     status === "VALIDATION_ERROR"

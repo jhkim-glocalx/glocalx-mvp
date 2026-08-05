@@ -86,11 +86,44 @@ export function GbpHandoffPanel({
   )
 }
 
-export function SetupPanel({ setup }: { readonly setup: SetupState }) {
+export function SetupPanel({
+  onRetry,
+  setup,
+}: {
+  readonly onRetry: () => void
+  readonly setup: SetupState
+}) {
   return (
     <>
       {setup.kind === "loading" ? (
         <TypingIndicator label="GBP 세팅을 확인하는 중" />
+      ) : null}
+      {setup.kind === "categoryRequired" ? (
+        <div className="grid gap-3">
+          <div role="alert">
+            <ChatMessage message={setup.message} speaker="assistant" />
+          </div>
+          <CategoryPicker />
+          <button
+            className="gx-onboarding-primary"
+            onClick={onRetry}
+            type="button"
+          >
+            카테고리 선택 후 다시 시도
+          </button>
+        </div>
+      ) : null}
+      {setup.kind === "addressUnresolved" ? (
+        <div className="grid gap-3">
+          <div role="alert">
+            <ChatMessage message={setup.message} speaker="assistant" />
+          </div>
+          <StatusCard
+            label="주소 확인 필요"
+            status="warning"
+            value="매장 정보의 주소를 다시 확인해주세요"
+          />
+        </div>
       ) : null}
       {setup.kind === "claimRequired" ? (
         <div className="grid gap-3">
