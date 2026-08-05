@@ -1,5 +1,7 @@
 # GlocalX v2 — Architecture
 
+> **한국어:** [architecture.ko.md](architecture.ko.md)
+
 Status: Proposed
 Date: 2026-07-16
 Companion docs: [README.md](README.md) (scope), [delivery-plan.md](delivery-plan.md) (phasing)

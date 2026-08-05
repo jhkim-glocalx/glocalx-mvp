@@ -1,5 +1,7 @@
 # Scripted demo walkthrough — GlocalX v2
 
+> **한국어:** [demo-walkthrough.ko.md](./demo-walkthrough.ko.md)
+
 A presenter's script for showing GlocalX v2 end to end to an investor or an
 incoming operator cohort. It runs on the **Phase 5 demo seed** in stub mode
 — nothing here touches real Google, Instagram, Naver, or OpenAI, so the demo

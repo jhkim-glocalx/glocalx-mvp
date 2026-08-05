@@ -1,5 +1,7 @@
 # Migration runbook — one database, two apps
 
+> **한국어:** [migration-runbook.ko.md](./migration-runbook.ko.md)
+
 With owner-app and admin deploying independently against one Neon
 Postgres, `db:pg:migrate` runs **exactly once per schema change**, by a
 human, before the schema-bearing PR merges. Neither app migrates at

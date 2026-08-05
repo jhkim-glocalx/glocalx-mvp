@@ -1,5 +1,7 @@
 # v2 production cutover checklist
 
+> **한국어:** [v2-production-cutover.ko.md](./v2-production-cutover.ko.md)
+
 The go-live checklist for the v2 program (owner app + operator console on
 one Postgres). It **composes** the existing deployment runbooks rather than
 repeating them — follow the links for the detailed procedures:

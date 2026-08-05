@@ -1,5 +1,7 @@
 # GlocalX v2 — Delivery Plan
 
+> **한국어:** [delivery-plan.ko.md](delivery-plan.ko.md)
+
 Status: Proposed
 Date: 2026-07-16
 Companion docs: [README.md](README.md) (scope), [architecture.md](architecture.md) (design)
