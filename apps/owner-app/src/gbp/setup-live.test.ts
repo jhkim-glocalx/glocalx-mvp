@@ -182,6 +182,7 @@ describe("buildLiveGoogleLocationBody", () => {
         async geocodeAddress() {
           return {
             kind: "blocked_by_credentials",
+            code: "BLOCKED_BY_CREDENTIALS",
             missingEnvVars: ["GOOGLE_GEOCODING_API_KEY"],
           }
         },
