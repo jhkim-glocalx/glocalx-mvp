@@ -16,6 +16,8 @@ import type {
 import type { Queryable } from "@glocalx/db"
 import {
   persistClaimRequiredGbpRecords,
+  persistLiveClaimRequiredGbpRecords,
+  persistLiveSetupGbpRecords,
   persistStubSetupGbpRecords,
 } from "./gbp-setup-store"
 
@@ -31,6 +33,20 @@ export interface GbpStore {
     readonly storeId: string
     readonly subjectId: string
   }): Promise<GbpSetupResult>
+  // Live (production) setup persists the real org account + Google location id.
+  persistLiveSetupRecords(options: {
+    readonly accountName: string
+    readonly googleLocationId: string
+    readonly now: Date
+    readonly status: LocationStatus
+    readonly storeId: string
+  }): Promise<GbpSetupResult>
+  persistLiveClaimRequiredRecords(options: {
+    readonly accountName: string
+    readonly claim: BuildClaimRequiredResultOptions
+    readonly now: Date
+    readonly storeId: string
+  }): Promise<void>
   readPerformanceConnection(storeId: string): Promise<GbpPerformanceConnection>
   readPerformanceLocation(storeId: string): Promise<GbpPerformanceLocation>
   readPerformanceSummaryData(
@@ -56,6 +72,27 @@ export function createDatabaseGbpStore(queryable: Queryable): GbpStore {
         status: options.status,
         storeId: options.storeId,
         subjectId: options.subjectId,
+      })
+    },
+
+    async persistLiveSetupRecords(options) {
+      return persistLiveSetupGbpRecords({
+        accountName: options.accountName,
+        googleLocationId: options.googleLocationId,
+        now: options.now,
+        queryable,
+        status: options.status,
+        storeId: options.storeId,
+      })
+    },
+
+    async persistLiveClaimRequiredRecords(options) {
+      await persistLiveClaimRequiredGbpRecords({
+        accountName: options.accountName,
+        claim: options.claim,
+        now: options.now,
+        queryable,
+        storeId: options.storeId,
       })
     },
 

@@ -3,6 +3,8 @@ import { z } from "zod"
 import { locationStatusSchema } from "@glocalx/domain/location-status"
 import type { LocationStatus } from "@glocalx/domain/location-status"
 import type {
+  AdapterEnvironment,
+  ExternalFetch,
   HttpRequestSpec,
   IntegrationAdapters,
   SearchGoogleLocationsResult,
@@ -13,8 +15,11 @@ import type { StoreProfileRepository } from "@/server/repositories/store-profile
 
 import {
   persistClaimRequiredRecords,
+  persistLiveClaimRequiredRecords,
+  persistLiveSetupRecords,
   persistSetupRecords,
 } from "./setup-records"
+import { resolveLiveGbpCredentials, runLiveGbpProvisioning } from "./setup-live"
 import {
   buildGoogleLocationBody,
   getConfirmedGbpStoreProfile,
@@ -55,10 +60,21 @@ export type GbpSetupResult =
       readonly status: "STORE_PROFILE_REQUIRED"
       readonly message: string
     }
+  | {
+      // Credentials were present but a live Google call failed (bad token,
+      // quota, upstream outage) — recoverable by retrying, distinct from a
+      // missing-credential block.
+      readonly status: "SETUP_UPSTREAM_ERROR"
+      readonly message: string
+    }
 
 export type SetupGoogleBusinessProfileOptions = {
   readonly adapters: IntegrationAdapters
   readonly database?: SqliteDatabase
+  // Live setup reads the org GBP credentials from here (the route passes
+  // process.env); fetchImpl defaults to global fetch and is injectable in tests.
+  readonly env?: AdapterEnvironment
+  readonly fetchImpl?: ExternalFetch
   readonly gbpStore?: GbpStore
   readonly mode: GbpSetupMode
   readonly storeProfileRepository?: StoreProfileRepository
@@ -131,6 +147,14 @@ export async function setupGoogleBusinessProfile(
 
   const locationBody = buildGoogleLocationBody(storeProfileResult.profile)
   const requestId = stableGbpSetupRequestId(storeProfileResult.profile)
+
+  // Production adapters return executable request specs rather than canned
+  // results, so the live path resolves the org token and runs them against
+  // Google instead of the stub flow below.
+  if (options.adapters.mode === "production") {
+    return setupGoogleBusinessProfileLive(options, locationBody, requestId)
+  }
+
   const oauthResult = options.adapters.googleOAuth.connect()
   if (oauthResult.kind === "blocked_by_credentials") {
     return {
@@ -209,5 +233,64 @@ export async function setupGoogleBusinessProfile(
     options,
     locationStatusFromSpecBody(locationResult.value.body),
     oauthResult.value.subjectId
+  )
+}
+
+async function setupGoogleBusinessProfileLive(
+  options: SetupGoogleBusinessProfileOptions,
+  location: Readonly<Record<string, unknown>>,
+  requestId: string
+): Promise<GbpSetupResult> {
+  const env = options.env ?? {}
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch
+  const credentials = await resolveLiveGbpCredentials({ env, fetchImpl })
+  if (credentials.kind === "blocked_by_credentials") {
+    return {
+      status: "BLOCKED_BY_CREDENTIALS",
+      missingEnvVars: credentials.missingEnvVars,
+      message:
+        "Google Business Profile 조직 계정 인증 정보가 설정되지 않았습니다.",
+    }
+  }
+  if (credentials.kind === "auth_failed") {
+    return {
+      status: "SETUP_UPSTREAM_ERROR",
+      message:
+        "Google 조직 계정 토큰이 만료되었거나 취소되었습니다. 토큰을 다시 발급해주세요.",
+    }
+  }
+
+  const provisioning = await runLiveGbpProvisioning({
+    adapters: {
+      gbpBusinessInformation: options.adapters.gbpBusinessInformation,
+    },
+    credentials: credentials.credentials,
+    fetchImpl,
+    location,
+    requestId,
+  })
+  if (provisioning.kind === "upstream_error") {
+    return { status: "SETUP_UPSTREAM_ERROR", message: provisioning.message }
+  }
+  if (provisioning.kind === "claim_required") {
+    await persistLiveClaimRequiredRecords(
+      options,
+      {
+        googleLocationId: provisioning.googleLocationId,
+        requestAdminRightsUrl: provisioning.requestAdminRightsUrl,
+      },
+      credentials.credentials.accountName
+    )
+    return buildClaimRequiredResult({
+      googleLocationId: provisioning.googleLocationId,
+      requestAdminRightsUrl: provisioning.requestAdminRightsUrl,
+    })
+  }
+
+  return persistLiveSetupRecords(
+    options,
+    provisioning.status,
+    credentials.credentials.accountName,
+    provisioning.googleLocationId
   )
 }

@@ -25,6 +25,10 @@ async function upsertSetupAccount(options: {
   readonly createdAt: string
   readonly queryable: Queryable
   readonly storeId: string
+  // Live setup stores the real org account resource name in account_name so the
+  // publish path can build the accounts/{id}/locations/{id} parent from it.
+  readonly googleAccountId?: string
+  readonly accountName?: string
 }): Promise<void> {
   await options.queryable.execute(
     `INSERT INTO gbp_accounts (
@@ -42,8 +46,8 @@ async function upsertSetupAccount(options: {
     [
       setupAccountId,
       options.storeId,
-      "accounts/stub",
-      "Stub GBP Account",
+      options.googleAccountId ?? "accounts/stub",
+      options.accountName ?? "Stub GBP Account",
       options.createdAt,
     ]
   )
@@ -142,6 +146,97 @@ export async function persistClaimRequiredGbpRecords(
   const createdAt = options.now.toISOString()
   await upsertSetupAccount({
     createdAt,
+    queryable: options.queryable,
+    storeId: options.storeId,
+  })
+  await upsertSetupLocation({
+    createdAt,
+    googleLocationId: options.claim.googleLocationId,
+    queryable: options.queryable,
+    requestAdminRightsUrl: options.claim.requestAdminRightsUrl,
+    status: "CLAIM_REQUIRED",
+    storeId: options.storeId,
+  })
+  await scheduleFollowUpIfNeeded({
+    createdAt,
+    now: options.now,
+    queryable: options.queryable,
+    status: "CLAIM_REQUIRED",
+    storeId: options.storeId,
+  })
+}
+
+export type PersistLiveSetupGbpRecordsOptions = {
+  readonly accountName: string
+  readonly googleLocationId: string
+  readonly now: Date
+  readonly queryable: Queryable
+  readonly status: LocationStatus
+  readonly storeId: string
+}
+
+export type PersistLiveClaimRequiredGbpRecordsOptions =
+  PersistClaimRequiredGbpRecordsOptions & {
+    readonly accountName: string
+  }
+
+// The live counterpart of persistStubSetupGbpRecords: it writes the real org
+// account resource name and the Google-issued location id instead of the fixed
+// stub placeholders, and records no owner oauth_connections row because the org
+// account (not the owner) supplies the publish token.
+export async function persistLiveSetupGbpRecords(
+  options: PersistLiveSetupGbpRecordsOptions
+): Promise<GbpSetupResult> {
+  const createdAt = options.now.toISOString()
+  await upsertSetupAccount({
+    accountName: options.accountName,
+    createdAt,
+    googleAccountId: options.accountName,
+    queryable: options.queryable,
+    storeId: options.storeId,
+  })
+  await upsertSetupLocation({
+    createdAt,
+    googleLocationId: options.googleLocationId,
+    queryable: options.queryable,
+    requestAdminRightsUrl: null,
+    status: options.status,
+    storeId: options.storeId,
+  })
+  const followUpJobId = await scheduleFollowUpIfNeeded({
+    createdAt,
+    now: options.now,
+    queryable: options.queryable,
+    status: options.status,
+    storeId: options.storeId,
+  })
+  await appendStubSetupAuditLog({
+    action: "gbp.setup.live",
+    createdAt,
+    queryable: options.queryable,
+    status: options.status,
+    storeId: options.storeId,
+  })
+
+  const result = {
+    status: setupResultStatus(options.status),
+    googleLocationId: options.googleLocationId,
+    oauthConnectionId: "org-managed",
+    gbpLocationId: setupGbpLocationId,
+    auditLogId: setupAuditLogId,
+    message: setupResultMessage(options.status),
+  }
+  return followUpJobId === undefined ? result : { ...result, followUpJobId }
+}
+
+export async function persistLiveClaimRequiredGbpRecords(
+  options: PersistLiveClaimRequiredGbpRecordsOptions
+): Promise<void> {
+  const createdAt = options.now.toISOString()
+  await upsertSetupAccount({
+    accountName: options.accountName,
+    createdAt,
+    googleAccountId: options.accountName,
     queryable: options.queryable,
     storeId: options.storeId,
   })

@@ -45,3 +45,31 @@ export function persistSetupRecords(
     subjectId,
   })
 }
+
+export function persistLiveSetupRecords(
+  options: SetupGoogleBusinessProfileOptions,
+  status: Parameters<GbpStore["persistLiveSetupRecords"]>[0]["status"],
+  accountName: string,
+  googleLocationId: string
+): Promise<GbpSetupResult> {
+  return resolveGbpStore(options).persistLiveSetupRecords({
+    accountName,
+    googleLocationId,
+    now: options.adapters.clock.now(),
+    status,
+    storeId: options.storeId,
+  })
+}
+
+export async function persistLiveClaimRequiredRecords(
+  options: SetupGoogleBusinessProfileOptions,
+  claim: BuildClaimRequiredResultOptions,
+  accountName: string
+): Promise<void> {
+  await resolveGbpStore(options).persistLiveClaimRequiredRecords({
+    accountName,
+    claim,
+    now: options.adapters.clock.now(),
+    storeId: options.storeId,
+  })
+}

@@ -55,6 +55,9 @@ export async function appendStubSetupAuditLog(options: {
   readonly queryable: Queryable
   readonly status: LocationStatus
   readonly storeId: string
+  // Live setup records the same audit shape under a distinct action so the two
+  // paths stay distinguishable in the log.
+  readonly action?: string
 }): Promise<void> {
   await options.queryable.execute(
     `INSERT INTO audit_logs (
@@ -77,7 +80,7 @@ export async function appendStubSetupAuditLog(options: {
       setupAuditLogId,
       options.storeId,
       "demo-owner",
-      "gbp.setup.stub",
+      options.action ?? "gbp.setup.stub",
       "setup-gbp-audit-key",
       JSON.stringify({
         accessToken: "[REDACTED]",
