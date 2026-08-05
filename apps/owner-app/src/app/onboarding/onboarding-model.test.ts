@@ -55,4 +55,28 @@ describe("onboarding response model parsing", () => {
       message: "Google OAuth 인증 정보가 설정되지 않았습니다.",
     })
   })
+
+  it("surfaces a missing category as an in-place actionable state, not a dead-end error", () => {
+    const state = toSetupState({
+      status: "CATEGORY_REQUIRED",
+      message: "GBP 대표 카테고리를 먼저 선택해주세요.",
+    })
+
+    expect(state).toEqual({
+      kind: "categoryRequired",
+      message: "GBP 대표 카테고리를 먼저 선택해주세요.",
+    })
+  })
+
+  it("surfaces an ungeocodable address as its own address-fix state", () => {
+    const state = toSetupState({
+      status: "ADDRESS_NOT_GEOCODABLE",
+      message: "주소를 지도에서 찾지 못했습니다. 주소를 다시 확인해주세요.",
+    })
+
+    expect(state).toEqual({
+      kind: "addressUnresolved",
+      message: "주소를 지도에서 찾지 못했습니다. 주소를 다시 확인해주세요.",
+    })
+  })
 })

@@ -67,7 +67,7 @@ export function OnboardingFlow() {
           onSetup={actions.checkSetup}
           setup={state.setup}
         />
-        <SetupPanel setup={state.setup} />
+        <SetupPanel onRetry={actions.checkSetup} setup={state.setup} />
       </MobileShell>
     </main>
   )

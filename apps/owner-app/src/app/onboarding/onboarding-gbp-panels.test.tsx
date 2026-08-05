@@ -78,10 +78,48 @@ describe("onboarding GBP panels", () => {
     } satisfies SetupState
 
     // When
-    const html = renderToStaticMarkup(<SetupPanel setup={setup} />)
+    const html = renderToStaticMarkup(
+      <SetupPanel onRetry={() => undefined} setup={setup} />
+    )
 
     // Then
     expect(html).toContain("매장 홍보 처음 시키러 가기")
     expect(html).not.toContain("대시보드로 이동")
+  })
+
+  it("offers an inline category picker and retry when the category is missing", () => {
+    // Given
+    const setup = {
+      kind: "categoryRequired",
+      message: "GBP 대표 카테고리를 먼저 선택해주세요.",
+    } satisfies SetupState
+
+    // When
+    const html = renderToStaticMarkup(
+      <SetupPanel onRetry={() => undefined} setup={setup} />
+    )
+
+    // Then
+    expect(html).toContain("GBP 대표 카테고리를 먼저 선택해주세요.")
+    // The picker is rendered inline so the owner fixes it here, not by scrolling.
+    expect(html).toContain("업종(카테고리) 선택")
+    expect(html).toContain("카테고리 선택 후 다시 시도")
+  })
+
+  it("guides the owner to re-check the address when it cannot be geocoded", () => {
+    // Given
+    const setup = {
+      kind: "addressUnresolved",
+      message: "매장 주소를 지도에서 찾지 못했습니다.",
+    } satisfies SetupState
+
+    // When
+    const html = renderToStaticMarkup(
+      <SetupPanel onRetry={() => undefined} setup={setup} />
+    )
+
+    // Then
+    expect(html).toContain("매장 주소를 지도에서 찾지 못했습니다.")
+    expect(html).toContain("주소 확인 필요")
   })
 })

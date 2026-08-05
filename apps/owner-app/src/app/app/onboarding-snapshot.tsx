@@ -125,7 +125,7 @@ export function OnboardingSnapshot({
         onSetup={onSetup}
         setup={setup}
       />
-      <SetupPanel setup={setup} />
+      <SetupPanel onRetry={onSetup} setup={setup} />
     </>
   )
 }
