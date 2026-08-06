@@ -11,8 +11,14 @@ const instagramEnvVars = [
   "INSTAGRAM_ACCESS_TOKEN",
   "INSTAGRAM_USER_ID",
 ] as const
+// The Instagram API with Instagram Login publishes on graph.instagram.com — not
+// the Facebook-login graph.facebook.com path. The request shape is identical
+// (/{ig-user-id}/media -> /media_publish), but the token is an Instagram user
+// access token (from Instagram business login, instagram_business_content_publish
+// permission) and the account id/token come from INSTAGRAM_ACCESS_TOKEN /
+// INSTAGRAM_USER_ID or the per-store account, not a Facebook Page token.
 const graphApiVersion = "v24.0"
-const graphBaseUrl = `https://graph.facebook.com/${graphApiVersion}`
+const graphBaseUrl = `https://graph.instagram.com/${graphApiVersion}`
 const idResponseSchema = z.object({ id: z.string().min(1) }).passthrough()
 const permalinkResponseSchema = z.object({ permalink: z.url() }).passthrough()
 
