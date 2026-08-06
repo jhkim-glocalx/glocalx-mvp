@@ -13,8 +13,8 @@ v2 컨시어지 모델은 Google Business Profile을 **조직(org) 계정** 하�
 — 여러 오너의 위치(location)에 org 접근 권한을 가진 단일 Google 신원이므로,
 오너는 GBP를 위해 아무것도 연결하지 않는다. 인스타그램에는 **이에 해당하는
 것이 없다.** Meta의 콘텐츠 발행(Content Publishing) API는 계정 단위다: 어떤
-매장의 인스타그램에 글을 올리려면, 앱이 *바로 그 인스타그램 비즈니스 계정이
-직접 부여한* 액세스 토큰을 쥐고 있어야 한다. "org 토큰 하나로 모든 매장의
+매장의 인스타그램에 글을 올리려면, 앱이 _바로 그 인스타그램 비즈니스 계정이
+직접 부여한_ 액세스 토큰을 쥐고 있어야 한다. "org 토큰 하나로 모든 매장의
 인스타를 관리"하는 건 불가능하다.
 
 그래서 인스타그램은 GBP에는 없던 요구를 강제한다: **각 매장 오너가 자기 인스타
@@ -32,7 +32,7 @@ v2 컨시어지 모델은 Google Business Profile을 **조직(org) 계정** 하�
 
 - **매장별 토큰 저장소.** [`store_channel_links`](../../packages/db/src/migrations/0011_store_channel_links.sql)
   에 이미 `(store_id, channel IN ('gbp','instagram'), external_account_ref,
-  encrypted_token, status IN ('linked','expired','revoked'))` 가 있다.
+encrypted_token, status IN ('linked','expired','revoked'))` 가 있다.
 - **읽기 경로.** [`PublishTargetStore`](../../packages/db/src/support/publish-target-store.ts)
   가 이미 `readStoreChannelLink`(뷰 안전, 토큰 없음)와
   `readStoreChannelToken`(암호화 → `found` / `absent` / `undecryptable`)를 노출.
@@ -42,8 +42,8 @@ v2 컨시어지 모델은 Google Business Profile을 **조직(org) 계정** 하�
   를 받고, 생략 시 전역 env 계정으로 폴백한다.
 - **OAuth 선례.** 오너 로그인이 이미 일회용 state 쿠키로 start/callback 전 과정을
   수행한다([`api/auth/google/start`](../../apps/owner-app/src/app/api/auth/google/start/route.ts)
-  + [`callback`](../../apps/owner-app/src/app/api/auth/google/callback/route.ts)),
-  토큰 암호화도 존재한다(`@glocalx/domain/token-encryption`).
+  - [`callback`](../../apps/owner-app/src/app/api/auth/google/callback/route.ts)),
+    토큰 암호화도 존재한다(`@glocalx/domain/token-encryption`).
 
 **빈 부분:** (1) 인증 세션을 만드는 게 아니라 `store_channel_links` 행을 *기록*하는
 오너용 "인스타그램 연결" OAuth 플로우, (2) 인스타그램 토큰 교환·갱신 모듈,
@@ -52,6 +52,7 @@ v2 컨시어지 모델은 Google Business Profile을 **조직(org) 계정** 하�
 ## 목표 / 비목표
 
 **목표**
+
 - 오너가 이미 해본 카카오 로그인 정도의 노력으로 매장 인스타를 연결: 탭 → 인스타
   자체 동의 화면 → 완료.
 - 오너는 토큰을 보거나, 복사하거나, 다루지 않는다.
@@ -61,6 +62,7 @@ v2 컨시어지 모델은 Google Business Profile을 **조직(org) 계정** 하�
 - 우아한 저하: 연결하지 않은 매장도 여전히 가치를 얻는다(초안 어시스트).
 
 **비목표**
+
 - 오너 승인 게이트는 그대로 — 채널 연결이 자동 게시 동의를 뜻하지 않는다. 모든
   발행은 기존 승인 경로를 거친다.
 - 매장당 다중 계정, 스토리/릴스, 댓글 관리는 만들지 않음.
@@ -82,8 +84,8 @@ v2 컨시어지 모델은 Google Business Profile을 **조직(org) 계정** 하�
 계정을 요구하는데, 많은 오너는 **개인** 계정을 쓴다. 두 지점에서 처리한다:
 
 - 미리 감지할 수 있으면(예: 오너가 챗 어시스턴트에 말함, 또는 사전 신호) 사전
-  단계를 보여준다: *"인스타그램을 프로페셔널 계정으로 바꿔야 자동 게시가 가능해요"*
-  + 3장짜리 방법 안내(인스타그램 설정 → 계정 유형 → 프로페셔널 전환, 무료, 약 1분).
+  단계를 보여준다: _"인스타그램을 프로페셔널 계정으로 바꿔야 자동 게시가 가능해요"_
+  - 3장짜리 방법 안내(인스타그램 설정 → 계정 유형 → 프로페셔널 전환, 무료, 약 1분).
 - 동의 실패 시점에야 발견되면, 콜백이 Meta 에러를 친절한
   **`needs_professional_account`** 카드 상태로 매핑 — 같은 안내 + "다시 시도"
   버튼, 원시 에러는 절대 노출하지 않음.
@@ -98,11 +100,10 @@ v2 컨시어지 모델은 Google Business Profile을 **조직(org) 계정** 하�
 ### OAuth: 인증이 아니라 연결
 
 Google **로그인** OAuth를 구조적으로 그대로 따르는 새 라우트 2개. 단 결정적 차이
-— 콜백이 세션을 발급하는 대신, *이미 인증된* 오너의 매장에 채널을 붙인다:
+— 콜백이 세션을 발급하는 대신, _이미 인증된_ 오너의 매장에 채널을 붙인다:
 
 - `POST /api/instagram/oauth/start` (또는 GET 링크) — 유효한 오너 세션 + 해석된
-  매장을 요구; `storeId`에 묶인 일회용 state 쿠키를 설정; 인스타그램 authorize로
-  302.
+  매장을 요구; `storeId`에 묶인 일회용 state 쿠키를 설정; 인스타그램 authorize로 302.
 - `GET /api/instagram/oauth/callback` — state 검증(불일치 시 거부, 쿠키 만료,
   Google 콜백과 동일); `code` 교환; `withQueryableRouteDatabase`로 오너 세션 +
   매장 소유권 해석; **`store_channel_links` 행 upsert**; 성공/프로페셔널-필요
@@ -117,13 +118,13 @@ Google **로그인** OAuth를 구조적으로 그대로 따르는 새 라우트 
 새 `instagram-oauth` 어댑터 모듈(`google-org-auth.ts`의 형태를 따름; stub은
 결정적 값을 반환, production은 Meta 호출):
 
-| 단계 | 엔드포인트 | 비고 |
-|---|---|---|
-| authorize URL | `www.instagram.com/oauth/authorize` | client_id = **Instagram** 앱 id(923493387435637), 위 스코프 |
-| code → 단기 | `POST api.instagram.com/oauth/access_token` | `{ access_token, user_id, permissions }` 반환 |
-| 단기 → 장기 | `GET graph.instagram.com/access_token?grant_type=ig_exchange_token` | 약 60일 토큰, `expires_in` |
-| 신원 | `GET graph.instagram.com/me?fields=user_id,username,account_type` | `accountRef = user_id`; account_type ≠ personal 게이트 |
-| 갱신 | `GET graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token` | 24시간 초과·60일 미만에서 유효; 60일 연장 |
+| 단계          | 엔드포인트                                                                 | 비고                                                        |
+| ------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| authorize URL | `www.instagram.com/oauth/authorize`                                        | client_id = **Instagram** 앱 id(923493387435637), 위 스코프 |
+| code → 단기   | `POST api.instagram.com/oauth/access_token`                                | `{ access_token, user_id, permissions }` 반환               |
+| 단기 → 장기   | `GET graph.instagram.com/access_token?grant_type=ig_exchange_token`        | 약 60일 토큰, `expires_in`                                  |
+| 신원          | `GET graph.instagram.com/me?fields=user_id,username,account_type`          | `accountRef = user_id`; account_type ≠ personal 게이트      |
+| 갱신          | `GET graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token` | 24시간 초과·60일 미만에서 유효; 60일 연장                   |
 
 새 env: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_OAUTH_REDIRECT_URI`
 (기존 토큰-암호화 키에 더해). production 어댑터는 자격증명 폴백 규율을 유지 —
@@ -185,7 +186,7 @@ Google **로그인** OAuth를 구조적으로 그대로 따르는 새 라우트 
   가벼운 cron이 필요한지 확인.
 - **설정 표면:** 온보딩에서만 연결할지, 만료 후 재연결용 "채널 관리" 화면도 둘지?
   (둘 다 쪽으로 기움.)
-- **전역 env 계정:** 우리 데모/파일럿 인스타용 env 폴백은 유지하되, *실제* 매장이
+- **전역 env 계정:** 우리 데모/파일럿 인스타용 env 폴백은 유지하되, _실제_ 매장이
   거기로 폴백해도 되는가? (설계상 아니오 — 막는다.)
 
 ## 성공 기준

@@ -13,8 +13,8 @@ The v2 concierge model publishes to Google Business Profile from an **org
 account** — one Google identity with org access to many owners' locations, so
 the owner never connects anything for GBP. Instagram has **no equivalent**.
 Meta's Content Publishing API is per-account: to post to a store's Instagram,
-the app must hold an access token that *that specific Instagram business
-account* granted it. There is no "one org token manages every store's
+the app must hold an access token that _that specific Instagram business
+account_ granted it. There is no "one org token manages every store's
 Instagram."
 
 So Instagram forces something GBP did not: **each store owner must grant our
@@ -32,7 +32,7 @@ channel, see `apps/owner-app/scripts/validate-instagram-account.mjs`) is a
 
 - **Per-store token storage.** [`store_channel_links`](../../packages/db/src/migrations/0011_store_channel_links.sql)
   already has `(store_id, channel IN ('gbp','instagram'), external_account_ref,
-  encrypted_token, status IN ('linked','expired','revoked'))`.
+encrypted_token, status IN ('linked','expired','revoked'))`.
 - **Read path.** [`PublishTargetStore`](../../packages/db/src/support/publish-target-store.ts)
   already exposes `readStoreChannelLink` (view-safe, no token) and
   `readStoreChannelToken` (encrypted → `found` / `absent` / `undecryptable`).
@@ -44,10 +44,10 @@ channel, see `apps/owner-app/scripts/validate-instagram-account.mjs`) is a
 - **OAuth precedent.** Owner login already does the full start/callback dance
   with a one-time state cookie
   ([`api/auth/google/start`](../../apps/owner-app/src/app/api/auth/google/start/route.ts)
-  + [`callback`](../../apps/owner-app/src/app/api/auth/google/callback/route.ts)),
-  and token encryption exists (`@glocalx/domain/token-encryption`).
+  - [`callback`](../../apps/owner-app/src/app/api/auth/google/callback/route.ts)),
+    and token encryption exists (`@glocalx/domain/token-encryption`).
 
-**The gap:** (1) an owner-facing "connect Instagram" OAuth flow that *writes* a
+**The gap:** (1) an owner-facing "connect Instagram" OAuth flow that _writes_ a
 `store_channel_links` row (rather than creating an auth session), (2) an
 Instagram token-exchange/refresh module, (3) the onboarding card + the
 personal-vs-professional-account guidance UX.
@@ -55,6 +55,7 @@ personal-vs-professional-account guidance UX.
 ## Goals / Non-goals
 
 **Goals**
+
 - An owner connects their store's Instagram in ≤ the effort of the Kakao login
   they already did: tap → Instagram's own consent screen → done.
 - The owner never sees, copies, or handles a token.
@@ -64,6 +65,7 @@ personal-vs-professional-account guidance UX.
 - Degrade gracefully: an unconnected store still gets value (draft assist).
 
 **Non-goals**
+
 - No change to the owner-approval gate — connecting a channel is not consent to
   auto-post. Every publish still goes through the existing approval path.
 - Not building multi-account-per-store, Stories/Reels, or comment management.
@@ -87,8 +89,8 @@ requires a **Business or Creator** account; many owners have a **personal**
 one. Two places to handle it:
 
 - If we can detect it up front (e.g. the owner tells the chat assistant, or a
-  prior signal), show a pre-step: *"인스타그램을 프로페셔널 계정으로 바꿔야
-  자동 게시가 가능해요"* with a 3-image how-to (Instagram 설정 → 계정 유형 →
+  prior signal), show a pre-step: _"인스타그램을 프로페셔널 계정으로 바꿔야
+  자동 게시가 가능해요"_ with a 3-image how-to (Instagram 설정 → 계정 유형 →
   프로페셔널 전환, free, ~1 min).
 - If discovered only at consent failure, the callback maps Meta's error to a
   friendly **`needs_professional_account`** card state with the same how-to and
@@ -105,8 +107,8 @@ in the product.
 ### OAuth: link, don't authenticate
 
 Two new routes, structurally mirroring the Google **login** OAuth but with a
-crucial difference — the callback attaches a channel to the *already
-authenticated* owner's store instead of minting a session:
+crucial difference — the callback attaches a channel to the _already
+authenticated_ owner's store instead of minting a session:
 
 - `POST /api/instagram/oauth/start` (or GET link) — requires a valid owner
   session + resolved store; sets a one-time state cookie bound to `storeId`;
@@ -126,13 +128,13 @@ writing. A mismatched or missing session aborts without writing a link.
 New `instagram-oauth` adapter module (mirrors `google-org-auth.ts`'s
 shape; stub returns deterministic values, production hits Meta):
 
-| Step | Endpoint | Notes |
-|---|---|---|
-| authorize URL | `www.instagram.com/oauth/authorize` | client_id = **Instagram** app id (923493387435637), scopes above |
-| code → short-lived | `POST api.instagram.com/oauth/access_token` | returns `{ access_token, user_id, permissions }` |
-| short → long-lived | `GET graph.instagram.com/access_token?grant_type=ig_exchange_token` | ~60-day token, `expires_in` |
-| identity | `GET graph.instagram.com/me?fields=user_id,username,account_type` | `accountRef = user_id`; also gates account_type ≠ personal |
-| refresh | `GET graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token` | valid >24h old, <60d; extends 60 days |
+| Step               | Endpoint                                                                   | Notes                                                            |
+| ------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| authorize URL      | `www.instagram.com/oauth/authorize`                                        | client_id = **Instagram** app id (923493387435637), scopes above |
+| code → short-lived | `POST api.instagram.com/oauth/access_token`                                | returns `{ access_token, user_id, permissions }`                 |
+| short → long-lived | `GET graph.instagram.com/access_token?grant_type=ig_exchange_token`        | ~60-day token, `expires_in`                                      |
+| identity           | `GET graph.instagram.com/me?fields=user_id,username,account_type`          | `accountRef = user_id`; also gates account_type ≠ personal       |
+| refresh            | `GET graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token` | valid >24h old, <60d; extends 60 days                            |
 
 New env: `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_OAUTH_REDIRECT_URI`
 (plus the existing token-encryption key). Production adapters keep the
@@ -202,7 +204,7 @@ constraint that both apps stay fully demoable without live credentials.
 - **Settings surface:** connect only in onboarding, or also a post-onboarding
   "채널 관리" screen for reconnect after expiry? (Leaning both.)
 - **Global env account:** keep the env fallback for our own demo/pilot IG, but
-  should a *real* store ever fall back to it? (Design says no — block instead.)
+  should a _real_ store ever fall back to it? (Design says no — block instead.)
 
 ## Success criteria
 
