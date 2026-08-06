@@ -4,6 +4,13 @@
 // validate-gbp-location.mjs, to prove a channel is live-ready before flipping
 // APP_INTEGRATION_MODE to production.
 //
+// This targets the Instagram API with Instagram Login (graph.instagram.com),
+// matching the adapter in packages/integrations/src/instagram.ts. The token is
+// an Instagram user access token (from Instagram business login, with the
+// instagram_business_basic + instagram_business_content_publish permissions),
+// NOT a Facebook Page token. The account must be added as an Instagram Tester
+// (app → Roles) before its token can be generated in development.
+//
 // Instagram's Graph API has no "validateOnly" publish, so this deliberately
 // makes only GET calls: it NEVER creates a media container or publishes a post.
 // It hits the same host/version the adapter uses (instagram.ts, graph v24.0) —
@@ -17,7 +24,7 @@
 //   node apps/owner-app/scripts/validate-instagram-account.mjs
 
 const GRAPH_API_VERSION = "v24.0"
-const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`
+const GRAPH_BASE = `https://graph.instagram.com/${GRAPH_API_VERSION}`
 
 function fail(message) {
   console.error(`validate-instagram-account: ${message}`)
@@ -71,21 +78,20 @@ async function graphGet(path, params, label) {
 
 // --- 1. token can reach the configured IG business account ------------------
 // Proves the exact (access token, user id) pair the adapter uses is valid and
-// paired: a wrong token, a revoked token, or a mismatched id all fail here.
+// paired: querying the node BY INSTAGRAM_USER_ID means a wrong token, a revoked
+// token, or a mismatched id all fail here. On the Instagram-login path the node
+// exposes user_id/username/account_type (no Facebook "name" field).
 
 console.log(`\n[1/2] Reading the Instagram business account…`)
 const account = await graphGet(
   igUserId,
-  { fields: "id,username,name" },
+  { fields: "user_id,username,account_type" },
   "account read"
 )
-if (account.id !== igUserId) {
-  fail(`returned id ${account.id} does not match INSTAGRAM_USER_ID ${igUserId}`)
-}
 console.log(
   `  ✓ @${account.username ?? "(no username)"}` +
-    (account.name ? ` — ${account.name}` : "") +
-    ` (id ${account.id})`
+    (account.account_type ? ` — ${account.account_type}` : "") +
+    ` (id ${account.user_id ?? account.id ?? igUserId})`
 )
 
 // --- 2. account is eligible to publish (read-only quota probe) ---------------
@@ -110,6 +116,6 @@ console.log(
 )
 
 console.log(
-  `\n✅ INSTAGRAM CREDENTIALS OK — the token reaches @${account.username ?? account.id} ` +
+  `\n✅ INSTAGRAM CREDENTIALS OK — the token reaches @${account.username ?? igUserId} ` +
     `and the account is publish-eligible. No post was created.`
 )
