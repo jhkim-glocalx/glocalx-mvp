@@ -8,6 +8,7 @@ import type {
 } from "./gbp-contracts"
 import type { MarketingGenerationAdapter } from "./marketing-contracts"
 import type { InstagramPostsAdapter } from "./instagram-contracts"
+import type { InstagramOAuthAdapter } from "./instagram-oauth-contracts"
 import type {
   OnboardingConversationAdapter,
   PostingConversationAdapter,
@@ -183,6 +184,7 @@ export type IntegrationAdapters = {
   readonly gbpReviews: GbpReviewsAdapter
   readonly geocoding: GeocodingAdapter
   readonly instagramPosts: InstagramPostsAdapter
+  readonly instagramOAuth: InstagramOAuthAdapter
   readonly contentGeneration: ContentGenerationAdapter
   readonly marketingGeneration: MarketingGenerationAdapter
   readonly onboardingConversation: OnboardingConversationAdapter
