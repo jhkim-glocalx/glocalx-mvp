@@ -36,6 +36,8 @@ import { createDatabaseAuthRateLimitRepository } from "@/server/repositories/aut
 import { createDatabaseEmailCredentialsRepository } from "@/server/repositories/email-credentials"
 import { createDatabaseGbpCategoryStore } from "@/server/repositories/gbp-category-store"
 import type { GbpCategoryStore } from "@/server/repositories/gbp-category-store"
+import { createDatabaseStoreChannelLinkStore } from "@/server/repositories/store-channel-link-store"
+import type { StoreChannelLinkStore } from "@/server/repositories/store-channel-link-store"
 import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
 import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
@@ -82,6 +84,7 @@ export type QueryableRouteDatabaseContext = {
   >
   readonly gbpAccessStore: GbpAccessStore
   readonly gbpCategoryStore: GbpCategoryStore
+  readonly storeChannelLinkStore: StoreChannelLinkStore
   readonly gbpStore: ReturnType<typeof createDatabaseGbpStore>
   readonly legacySqliteDatabase?: SqliteDatabase
   readonly oauthIdentityRepository: ReturnType<
@@ -244,6 +247,7 @@ function buildRouteDatabaseContext(
       createDatabaseEmailCredentialsRepository(queryable),
     gbpAccessStore: createDatabaseGbpAccessStore(queryable),
     gbpCategoryStore: createDatabaseGbpCategoryStore(queryable),
+    storeChannelLinkStore: createDatabaseStoreChannelLinkStore(queryable),
     gbpStore: createDatabaseGbpStore(queryable),
     ...(provider === "sqlite"
       ? { legacySqliteDatabase: databaseContext.legacySqliteDatabase }

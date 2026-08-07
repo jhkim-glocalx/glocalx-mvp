@@ -9,6 +9,10 @@ import type {
 } from "@/server/repositories/gbp-category-store"
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import type { SessionStore } from "@/server/repositories/session-store"
+import type {
+  StoreChannelLinkStore,
+  UpsertStoreChannelLinkInput,
+} from "@/server/repositories/store-channel-link-store"
 import type { StoreProfileRepository } from "@/server/repositories/store-profile"
 
 export type RouteBoundaryContext = {
@@ -18,6 +22,7 @@ export type RouteBoundaryContext = {
   readonly gbpStore: GbpStore
   readonly legacySqliteDatabase: never
   readonly sessionStore: SessionStore
+  readonly storeChannelLinkStore: StoreChannelLinkStore
   readonly storeProfileRepository: StoreProfileRepository
 }
 
@@ -165,6 +170,21 @@ export function createGbpCategoryStore(options?: {
   }
 }
 
+export function createStoreChannelLinkStore(): {
+  readonly upserts: readonly UpsertStoreChannelLinkInput[]
+  readonly store: StoreChannelLinkStore
+} {
+  const upserts: UpsertStoreChannelLinkInput[] = []
+  return {
+    upserts,
+    store: {
+      async upsertLink(input) {
+        upserts.push(input)
+      },
+    },
+  }
+}
+
 export function createStoreProfileRepository(): {
   readonly profileReads: readonly string[]
   readonly repository: StoreProfileRepository
@@ -261,22 +281,26 @@ export function createGbpAccessStore(): {
 }
 
 export function createRouteContext(options: {
-  readonly gbpStore: GbpStore
+  readonly gbpStore?: GbpStore
   readonly sessionStore: SessionStore
+  readonly adapters?: ReturnType<typeof createIntegrationAdapters>
   readonly storeProfileRepository?: StoreProfileRepository
   readonly gbpAccessStore?: GbpAccessStore
   readonly gbpCategoryStore?: GbpCategoryStore
+  readonly storeChannelLinkStore?: StoreChannelLinkStore
 }): RouteBoundaryContext {
   return {
-    adapters: createIntegrationAdapters(),
+    adapters: options.adapters ?? createIntegrationAdapters(),
     gbpAccessStore: options.gbpAccessStore ?? createGbpAccessStore().store,
     gbpCategoryStore:
       options.gbpCategoryStore ?? createGbpCategoryStore().store,
-    gbpStore: options.gbpStore,
+    gbpStore: options.gbpStore ?? createGbpStore().store,
     get legacySqliteDatabase() {
       return unexpectedCall("legacySqliteDatabase")
     },
     sessionStore: options.sessionStore,
+    storeChannelLinkStore:
+      options.storeChannelLinkStore ?? createStoreChannelLinkStore().store,
     storeProfileRepository:
       options.storeProfileRepository ?? createMissingStoreProfileRepository(),
   }

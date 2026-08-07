@@ -45,6 +45,10 @@ import {
   createProductionInstagramPosts,
   createStubInstagramPosts,
 } from "./instagram"
+import {
+  createProductionInstagramOAuth,
+  createStubInstagramOAuth,
+} from "./instagram-oauth"
 import { createStubPerformance } from "./stub-performance"
 
 export function createIntegrationAdapters(
@@ -71,6 +75,7 @@ export function createIntegrationAdapters(
       gbpReviews: createProductionReviews(env),
       geocoding: createProductionGeocoding(env, fetchImpl),
       instagramPosts: createProductionInstagramPosts(env, fetchImpl),
+      instagramOAuth: createProductionInstagramOAuth(env, fetchImpl),
       contentGeneration: createStubContentGeneration(),
       marketingGeneration: createProductionMarketingGeneration(env, fetchImpl),
       onboardingConversation: createProductionOnboardingConversation(
@@ -99,6 +104,7 @@ export function createIntegrationAdapters(
     gbpReviews: createStubReviews(),
     geocoding: createStubGeocoding(),
     instagramPosts: createStubInstagramPosts(),
+    instagramOAuth: createStubInstagramOAuth(),
     contentGeneration: createStubContentGeneration(),
     marketingGeneration: createStubMarketingGeneration(),
     onboardingConversation: createStubOnboardingConversation(),
