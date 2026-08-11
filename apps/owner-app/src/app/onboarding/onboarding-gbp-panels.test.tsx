@@ -106,6 +106,23 @@ describe("onboarding GBP panels", () => {
     expect(html).toContain("카테고리 선택 후 다시 시도")
   })
 
+  it("offers a retry button when Google fails transiently, instead of a dead-end alert", () => {
+    // Given
+    const setup = {
+      kind: "retryable",
+      message: "Google 연동 중 일시적인 오류가 발생했어요.",
+    } satisfies SetupState
+
+    // When
+    const html = renderToStaticMarkup(
+      <SetupPanel onRetry={() => undefined} setup={setup} />
+    )
+
+    // Then
+    expect(html).toContain("Google 연동 중 일시적인 오류가 발생했어요.")
+    expect(html).toContain("다시 시도")
+  })
+
   it("guides the owner to re-check the address when it cannot be geocoded", () => {
     // Given
     const setup = {

@@ -243,12 +243,15 @@ export async function runLiveGbpProvisioning(options: {
   readonly location: Readonly<Record<string, unknown>>
   readonly requestId: string
 }): Promise<LiveGbpProvisioningResult> {
+  // googleLocations:search is best-effort duplicate/claim detection. Google
+  // returns sporadic 500 INTERNAL even for well-formed searches, and that must
+  // not abort provisioning — a failed search falls back to "no matches" so
+  // validate+create still runs (validate itself would still reject a true
+  // duplicate). Losing claim detection on a search outage beats blocking setup.
   const search = await executeSearch(options)
-  if (search.kind !== "ok") {
-    return search
-  }
+  const matches = search.kind === "ok" ? search.result.matches : []
 
-  const claimedMatch = search.result.matches.find(
+  const claimedMatch = matches.find(
     (match) => match.requestAdminRightsUrl !== undefined
   )
   if (claimedMatch?.requestAdminRightsUrl !== undefined) {

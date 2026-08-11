@@ -46,6 +46,7 @@ type FakeGoogleOptions = {
   readonly search?: unknown
   readonly create?: unknown
   readonly searchStatus?: number
+  readonly createStatus?: number
 }
 
 // Routes the exact request specs the production adapter builds to canned
@@ -71,7 +72,10 @@ function createFakeGoogle(options: FakeGoogleOptions = {}): ExternalFetch {
       return jsonResponse({})
     }
     if (url.includes("/locations?") && url.includes("validateOnly=false")) {
-      return jsonResponse(options.create ?? { name: "locations/live-123" })
+      return jsonResponse(
+        options.create ?? { name: "locations/live-123" },
+        options.createStatus ?? 200
+      )
     }
     throw new Error(`unexpected fetch to ${url}`)
   }
@@ -324,8 +328,35 @@ describe("runLiveGbpProvisioning", () => {
     expect(calls.some((url) => url.includes("validateOnly=false"))).toBe(false)
   })
 
-  it("surfaces an upstream error when Google rejects the token", async () => {
-    const fetchImpl = createFakeGoogle({ searchStatus: 401 })
+  it("still provisions when googleLocations:search fails (best-effort claim detection)", async () => {
+    // Google returns sporadic 500 INTERNAL for googleLocations:search; that must
+    // not abort provisioning, since validate+create do not depend on it.
+    const calls: string[] = []
+    const fetchImpl = createFakeGoogle({
+      onCall: (url) => calls.push(url),
+      searchStatus: 500,
+    })
+
+    const result = await runLiveGbpProvisioning({
+      adapters: {
+        gbpBusinessInformation: createProductionBusinessInformation(orgAppEnv),
+      },
+      credentials,
+      fetchImpl,
+      location,
+      requestId: "req-1",
+    })
+
+    expect(result).toEqual({
+      kind: "provisioned",
+      status: "VERIFICATION_PENDING",
+      googleLocationId: "locations/live-123",
+    })
+    expect(calls.some((url) => url.includes("validateOnly=false"))).toBe(true)
+  })
+
+  it("surfaces an upstream error when Google rejects the create", async () => {
+    const fetchImpl = createFakeGoogle({ createStatus: 500 })
     const result = await runLiveGbpProvisioning({
       adapters: {
         gbpBusinessInformation: createProductionBusinessInformation(orgAppEnv),
