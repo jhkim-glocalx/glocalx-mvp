@@ -68,6 +68,28 @@ describe("onboarding response model parsing", () => {
     })
   })
 
+  it("surfaces a transient upstream Google failure as a retryable state, not a malformed-response error", () => {
+    const state = toSetupState({
+      status: "SETUP_UPSTREAM_ERROR",
+      message: "Google 연동 중 일시적인 오류가 발생했어요.",
+    })
+
+    expect(state).toEqual({
+      kind: "retryable",
+      message: "Google 연동 중 일시적인 오류가 발생했어요.",
+    })
+  })
+
+  it("supplies a default retry message when an upstream failure omits one", () => {
+    const state = toSetupState({ status: "SETUP_UPSTREAM_ERROR" })
+
+    expect(state).toEqual({
+      kind: "retryable",
+      message:
+        "Google 연동 중 일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
+    })
+  })
+
   it("surfaces an ungeocodable address as its own address-fix state", () => {
     const state = toSetupState({
       status: "ADDRESS_NOT_GEOCODABLE",

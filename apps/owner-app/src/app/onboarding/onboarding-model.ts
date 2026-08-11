@@ -68,6 +68,12 @@ export type SetupState =
   // so the panel can show the corrective action instead of a dead-end alert.
   | { readonly kind: "categoryRequired"; readonly message: string }
   | { readonly kind: "addressUnresolved"; readonly message: string }
+  // A transient upstream Google failure (SETUP_UPSTREAM_ERROR): the request was
+  // well-formed but Google returned an error/outage. Distinct from `error` so the
+  // panel offers a retry instead of a dead-end alert — and, critically, so it is
+  // never misread as a malformed response (the old fall-through to
+  // "GBP 세팅 응답 형식이 올바르지 않습니다").
+  | { readonly kind: "retryable"; readonly message: string }
   | { readonly kind: "error"; readonly message: string }
 
 export type OnboardingChatTurn = {
@@ -307,6 +313,15 @@ export function toSetupState(payload: unknown): SetupState {
       kind: "error",
       message:
         readString(payload["message"]) ?? "GBP 세팅을 진행할 수 없습니다.",
+    }
+  }
+
+  if (status === "SETUP_UPSTREAM_ERROR") {
+    return {
+      kind: "retryable",
+      message:
+        readString(payload["message"]) ??
+        "Google 연동 중 일시적인 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
     }
   }
 

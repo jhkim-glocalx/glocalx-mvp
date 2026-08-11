@@ -164,6 +164,20 @@ export function SetupPanel({
           </form>
         </div>
       ) : null}
+      {setup.kind === "retryable" ? (
+        <div className="grid gap-3">
+          <div role="alert">
+            <ChatMessage message={setup.message} speaker="assistant" />
+          </div>
+          <button
+            className="gx-onboarding-primary"
+            onClick={onRetry}
+            type="button"
+          >
+            다시 시도
+          </button>
+        </div>
+      ) : null}
       {setup.kind === "error" ? (
         <div role="alert">
           <ChatMessage message={setup.message} speaker="assistant" />
