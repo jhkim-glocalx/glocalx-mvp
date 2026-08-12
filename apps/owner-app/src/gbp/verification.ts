@@ -82,7 +82,9 @@ async function readOfferedMethods(
   if (spec === undefined) {
     return []
   }
-  return parseVerificationOptionMethods(await executeSpec(spec, options.fetchImpl))
+  return parseVerificationOptionMethods(
+    await executeSpec(spec, options.fetchImpl)
+  )
 }
 
 async function readVoiceOfMerchant(

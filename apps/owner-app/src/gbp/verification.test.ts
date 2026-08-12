@@ -15,7 +15,11 @@ function fakeVerifications(): GbpVerificationsAdapter {
   const ok = (value: HttpRequestSpec) => ({ kind: "ok" as const, value })
   return {
     fetchVerificationOptions: ({ locationName: name }) =>
-      ok({ method: "POST", url: `test://${name}:fetchVerificationOptions`, headers: {} }),
+      ok({
+        method: "POST",
+        url: `test://${name}:fetchVerificationOptions`,
+        headers: {},
+      }),
     verify: ({ locationName: name, method }) =>
       ok({
         method: "POST",
@@ -24,7 +28,11 @@ function fakeVerifications(): GbpVerificationsAdapter {
         body: { method },
       }),
     getVoiceOfMerchantState: ({ locationName: name }) =>
-      ok({ method: "GET", url: `test://${name}/VoiceOfMerchantState`, headers: {} }),
+      ok({
+        method: "GET",
+        url: `test://${name}/VoiceOfMerchantState`,
+        headers: {},
+      }),
   }
 }
 
@@ -55,8 +63,14 @@ function fetchRouter(config: {
 describe("runGbpVerificationAttempt", () => {
   it("attempts AUTO, then reports PENDING_REVIEW from the re-read state", async () => {
     const fetchImpl = fetchRouter({
-      optionsResponses: [{ options: [{ verificationMethod: "AUTO" }] }, { options: [] }],
-      voiceOfMerchant: { hasVoiceOfMerchant: false, waitForVoiceOfMerchant: {} },
+      optionsResponses: [
+        { options: [{ verificationMethod: "AUTO" }] },
+        { options: [] },
+      ],
+      voiceOfMerchant: {
+        hasVoiceOfMerchant: false,
+        waitForVoiceOfMerchant: {},
+      },
     })
 
     const result = await runGbpVerificationAttempt({
@@ -169,7 +183,10 @@ describe("readGbpVerificationSnapshot", () => {
     })
 
     // AUTO-only + verify affordance → concierge, and no verify write was made.
-    expect(result).toEqual({ state: "NEEDS_CONCIERGE", offeredMethods: ["AUTO"] })
+    expect(result).toEqual({
+      state: "NEEDS_CONCIERGE",
+      offeredMethods: ["AUTO"],
+    })
     expect(fetchImpl).not.toHaveBeenCalledWith(
       "test://locations/123:verify",
       expect.anything()

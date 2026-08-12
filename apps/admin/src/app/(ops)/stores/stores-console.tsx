@@ -106,7 +106,10 @@ export function StoresConsole({
     <>
       <h1 className="ops-page-title">Stores</h1>
       {conciergeCount === 0 ? null : (
-        <p className="ops-stores-concierge" data-testid="stores-concierge-count">
+        <p
+          className="ops-stores-concierge"
+          data-testid="stores-concierge-count"
+        >
           {conciergeCount} store{conciergeCount === 1 ? " needs" : "s need"}{" "}
           concierge verification — call the owner and walk them through
           Google&rsquo;s video verification.
