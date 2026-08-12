@@ -52,6 +52,11 @@ import {
   createStubInstagramOAuth,
 } from "./instagram-oauth"
 import { createStubPerformance } from "./stub-performance"
+import { createSystemClock } from "./clock"
+
+function stubClockEpoch(): Date {
+  return new Date("2026-06-04T00:00:00.000Z")
+}
 
 export function createIntegrationAdapters(
   options: CreateIntegrationAdaptersOptions = {}
@@ -59,8 +64,17 @@ export function createIntegrationAdapters(
   const env = options.env ?? process.env
   const mode =
     env["APP_INTEGRATION_MODE"] === "production" ? "production" : "stub"
-  const now = options.now ?? new Date("2026-06-04T00:00:00.000Z")
   const fetchImpl = options.fetchImpl ?? globalThis.fetch
+  // Stub mode stays frozen on the fixture date so seeded data and deterministic
+  // tests keep their timestamps; production must stamp real wall-clock time or
+  // every owner-side write lands on that fixture date. An explicit options.now
+  // still wins in both modes so tests can pin time while driving production
+  // adapters.
+  const clock = options.now
+    ? createStubClock(options.now)
+    : mode === "production"
+      ? createSystemClock()
+      : createStubClock(stubClockEpoch())
 
   if (mode === "production") {
     // Production mode assembles real external adapters while keeping deterministic stubs for services not yet backed by live credentials or network contracts.
@@ -88,7 +102,7 @@ export function createIntegrationAdapters(
       postingConversation: createProductionPostingConversation(env, fetchImpl),
       csAssistant: createProductionCsAssistant(env, fetchImpl),
       translation: createStubTranslation(),
-      clock: createStubClock(now),
+      clock,
       jobScheduler: createStubJobScheduler(),
       // Preview/dev deployments may lack a provisioned Blob store, same rationale as the Naver fallback above.
       mediaStore: shouldUsePreviewMediaStoreStub(env)
@@ -115,7 +129,7 @@ export function createIntegrationAdapters(
     postingConversation: createStubPostingConversation(),
     csAssistant: createStubCsAssistant(),
     translation: createStubTranslation(),
-    clock: createStubClock(now),
+    clock,
     jobScheduler: createStubJobScheduler(),
     mediaStore: new StubMediaStore(),
   }
