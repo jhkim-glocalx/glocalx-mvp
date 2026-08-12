@@ -25,7 +25,7 @@
     "e2e:postgres": "npm run e2e:postgres -w apps/owner-app",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [
