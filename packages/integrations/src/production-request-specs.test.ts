@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from "vitest"
 
 import { createIntegrationAdapters } from "./index"
 import {
+  buildGbpFetchVerificationOptionsRequest,
+  buildGbpVerifyRequest,
+  buildGbpVoiceOfMerchantStateRequest,
   buildGoogleLocationCreateRequest,
   buildGoogleLocationSearchRequest,
   buildGoogleLocationValidationRequest,
@@ -309,6 +312,87 @@ describe("production request specs", () => {
         requiredScopes: ["https://www.googleapis.com/auth/business.manage"],
         body: { comment: "감사합니다." },
       },
+    })
+  })
+
+  it("builds the exact GBP verification request specs", () => {
+    const businessManageScope = [
+      "https://www.googleapis.com/auth/business.manage",
+    ]
+    const locationName = "locations/6157330592975821450"
+
+    expect(
+      buildGbpFetchVerificationOptionsRequest({
+        accessToken: "test-access-token",
+        locationName,
+      })
+    ).toEqual({
+      method: "POST",
+      url: "https://mybusinessverifications.googleapis.com/v1/locations/6157330592975821450:fetchVerificationOptions",
+      headers: { Authorization: "Bearer test-access-token" },
+      requiredScopes: businessManageScope,
+      body: { languageCode: "ko" },
+    })
+
+    expect(
+      buildGbpVerifyRequest({
+        accessToken: "test-access-token",
+        locationName,
+        method: "AUTO",
+      })
+    ).toEqual({
+      method: "POST",
+      url: "https://mybusinessverifications.googleapis.com/v1/locations/6157330592975821450:verify",
+      headers: { Authorization: "Bearer test-access-token" },
+      requiredScopes: businessManageScope,
+      body: { method: "AUTO", languageCode: "ko" },
+    })
+
+    expect(
+      buildGbpVoiceOfMerchantStateRequest({
+        accessToken: "test-access-token",
+        locationName,
+      })
+    ).toEqual({
+      method: "GET",
+      url: "https://mybusinessverifications.googleapis.com/v1/locations/6157330592975821450/VoiceOfMerchantState",
+      headers: { Authorization: "Bearer test-access-token" },
+      requiredScopes: businessManageScope,
+    })
+  })
+
+  it("drives GBP verification adapter methods and blocks on missing credentials", () => {
+    const adapters = createIntegrationAdapters({ env: productionEnv })
+    const verifyResult = adapters.gbpVerifications.verify({
+      accessToken: "test-access-token",
+      locationName: "locations/456",
+      method: "AUTO",
+    })
+    expect(verifyResult).toEqual({
+      kind: "ok",
+      value: {
+        method: "POST",
+        url: "https://mybusinessverifications.googleapis.com/v1/locations/456:verify",
+        headers: { Authorization: "Bearer test-access-token" },
+        requiredScopes: ["https://www.googleapis.com/auth/business.manage"],
+        body: { method: "AUTO", languageCode: "ko" },
+      },
+    })
+
+    // Missing app credentials surface as a controlled blocked result, never a
+    // half-built spec — the same discipline the create/search specs follow.
+    const blockedAdapters = createIntegrationAdapters({
+      env: { APP_INTEGRATION_MODE: "production" },
+    })
+    expect(
+      blockedAdapters.gbpVerifications.getVoiceOfMerchantState({
+        accessToken: "test-access-token",
+        locationName: "locations/456",
+      })
+    ).toEqual({
+      kind: "blocked_by_credentials",
+      code: "BLOCKED_BY_CREDENTIALS",
+      missingEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
     })
   })
 

@@ -3,6 +3,7 @@
 import { useState } from "react"
 
 import type { GbpAccessStoreView } from "@/server/gbp-access-view"
+import type { StoreVerificationView } from "@/server/gbp-verification-view"
 import {
   gbpAccessStates,
   type GbpAccessState,
@@ -15,6 +16,7 @@ import {
   naturalActionsByState,
   saveStoreNote,
   stateLabels,
+  verificationStateLabels,
   type StoreActionResult,
 } from "./stores-client"
 
@@ -45,13 +47,28 @@ function upsert(
 
 export function StoresConsole({
   initialStores,
+  initialVerifications,
 }: {
   readonly initialStores: readonly GbpAccessStoreView[]
+  readonly initialVerifications: readonly StoreVerificationView[]
 }) {
   const [stores, setStores] =
     useState<readonly GbpAccessStoreView[]>(initialStores)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Verification is read-only here (no transitions), so it needs no state — just
+  // a lookup by storeId for the line each card renders.
+  const verificationByStoreId = new Map(
+    initialVerifications.map((entry) => [entry.storeId, entry])
+  )
+  // Count concierge cases among the stores actually rendered, so the banner never
+  // claims more than the visible cards (a verification row with no matching store
+  // card would otherwise inflate it).
+  const conciergeCount = stores.filter(
+    (store) =>
+      verificationByStoreId.get(store.storeId)?.state === "NEEDS_CONCIERGE"
+  ).length
 
   async function run(
     requestId: string,
@@ -88,6 +105,13 @@ export function StoresConsole({
   return (
     <>
       <h1 className="ops-page-title">Stores</h1>
+      {conciergeCount === 0 ? null : (
+        <p className="ops-stores-concierge" data-testid="stores-concierge-count">
+          {conciergeCount} store{conciergeCount === 1 ? " needs" : "s need"}{" "}
+          concierge verification — call the owner and walk them through
+          Google&rsquo;s video verification.
+        </p>
+      )}
       {error === null ? null : (
         <p className="ops-stores-error" role="alert">
           {error}
@@ -99,6 +123,7 @@ export function StoresConsole({
             key={store.requestId}
             busy={pendingId === store.requestId}
             store={store}
+            verification={verificationByStoreId.get(store.storeId) ?? null}
             onAction={(work) => run(store.requestId, work)}
           />
         ))}
@@ -110,10 +135,12 @@ export function StoresConsole({
 function StoreCard({
   busy,
   store,
+  verification,
   onAction,
 }: {
   readonly busy: boolean
   readonly store: GbpAccessStoreView
+  readonly verification: StoreVerificationView | null
   readonly onAction: (work: () => Promise<StoreActionResult>) => void
 }) {
   const [overrideTarget, setOverrideTarget] = useState<GbpAccessState | "">("")
@@ -141,6 +168,14 @@ function StoreCard({
 
       {store.gbpLocationRef === null ? null : (
         <p className="ops-store-meta">Location: {store.gbpLocationRef}</p>
+      )}
+      {verification === null ? null : (
+        <p
+          className={`ops-store-verification ops-store-verification-${verification.state}`}
+          data-testid={`store-verification-${store.storeId}`}
+        >
+          Listing: {verificationStateLabels[verification.state]}
+        </p>
       )}
       {store.note === null ? null : (
         <p className="ops-store-note">Note: {store.note}</p>

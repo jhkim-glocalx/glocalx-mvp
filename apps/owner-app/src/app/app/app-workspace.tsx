@@ -25,11 +25,13 @@ const activitySectionByNav: Record<AppNavId, ActivitySection> = {
 }
 import { AppWorkspaceTopBar } from "./app-workspace-topbar"
 import { GbpAccessStatusCard } from "./gbp-access-status-card"
+import { GbpVerificationStatusCard } from "./gbp-verification-status-card"
 import { ReferenceFlowScreens } from "./reference-flow-screens"
 import { useAppOnboarding } from "./use-app-onboarding"
 import { useCampaignIntake } from "./use-campaign-intake"
 import { useCampaignReview } from "./use-campaign-review"
 import { useGbpAccess } from "./use-gbp-access"
+import { useGbpVerification } from "./use-gbp-verification"
 import { usePostingWorkspace } from "./use-posting-workspace"
 
 type AppWorkspaceProps = {
@@ -63,6 +65,7 @@ export function AppWorkspace({
   // refreshes the list the card was opened from.
   const campaignReview = useCampaignReview(campaigns.refreshRequests)
   const gbpAccess = useGbpAccess()
+  const gbpVerification = useGbpVerification()
 
   useEffect(() => {
     const hasOnboardingResult =
@@ -100,6 +103,7 @@ export function AppWorkspace({
       }
       if (navId === "onboarding") {
         void gbpAccess.refresh()
+        void gbpVerification.refresh()
       }
     }
   }
@@ -223,6 +227,16 @@ export function AppWorkspace({
               }
               // The CS chat FAB currently mounts only on the dashboard (Phase 1
               // limitation), so a stuck owner is routed there to reach chat.
+              onContactSupport={() => setActiveNavId("dashboard")}
+            />
+          }
+          onboardingGbpVerificationCard={
+            <GbpVerificationStatusCard
+              verification={
+                gbpVerification.state.kind === "loaded"
+                  ? gbpVerification.state.verification
+                  : null
+              }
               onContactSupport={() => setActiveNavId("dashboard")}
             />
           }

@@ -76,6 +76,10 @@ export type ReferenceFlowScreensProps = {
   // node rather than data+handlers so this screen stays agnostic to the access
   // model — app-workspace owns the hook and the card.
   readonly onboardingGbpAccessCard: ReactNode
+  // The GBP listing verification status card, rendered beside the access card
+  // (same node-not-data reasoning). Access = "can we manage the listing";
+  // verification = "does Google trust the listing" — distinct steps, two cards.
+  readonly onboardingGbpVerificationCard: ReactNode
   readonly onOnboardingCandidateSearchAgain: () => void
   readonly onOnboardingCandidateSelect: (candidate: StoreProfileDraft) => void
   readonly onOnboardingConfirm: () => void
@@ -127,6 +131,7 @@ export function ReferenceFlowScreens({
   onboardingSlotState,
   onboardingSubmittedInput,
   onboardingGbpAccessCard,
+  onboardingGbpVerificationCard,
   onOnboardingCandidateSearchAgain,
   onOnboardingCandidateSelect,
   onOnboardingConfirm,
@@ -153,6 +158,7 @@ export function ReferenceFlowScreens({
     <section className="gx-chat-stage" aria-label="글로컬엑스 작업 흐름">
       <FlowNav activeNavId={activeNavId} onSelect={onSelect} />
       {activeNavId === "onboarding" ? onboardingGbpAccessCard : null}
+      {activeNavId === "onboarding" ? onboardingGbpVerificationCard : null}
       {activeNavId === "onboarding" ? (
         <OnboardingSnapshot
           confirmation={onboardingConfirmation}

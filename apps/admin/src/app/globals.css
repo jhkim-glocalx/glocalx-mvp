@@ -1025,6 +1025,33 @@ select {
   font-size: 12px;
 }
 
+.ops-stores-concierge {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(224, 168, 90, 0.14);
+  color: #e0a85a;
+  font-size: 13px;
+}
+
+.ops-store-verification {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* The one verification state operators act on gets the amber attention color; the
+   rest stay muted like the other meta lines. */
+.ops-store-verification-NEEDS_CONCIERGE,
+.ops-store-verification-NEEDS_VERIFICATION {
+  color: #e0a85a;
+  font-weight: 600;
+}
+
+.ops-store-verification-VERIFIED {
+  color: #5ac891;
+}
+
 .ops-store-actions {
   display: flex;
   flex-wrap: wrap;

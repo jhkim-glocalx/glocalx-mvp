@@ -12,7 +12,10 @@ import type {
   GeocodingAdapter,
   IntegrationAdapters,
 } from "@glocalx/integrations/contracts"
-import { createProductionBusinessInformation } from "@glocalx/integrations/production"
+import {
+  createProductionBusinessInformation,
+  createProductionGbpVerifications,
+} from "@glocalx/integrations/production"
 import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
 
 import { setupGoogleBusinessProfile } from "./setup"
@@ -375,6 +378,12 @@ const liveAccountRowSchema = z.object({
   google_location_id: z.string(),
 })
 
+const verificationRowSchema = z.object({
+  google_location_id: z.string(),
+  state: z.string(),
+  auto_attempted: z.number(),
+})
+
 describe("setupGoogleBusinessProfile (production dispatch)", () => {
   const tempPaths: string[] = []
 
@@ -492,6 +501,106 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
     })
     expect(result.status).toBe("ADDRESS_NOT_GEOCODABLE")
     expect(reachedGoogle).toBe(false)
+    database.close()
+  })
+
+  it("attempts verification after create and persists the resulting state", async () => {
+    const database = await createDatabase()
+    let optionsCall = 0
+    const base = createFakeGoogle()
+    // Layers the mybusinessverifications endpoints over the business-information
+    // fake: Google offers AUTO, accepts the verify, then reports the listing is
+    // under async review (waitForVoiceOfMerchant) with the methods now cleared.
+    const fetchImpl: ExternalFetch = async (url, init) => {
+      if (url.endsWith(":fetchVerificationOptions")) {
+        const body =
+          optionsCall === 0
+            ? { options: [{ verificationMethod: "AUTO" }] }
+            : { options: [] }
+        optionsCall += 1
+        return jsonResponse(body)
+      }
+      if (url.endsWith(":verify")) {
+        return jsonResponse({ verification: { state: "COMPLETED" } })
+      }
+      if (url.endsWith("/VoiceOfMerchantState")) {
+        return jsonResponse({
+          hasVoiceOfMerchant: false,
+          waitForVoiceOfMerchant: {},
+        })
+      }
+      return base(url, init)
+    }
+
+    const result = await setupGoogleBusinessProfile({
+      adapters: {
+        ...productionAdapters(database),
+        gbpVerifications: createProductionGbpVerifications(orgAppEnv),
+      },
+      database,
+      env: orgFullEnv,
+      fetchImpl,
+      mode: "production",
+      storeId: "demo-store",
+    })
+
+    expect(result.status).toBe("VERIFICATION_PENDING")
+    const verification = verificationRowSchema.parse(
+      database
+        .prepare(
+          `SELECT google_location_id, state, auto_attempted
+             FROM gbp_verification_state WHERE store_id = 'demo-store'`
+        )
+        .get()
+    )
+    expect(verification).toEqual({
+      google_location_id: "locations/live-123",
+      state: "PENDING_REVIEW",
+      auto_attempted: 1,
+    })
+    database.close()
+  })
+
+  it("still completes setup when the verification attempt fails", async () => {
+    const database = await createDatabase()
+    // Verification endpoints all fail; create still succeeded, so setup must too.
+    const base = createFakeGoogle()
+    const fetchImpl: ExternalFetch = async (url, init) => {
+      if (
+        url.endsWith(":fetchVerificationOptions") ||
+        url.endsWith(":verify") ||
+        url.endsWith("/VoiceOfMerchantState")
+      ) {
+        return jsonResponse({}, 500)
+      }
+      return base(url, init)
+    }
+
+    const result = await setupGoogleBusinessProfile({
+      adapters: {
+        ...productionAdapters(database),
+        gbpVerifications: createProductionGbpVerifications(orgAppEnv),
+      },
+      database,
+      env: orgFullEnv,
+      fetchImpl,
+      mode: "production",
+      storeId: "demo-store",
+    })
+
+    expect(result.status).toBe("VERIFICATION_PENDING")
+    const verification = verificationRowSchema.parse(
+      database
+        .prepare(
+          `SELECT google_location_id, state, auto_attempted
+             FROM gbp_verification_state WHERE store_id = 'demo-store'`
+        )
+        .get()
+    )
+    // The listing exists but Google's state could not be read: UNKNOWN, not a
+    // false "verified", and no AUTO attempt was reached.
+    expect(verification.state).toBe("UNKNOWN")
+    expect(verification.auto_attempted).toBe(0)
     database.close()
   })
 })

@@ -3,6 +3,7 @@ import type {
   GbpAccessAction,
   GbpAccessState,
 } from "@glocalx/domain/gbp-access"
+import type { GbpVerificationState } from "@glocalx/domain/gbp-verification-state"
 
 // Fetch helpers for the Stores console, kept out of the component so the
 // request/response shapes live in one place (mirrors queue-client.ts).
@@ -129,4 +130,17 @@ export const stateLabels: Readonly<Record<GbpAccessState, string>> = {
   granted: "Granted",
   revoked: "Revoked",
   blocked: "Blocked",
+}
+
+// Listing-verification labels for the read-only line on each store card.
+// NEEDS_CONCIERGE is the state the operator acts on (Model A live-assist), so the
+// console highlights it; the rest are informational.
+export const verificationStateLabels: Readonly<
+  Record<GbpVerificationState, string>
+> = {
+  VERIFIED: "Verified",
+  PENDING_REVIEW: "Pending review",
+  NEEDS_VERIFICATION: "Needs verification",
+  NEEDS_CONCIERGE: "Needs concierge",
+  UNKNOWN: "Unknown",
 }

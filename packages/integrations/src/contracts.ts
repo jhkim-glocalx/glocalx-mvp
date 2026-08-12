@@ -5,6 +5,7 @@ import type {
   GbpLocalPostsAdapter,
   GbpPerformanceAdapter,
   GbpReviewsAdapter,
+  GbpVerificationsAdapter,
 } from "./gbp-contracts"
 import type { MarketingGenerationAdapter } from "./marketing-contracts"
 import type { InstagramPostsAdapter } from "./instagram-contracts"
@@ -32,12 +33,17 @@ export type {
   GbpPerformanceDatedValue,
   GbpPerformancePeriod,
   GbpReviewsAdapter,
+  GbpVerificationMethod,
+  GbpVerificationsAdapter,
   GoogleLocationMatch,
+  FetchVerificationOptionsInput,
+  GetVoiceOfMerchantStateInput,
   ListReviewsInput,
   RequestAdminRightsInput,
   SearchGoogleLocationsInput,
   SearchGoogleLocationsResult,
   UpdateReplyInput,
+  VerifyLocationInput,
 } from "./gbp-contracts"
 export type {
   CreateInstagramPostInput,
@@ -182,6 +188,7 @@ export type IntegrationAdapters = {
   readonly gbpLocalPosts: GbpLocalPostsAdapter
   readonly gbpPerformance: GbpPerformanceAdapter
   readonly gbpReviews: GbpReviewsAdapter
+  readonly gbpVerifications: GbpVerificationsAdapter
   readonly geocoding: GeocodingAdapter
   readonly instagramPosts: InstagramPostsAdapter
   readonly instagramOAuth: InstagramOAuthAdapter

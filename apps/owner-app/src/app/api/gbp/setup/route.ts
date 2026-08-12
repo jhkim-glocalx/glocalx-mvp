@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       adapters,
       gbpAccessStore,
       gbpStore,
+      gbpVerificationStore,
       sessionStore,
       storeProfileRepository,
     }) => {
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
         adapters,
         env: process.env,
         gbpStore,
+        gbpVerificationStore,
         mode: parsed.value.mode,
         storeId: session.storeId,
         storeProfileRepository,

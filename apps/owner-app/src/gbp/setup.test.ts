@@ -114,6 +114,18 @@ describe("setupGoogleBusinessProfile", () => {
       followUpJobs: 1,
       auditLogs: 1,
     })
+
+    // Stub setup seeds a deterministic verification row so the owner card and the
+    // admin concierge surface have something to render in demos/e2e.
+    const verification = database
+      .prepare(
+        "SELECT state, google_location_id AS googleLocationId FROM gbp_verification_state WHERE store_id = 'demo-store'"
+      )
+      .get()
+    expect(verification).toEqual({
+      state: "NEEDS_CONCIERGE",
+      googleLocationId: "locations/stub-created",
+    })
     database.close()
   })
 
