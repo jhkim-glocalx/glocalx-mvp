@@ -2465,3 +2465,42 @@ body {
   justify-self: flex-start;
   margin-top: 4px;
 }
+
+/* Verification card mirrors the access card — access = "can we manage the
+   listing", verification = "does Google trust it". Same three-phase color spine. */
+.gx-gbp-verification-card {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 640px);
+  align-self: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.gx-gbp-verification-card-verified {
+  border-left-color: #3fae74;
+}
+
+.gx-gbp-verification-card-attention {
+  border-left-color: #e0705a;
+}
+
+.gx-gbp-verification-card strong {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--ink);
+}
+
+.gx-gbp-verification-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.gx-gbp-verification-card button {
+  justify-self: flex-start;
+  margin-top: 4px;
+}

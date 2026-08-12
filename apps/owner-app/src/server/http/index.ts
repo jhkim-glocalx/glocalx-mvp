@@ -22,6 +22,8 @@ import { createDatabaseCampaignStore } from "@glocalx/db/support/campaign-store"
 import type { CampaignStore } from "@glocalx/db/support/campaign-store"
 import { createDatabaseGbpAccessStore } from "@glocalx/db/support/gbp-access-store"
 import type { GbpAccessStore } from "@glocalx/db/support/gbp-access-store"
+import { createDatabaseGbpVerificationStore } from "@glocalx/db/support/gbp-verification-store"
+import type { GbpVerificationStore } from "@glocalx/db/support/gbp-verification-store"
 import { createDatabasePublishJobStore } from "@glocalx/db/support/publish-job-store"
 import type { PublishJobStore } from "@glocalx/db/support/publish-job-store"
 import { createDatabaseCsConversationStore } from "@glocalx/db/support/conversation-store"
@@ -83,6 +85,7 @@ export type QueryableRouteDatabaseContext = {
     typeof createDatabaseEmailCredentialsRepository
   >
   readonly gbpAccessStore: GbpAccessStore
+  readonly gbpVerificationStore: GbpVerificationStore
   readonly gbpCategoryStore: GbpCategoryStore
   readonly storeChannelLinkStore: StoreChannelLinkStore
   readonly gbpStore: ReturnType<typeof createDatabaseGbpStore>
@@ -246,6 +249,7 @@ function buildRouteDatabaseContext(
     emailCredentialsRepository:
       createDatabaseEmailCredentialsRepository(queryable),
     gbpAccessStore: createDatabaseGbpAccessStore(queryable),
+    gbpVerificationStore: createDatabaseGbpVerificationStore(queryable),
     gbpCategoryStore: createDatabaseGbpCategoryStore(queryable),
     storeChannelLinkStore: createDatabaseStoreChannelLinkStore(queryable),
     gbpStore: createDatabaseGbpStore(queryable),

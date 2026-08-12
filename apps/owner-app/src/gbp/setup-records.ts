@@ -1,7 +1,12 @@
 import type { GbpStore } from "@/server/repositories/gbp-store"
 import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
 import { createSqliteQueryable } from "@glocalx/db/sqlite-client"
+import {
+  createDatabaseGbpVerificationStore,
+  type GbpVerificationStore,
+} from "@glocalx/db/support/gbp-verification-store"
 
+import type { GbpVerificationAttempt } from "./verification"
 import type {
   BuildClaimRequiredResultOptions,
   GbpSetupResult,
@@ -20,6 +25,42 @@ function resolveGbpStore(options: SetupGoogleBusinessProfileOptions): GbpStore {
     return createDatabaseGbpStore(createSqliteQueryable(options.database))
   }
   throw new GbpPersistenceConfigurationError()
+}
+
+function resolveGbpVerificationStore(
+  options: SetupGoogleBusinessProfileOptions
+): GbpVerificationStore | undefined {
+  if (options.gbpVerificationStore !== undefined) {
+    return options.gbpVerificationStore
+  }
+  if (options.database !== undefined) {
+    return createDatabaseGbpVerificationStore(
+      createSqliteQueryable(options.database)
+    )
+  }
+  return undefined
+}
+
+// Best-effort: the verification attempt is a bonus on top of a listing that
+// already exists, so a missing store (no database wired) simply records nothing
+// rather than failing setup.
+export async function persistGbpVerificationState(
+  options: SetupGoogleBusinessProfileOptions,
+  googleLocationId: string,
+  attempt: GbpVerificationAttempt
+): Promise<void> {
+  const store = resolveGbpVerificationStore(options)
+  if (store === undefined) {
+    return
+  }
+  await store.upsertVerificationState({
+    storeId: options.storeId,
+    googleLocationId,
+    state: attempt.state,
+    offeredMethods: attempt.offeredMethods,
+    autoAttempted: attempt.autoAttempted,
+    now: options.adapters.clock.now(),
+  })
 }
 
 export async function persistClaimRequiredRecords(

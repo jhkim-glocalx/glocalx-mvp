@@ -7,6 +7,7 @@ import type {
   GbpBusinessInformationAdapter,
   GbpLocalPostsAdapter,
   GbpReviewsAdapter,
+  GbpVerificationsAdapter,
   GoogleOAuthAdapter,
   JobSchedulerAdapter,
   MarketingGenerationAdapter,
@@ -194,6 +195,46 @@ export function createStubBusinessInformation(): GbpBusinessInformationAdapter {
           url: "stub://gbp/locations",
           headers: {},
           body: { status: "VERIFICATION_PENDING" },
+        },
+      }
+    },
+  }
+}
+
+export function createStubGbpVerifications(): GbpVerificationsAdapter {
+  // Deterministic request specs with stub:// URLs, mirroring the other GBP stub
+  // adapters. The live verification flow (setup-live) only runs under production
+  // mode, so these are never executed against a network in stub mode.
+  return {
+    fetchVerificationOptions(input) {
+      return {
+        kind: "ok",
+        value: {
+          method: "POST",
+          url: `stub://gbp/${input.locationName}:fetchVerificationOptions`,
+          headers: {},
+          body: { languageCode: "ko" },
+        },
+      }
+    },
+    verify(input) {
+      return {
+        kind: "ok",
+        value: {
+          method: "POST",
+          url: `stub://gbp/${input.locationName}:verify`,
+          headers: {},
+          body: { method: input.method, languageCode: "ko" },
+        },
+      }
+    },
+    getVoiceOfMerchantState(input) {
+      return {
+        kind: "ok",
+        value: {
+          method: "GET",
+          url: `stub://gbp/${input.locationName}/VoiceOfMerchantState`,
+          headers: {},
         },
       }
     },

@@ -7,14 +7,18 @@ import type {
   AdapterEnvironment,
   AdapterResult,
   CreateLocationInput,
+  FetchVerificationOptionsInput,
   GbpBusinessInformationAdapter,
   GbpLocalPostsAdapter,
   GbpReviewsAdapter,
+  GbpVerificationsAdapter,
+  GetVoiceOfMerchantStateInput,
   GoogleOAuthAdapter,
   HttpMethod,
   HttpRequestSpec,
   RequestAdminRightsInput,
   SearchGoogleLocationsInput,
+  VerifyLocationInput,
   ExternalFetch,
 } from "./contracts"
 import { z } from "zod"
@@ -28,6 +32,11 @@ export {
 const googleEnvVars = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"] as const
 const googleBusinessInformationBaseUrl =
   "https://mybusinessbusinessinformation.googleapis.com/v1"
+const googleVerificationsBaseUrl =
+  "https://mybusinessverifications.googleapis.com/v1"
+// Google requires a languageCode on the verification requests; the whole listing
+// is created in Korean, so verification prompts/options match.
+const gbpVerificationLanguageCode = "ko"
 
 function googleHeaders(accessToken: string): Readonly<Record<string, string>> {
   return {
@@ -186,6 +195,78 @@ export function createProductionBusinessInformation(
       return {
         kind: "ok",
         value: buildGoogleLocationCreateRequest(input),
+      }
+    },
+  }
+}
+
+export function buildGbpFetchVerificationOptionsRequest(
+  input: FetchVerificationOptionsInput
+): HttpRequestSpec {
+  return buildGoogleRequestSpec({
+    accessToken: input.accessToken,
+    body: { languageCode: gbpVerificationLanguageCode },
+    method: "POST",
+    url: `${googleVerificationsBaseUrl}/${input.locationName}:fetchVerificationOptions`,
+  })
+}
+
+export function buildGbpVerifyRequest(
+  input: VerifyLocationInput
+): HttpRequestSpec {
+  return buildGoogleRequestSpec({
+    accessToken: input.accessToken,
+    body: { method: input.method, languageCode: gbpVerificationLanguageCode },
+    method: "POST",
+    url: `${googleVerificationsBaseUrl}/${input.locationName}:verify`,
+  })
+}
+
+export function buildGbpVoiceOfMerchantStateRequest(
+  input: GetVoiceOfMerchantStateInput
+): HttpRequestSpec {
+  return buildGoogleRequestSpec({
+    accessToken: input.accessToken,
+    method: "GET",
+    url: `${googleVerificationsBaseUrl}/${input.locationName}/VoiceOfMerchantState`,
+  })
+}
+
+export function createProductionGbpVerifications(
+  env: AdapterEnvironment
+): GbpVerificationsAdapter {
+  return {
+    fetchVerificationOptions(input) {
+      const blocked = googleBlockedResult(env)
+      if (blocked.kind === "blocked_by_credentials") {
+        return blocked
+      }
+
+      return {
+        kind: "ok",
+        value: buildGbpFetchVerificationOptionsRequest(input),
+      }
+    },
+    verify(input) {
+      const blocked = googleBlockedResult(env)
+      if (blocked.kind === "blocked_by_credentials") {
+        return blocked
+      }
+
+      return {
+        kind: "ok",
+        value: buildGbpVerifyRequest(input),
+      }
+    },
+    getVoiceOfMerchantState(input) {
+      const blocked = googleBlockedResult(env)
+      if (blocked.kind === "blocked_by_credentials") {
+        return blocked
+      }
+
+      return {
+        kind: "ok",
+        value: buildGbpVoiceOfMerchantStateRequest(input),
       }
     },
   }

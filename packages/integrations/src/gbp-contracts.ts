@@ -126,6 +126,49 @@ export interface GbpReviewsAdapter {
   updateReply(input: UpdateReplyInput): AdapterResult<HttpRequestSpec>
 }
 
+// A newly created location comes back "Verification required". The
+// mybusinessverifications API is covered by the same business.manage scope the
+// create path already holds (no new owner consent), so these read/act on
+// verification state with the org token — driven from setup-live like the
+// business-information specs above. AUTO is offered opportunistically but is not
+// a reliable unattended path (Google can async-revert a COMPLETED verify), so
+// getVoiceOfMerchantState is what the follow-up poll trusts, not the verify call.
+export type GbpVerificationMethod =
+  | "AUTO"
+  | "ADDRESS"
+  | "PHONE_CALL"
+  | "SMS"
+  | "EMAIL"
+  | "VET_BY_GOOGLE"
+
+// locationName is Google's "locations/{id}" resource path (the id create returns
+// as `name`), not our internal store id.
+export type FetchVerificationOptionsInput = {
+  readonly accessToken: string
+  readonly locationName: string
+}
+
+export type VerifyLocationInput = {
+  readonly accessToken: string
+  readonly locationName: string
+  readonly method: GbpVerificationMethod
+}
+
+export type GetVoiceOfMerchantStateInput = {
+  readonly accessToken: string
+  readonly locationName: string
+}
+
+export interface GbpVerificationsAdapter {
+  fetchVerificationOptions(
+    input: FetchVerificationOptionsInput
+  ): AdapterResult<HttpRequestSpec>
+  verify(input: VerifyLocationInput): AdapterResult<HttpRequestSpec>
+  getVoiceOfMerchantState(
+    input: GetVoiceOfMerchantStateInput
+  ): AdapterResult<HttpRequestSpec>
+}
+
 export interface GbpPerformanceAdapter {
   fetchMultiDailyMetricsTimeSeries(
     input: FetchGbpPerformanceInput

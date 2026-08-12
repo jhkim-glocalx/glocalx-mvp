@@ -15,10 +15,13 @@ import type { StoreProfileRepository } from "@/server/repositories/store-profile
 
 import {
   persistClaimRequiredRecords,
+  persistGbpVerificationState,
   persistLiveClaimRequiredRecords,
   persistLiveSetupRecords,
   persistSetupRecords,
 } from "./setup-records"
+import { runGbpVerificationAttempt } from "./verification"
+import type { GbpVerificationStore } from "@glocalx/db/support/gbp-verification-store"
 import {
   buildLiveGoogleLocationBody,
   resolveLiveGbpCredentials,
@@ -93,6 +96,8 @@ export type SetupGoogleBusinessProfileOptions = {
   readonly env?: AdapterEnvironment
   readonly fetchImpl?: ExternalFetch
   readonly gbpStore?: GbpStore
+  // Injectable for tests; the live path falls back to a database-backed store.
+  readonly gbpVerificationStore?: GbpVerificationStore
   readonly mode: GbpSetupMode
   readonly storeProfileRepository?: StoreProfileRepository
   readonly storeId: string
@@ -252,11 +257,27 @@ export async function setupGoogleBusinessProfile(
     }
   }
 
-  return persistSetupRecords(
+  const stubResult = await persistSetupRecords(
     options,
     locationStatusFromSpecBody(locationResult.value.body),
     oauthResult.value.subjectId
   )
+
+  // Stub/demo determinism: the live path derives verification state from Google,
+  // but stub setup never calls Google, so seed a fixed NEEDS_CONCIERGE row. That
+  // mirrors the live-observed reality (a brand-new KR listing lands in the
+  // operator concierge path) and gives the owner card and the admin concierge
+  // surface something to render in local demos and e2e. Best-effort — a missing
+  // store just records nothing, exactly like the live attempt.
+  if ("googleLocationId" in stubResult) {
+    await persistGbpVerificationState(options, stubResult.googleLocationId, {
+      state: "NEEDS_CONCIERGE",
+      offeredMethods: [],
+      autoAttempted: false,
+    })
+  }
+
+  return stubResult
 }
 
 async function setupGoogleBusinessProfileLive(
@@ -339,10 +360,37 @@ async function setupGoogleBusinessProfileLive(
     })
   }
 
-  return persistLiveSetupRecords(
+  const setupResult = await persistLiveSetupRecords(
     options,
     provisioning.status,
     credentials.credentials.accountName,
     provisioning.googleLocationId
   )
+
+  // Best-effort verification attempt on the freshly created listing: read
+  // Google's verification signals, opportunistically try AUTO, and persist the
+  // resulting state for the owner card + operator concierge queue. Wrapped so any
+  // failure never undoes a successful create — the listing already exists, and
+  // the state is re-checked on-view anyway.
+  try {
+    const attempt = await runGbpVerificationAttempt({
+      verifications: options.adapters.gbpVerifications,
+      accessToken: credentials.credentials.accessToken,
+      locationName: provisioning.googleLocationId,
+      fetchImpl,
+    })
+    await persistGbpVerificationState(
+      options,
+      provisioning.googleLocationId,
+      attempt
+    )
+  } catch (error) {
+    // Log the failure shape only — never tokens or the signed request specs.
+    console.error(
+      `GBP verification attempt failed for store "${options.storeId}"`,
+      error instanceof Error ? error.message : error
+    )
+  }
+
+  return setupResult
 }

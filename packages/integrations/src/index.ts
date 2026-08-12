@@ -4,6 +4,7 @@ import type {
 } from "./contracts"
 import {
   createProductionBusinessInformation,
+  createProductionGbpVerifications,
   createProductionGoogleOAuth,
   createProductionLocalPosts,
   createProductionNaverSearch,
@@ -32,6 +33,7 @@ import {
   createStubBusinessInformation,
   createStubClock,
   createStubContentGeneration,
+  createStubGbpVerifications,
   createStubGeocoding,
   createStubGoogleOAuth,
   createStubJobScheduler,
@@ -73,6 +75,7 @@ export function createIntegrationAdapters(
       gbpLocalPosts: createProductionLocalPosts(env, fetchImpl),
       gbpPerformance: createProductionPerformance(env),
       gbpReviews: createProductionReviews(env),
+      gbpVerifications: createProductionGbpVerifications(env),
       geocoding: createProductionGeocoding(env, fetchImpl),
       instagramPosts: createProductionInstagramPosts(env, fetchImpl),
       instagramOAuth: createProductionInstagramOAuth(env, fetchImpl),
@@ -102,6 +105,7 @@ export function createIntegrationAdapters(
     gbpLocalPosts: createStubLocalPosts(),
     gbpPerformance: createStubPerformance(),
     gbpReviews: createStubReviews(),
+    gbpVerifications: createStubGbpVerifications(),
     geocoding: createStubGeocoding(),
     instagramPosts: createStubInstagramPosts(),
     instagramOAuth: createStubInstagramOAuth(),

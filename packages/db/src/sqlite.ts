@@ -48,6 +48,7 @@ export const operationalTableNames = [
   "store_channel_links",
   "org_credentials",
   "gbp_access_requests",
+  "gbp_verification_state",
 ] as const
 export const databaseTableNames = [
   ...requiredTableNames,
@@ -99,6 +100,9 @@ const migrationPaths = [
   // ADD COLUMN migrations; SQLite applies them via ensureColumn below because
   // applyMigrations re-runs every file on open and ALTER TABLE is not idempotent.
   join(currentDirectory, "migrations", "0014_gbp_access_requests.sql"),
+  // 0015 (stores GBP category) is a Postgres-only ADD COLUMN migration; SQLite
+  // applies it via ensureColumn below.
+  join(currentDirectory, "migrations", "0016_gbp_verification_state.sql"),
 ] as const
 
 const sqlIdentifierPattern = /^[a-zA-Z_][a-zA-Z0-9_]*$/
