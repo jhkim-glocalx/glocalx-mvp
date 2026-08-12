@@ -9,6 +9,8 @@ import {
   publishChannelSchema,
   type PublishChannel,
 } from "@glocalx/domain/campaign-state-machine"
+import { callToActionCaptionSuffix } from "@glocalx/domain/gbp-post-cta"
+import type { GbpPostCallToAction } from "@glocalx/domain/gbp-post-cta"
 import { evaluateOrgCredentialState } from "@glocalx/domain/org-credentials"
 import { evaluatePublishEligibility } from "@glocalx/domain/publish-eligibility"
 import type { PublishEligibility } from "@glocalx/domain/publish-eligibility"
@@ -113,6 +115,32 @@ async function mintMediaUrls(
   return { kind: "ok", urls }
 }
 
+// Instagram's own ceiling. finalCopy is capped at 2000, so only a long CTA url
+// can push a caption past this — but when it does, the link is the part worth
+// keeping: it is the action the owner agreed to, while the tail of the copy is
+// not. So the copy gets trimmed and the suffix always survives intact.
+export const instagramCaptionMaxLength = 2200
+
+export function instagramCaption(
+  summary: string,
+  callToAction: GbpPostCallToAction | null
+): string {
+  const suffix =
+    callToAction === null ? undefined : callToActionCaptionSuffix(callToAction)
+  if (suffix === undefined) {
+    return summary.slice(0, instagramCaptionMaxLength)
+  }
+
+  const separator = summary.trim() === "" ? "" : "\n\n"
+  const room = instagramCaptionMaxLength - suffix.length - separator.length
+  if (room <= 0) {
+    // Pathological only — a url longer than the whole caption budget. Ship the
+    // link alone rather than a truncated link that goes nowhere.
+    return suffix.slice(0, instagramCaptionMaxLength)
+  }
+  return `${summary.slice(0, room)}${separator}${suffix}`
+}
+
 async function publishToChannel(
   input: RunCampaignPublishInput,
   channel: PublishChannel
@@ -124,6 +152,7 @@ async function publishToChannel(
   const mediaUrls = minted.urls
 
   const summary = input.request.finalCopy ?? ""
+  const callToAction = input.request.callToAction
 
   if (channel === "gbp") {
     // v2 publishes from the ORG account, not the owner's Google token: one
@@ -152,6 +181,7 @@ async function publishToChannel(
       mediaUrls,
       parent,
       summary,
+      ...(callToAction === null ? {} : { callToAction }),
     })
     return result.kind === "blocked_by_credentials"
       ? {
@@ -184,7 +214,7 @@ async function publishToChannel(
       : undefined
 
   const result = await input.adapters.instagramPosts.createPost({
-    caption: summary,
+    caption: instagramCaption(summary, callToAction),
     mediaUrls,
     account:
       channelToken.kind === "found" && link !== undefined

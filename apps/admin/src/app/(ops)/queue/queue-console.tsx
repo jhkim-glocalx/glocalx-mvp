@@ -3,12 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import type { QueueEntryView, QueueRequestView } from "@/server/queue-view"
+import {
+  gbpPostLinkActionTypes,
+  type GbpPostCallToAction,
+  type GbpPostLinkActionType,
+} from "@glocalx/domain/gbp-post-cta"
 
 import {
   fetchQueue,
   fetchQueueRequest,
   markOwnerNudged,
   publishCampaign,
+  saveCallToAction,
   saveFinalCopy,
   startProduction,
   submitForReview,
@@ -31,6 +37,35 @@ const channelLabels: Readonly<Record<string, string>> = {
 // The statuses where a publish run is a legal next step: the owner's go, and
 // the two settled-but-incomplete outcomes a retry can resume from.
 const publishableStatuses = ["approved", "partially_published", "failed"]
+
+// Operator-facing English, unlike the Korean caption labels in the domain: this
+// picker is read by our own staff, the caption is read by the owner's customers.
+const linkActionLabels: Readonly<Record<GbpPostLinkActionType, string>> = {
+  BOOK: "Book",
+  ORDER: "Order",
+  SHOP: "Shop",
+  LEARN_MORE: "Learn more",
+  SIGN_UP: "Sign up",
+}
+
+// "none" is the selection, not a stored value — the request holds null. Kept
+// distinct so the picker has something to sit on while still round-tripping the
+// domain's own action types.
+type CallToActionSelection = "none" | "CALL" | GbpPostLinkActionType
+
+// Stricter than the server's `z.url()` on purpose. A GBP button opens in a
+// browser and Instagram renders the link as text, so a parseable-but-unopenable
+// scheme (mailto:, tel:) would publish a button that goes nowhere. Rejecting it
+// here keeps the panel from offering a save that produces a dead link.
+function isOpenableUrl(value: string): boolean {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    return false
+  }
+  return parsed.protocol === "https:" || parsed.protocol === "http:"
+}
 
 // Ten statuses would make ten near-empty columns, so the board groups them the
 // way an operator actually works: the actionable buckets, then the ones nobody
@@ -104,6 +139,9 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
     useState<readonly QueueEntryView[]>(initialRequests)
   const [selected, setSelected] = useState<QueueRequestView | null>(null)
   const [copyInput, setCopyInput] = useState("")
+  const [ctaSelection, setCtaSelection] =
+    useState<CallToActionSelection>("none")
+  const [ctaUrlInput, setCtaUrlInput] = useState("")
   const [publishChannels, setPublishChannels] = useState<readonly string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -137,6 +175,16 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
     setSelected(result.request)
     selectedIdRef.current = result.request.id
     setCopyInput(result.request.finalCopy ?? "")
+    // The url is held only while a link action is selected: reseeding it from a
+    // CALL (or from no button) would leave a stale link in the field that the
+    // next selection would silently adopt.
+    const callToAction = result.request.callToAction
+    setCtaSelection(callToAction?.actionType ?? "none")
+    setCtaUrlInput(
+      callToAction !== null && callToAction.actionType !== "CALL"
+        ? callToAction.url
+        : ""
+    )
     // Re-derived from the server's own view every time, so a channel that just
     // published or just burned its last attempt drops out of the selection.
     setPublishChannels(defaultPublishChannels(result.request))
@@ -208,6 +256,15 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
   }
 
   const inProduction = selected?.status === "in_production"
+  const ctaNeedsUrl = ctaSelection !== "none" && ctaSelection !== "CALL"
+  const trimmedCtaUrl = ctaUrlInput.trim()
+  const ctaPayload: GbpPostCallToAction | null =
+    ctaSelection === "none"
+      ? null
+      : ctaSelection === "CALL"
+        ? { actionType: "CALL" }
+        : { actionType: ctaSelection, url: trimmedCtaUrl }
+  const canSaveCta = !ctaNeedsUrl || isOpenableUrl(trimmedCtaUrl)
   // The panel stays visible through "publishing"/"published" so the operator
   // keeps the per-channel history after the run, not just the controls.
   const showPublishPanel =
@@ -518,6 +575,80 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                   />
                   <span>Upload processed asset</span>
                 </label>
+              </div>
+
+              {/* Above the copy editor because "Send to owner" is the last
+                  control in that section, and this route stops accepting a
+                  button the moment the request leaves in_production — so the
+                  operator passes it on the way to sending, not after. */}
+              <div className="ops-queue-section" data-testid="cta-panel">
+                <h2>Call to action</h2>
+                <p className="ops-queue-nudge-copy">
+                  Google renders this as a button on the post. Instagram has no
+                  buttons, so it becomes a labelled link at the end of the
+                  caption. Set it only after the owner has agreed to it.
+                </p>
+                <div className="ops-queue-cta">
+                  <label className="ops-queue-cta-field">
+                    <span>Button</span>
+                    <select
+                      data-testid="cta-action"
+                      disabled={busy}
+                      onChange={(event) =>
+                        setCtaSelection(
+                          event.target.value as CallToActionSelection
+                        )
+                      }
+                      value={ctaSelection}
+                    >
+                      <option value="none">No button</option>
+                      <option value="CALL">Call (listing phone number)</option>
+                      {/* Driven off the domain's own list, so a new action type
+                          cannot ship without an entry here. */}
+                      {gbpPostLinkActionTypes.map((actionType) => (
+                        <option key={actionType} value={actionType}>
+                          {linkActionLabels[actionType]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {ctaNeedsUrl ? (
+                    <input
+                      aria-label="Call to action link"
+                      className="ops-queue-cta-url"
+                      data-testid="cta-url"
+                      disabled={busy}
+                      onChange={(event) => setCtaUrlInput(event.target.value)}
+                      placeholder="https://"
+                      type="url"
+                      value={ctaUrlInput}
+                    />
+                  ) : null}
+                </div>
+                {ctaNeedsUrl && trimmedCtaUrl.length > 0 && !canSaveCta ? (
+                  <p
+                    className="ops-publish-channel-blocked"
+                    data-testid="cta-url-invalid"
+                  >
+                    Enter a full http(s) link — that is the only kind Google and
+                    Instagram can open.
+                  </p>
+                ) : null}
+                <div className="ops-queue-actions">
+                  <button
+                    type="button"
+                    className="ops-inbox-action"
+                    data-testid="save-call-to-action"
+                    disabled={busy || !canSaveCta}
+                    onClick={() =>
+                      void runAction((requestId) =>
+                        saveCallToAction(requestId, ctaPayload)
+                      )
+                    }
+                  >
+                    Save button
+                  </button>
+                </div>
               </div>
 
               <div className="ops-queue-section">

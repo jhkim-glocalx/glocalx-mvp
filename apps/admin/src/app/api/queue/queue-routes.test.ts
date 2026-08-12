@@ -20,6 +20,7 @@ import { GET as listQueue } from "./requests/route"
 import { GET as getQueueRequest } from "./requests/[requestId]/route"
 import { POST as startProduction } from "./requests/[requestId]/production/route"
 import { POST as setFinalCopy } from "./requests/[requestId]/final-copy/route"
+import { POST as setCallToAction } from "./requests/[requestId]/call-to-action/route"
 import { POST as submitForReview } from "./requests/[requestId]/review/route"
 import { POST as registerAsset } from "./requests/[requestId]/assets/route"
 import { POST as markNudged } from "./requests/[requestId]/nudge/route"
@@ -314,6 +315,164 @@ describe("final copy", () => {
 
     expect(response.status).toBe(200)
     expect(payload.request.finalCopy).toBe("Brunch is back.")
+  })
+})
+
+describe("call to action", () => {
+  type CallToActionPayload = {
+    request: {
+      callToAction: { actionType: string; url?: string } | null
+    }
+  }
+
+  async function intoProduction(
+    requestId: string,
+    cookie: string
+  ): Promise<void> {
+    await startProduction(
+      postRequest(`${origin}/api/queue/requests/${requestId}/production`, {
+        cookie,
+      }),
+      queueParams(requestId)
+    )
+  }
+
+  function ctaRequest(
+    requestId: string,
+    cookie: string,
+    callToAction: unknown
+  ): NextRequest {
+    return postRequest(
+      `${origin}/api/queue/requests/${requestId}/call-to-action`,
+      { cookie, body: { callToAction } }
+    )
+  }
+
+  // Same gate as final copy: the owner approves the post they were shown, so a
+  // button cannot appear after the request left production.
+  it("rejects a button while the request is not in production", async () => {
+    const requestId = await seedRequest()
+    const response = await setCallToAction(
+      ctaRequest(requestId, await adminSessionCookie(), {
+        actionType: "ORDER",
+        url: "https://example.com/order",
+      }),
+      queueParams(requestId)
+    )
+
+    expect(response.status).toBe(409)
+  })
+
+  it("saves a link action on an in-production request", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await intoProduction(requestId, cookie)
+
+    const response = await setCallToAction(
+      ctaRequest(requestId, cookie, {
+        actionType: "ORDER",
+        url: "https://example.com/order",
+      }),
+      queueParams(requestId)
+    )
+    const payload = (await response.json()) as CallToActionPayload
+
+    expect(response.status).toBe(200)
+    expect(payload.request.callToAction).toEqual({
+      actionType: "ORDER",
+      url: "https://example.com/order",
+    })
+  })
+
+  it("saves CALL with no url", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await intoProduction(requestId, cookie)
+
+    const response = await setCallToAction(
+      ctaRequest(requestId, cookie, { actionType: "CALL" }),
+      queueParams(requestId)
+    )
+    const payload = (await response.json()) as CallToActionPayload
+
+    expect(response.status).toBe(200)
+    expect(payload.request.callToAction).toEqual({ actionType: "CALL" })
+  })
+
+  // The route is the last place this can be caught before Google: a url sent
+  // with CALL would be dropped silently, leaving the operator believing a link
+  // they typed is live on the post.
+  it("rejects CALL carrying a url", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await intoProduction(requestId, cookie)
+
+    const response = await setCallToAction(
+      ctaRequest(requestId, cookie, {
+        actionType: "CALL",
+        url: "https://example.com",
+      }),
+      queueParams(requestId)
+    )
+
+    expect(response.status).toBe(400)
+  })
+
+  it("rejects a link action with no url", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await intoProduction(requestId, cookie)
+
+    const response = await setCallToAction(
+      ctaRequest(requestId, cookie, { actionType: "LEARN_MORE" }),
+      queueParams(requestId)
+    )
+
+    expect(response.status).toBe(400)
+  })
+
+  it("clears the button back to none", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await intoProduction(requestId, cookie)
+    await setCallToAction(
+      ctaRequest(requestId, cookie, {
+        actionType: "SIGN_UP",
+        url: "https://example.com/join",
+      }),
+      queueParams(requestId)
+    )
+
+    const response = await setCallToAction(
+      ctaRequest(requestId, cookie, null),
+      queueParams(requestId)
+    )
+    const payload = (await response.json()) as CallToActionPayload
+
+    expect(response.status).toBe(200)
+    expect(payload.request.callToAction).toBeNull()
+  })
+
+  it("rejects a cross-origin post before touching the database", async () => {
+    const requestId = await seedRequest()
+    const cookie = await adminSessionCookie()
+    await intoProduction(requestId, cookie)
+
+    const response = await setCallToAction(
+      postRequest(`${origin}/api/queue/requests/${requestId}/call-to-action`, {
+        cookie,
+        withOrigin: false,
+        body: {
+          callToAction: {
+            actionType: "ORDER",
+            url: "https://example.com/order",
+          },
+        },
+      }),
+      queueParams(requestId)
+    )
+
+    expect(response.status).toBe(403)
   })
 })
 

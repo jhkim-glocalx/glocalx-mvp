@@ -15,6 +15,7 @@ import type {
   CampaignAction,
   CampaignStatus,
 } from "@glocalx/domain/campaign-state-machine"
+import type { GbpPostCallToAction } from "@glocalx/domain/gbp-post-cta"
 
 import {
   publishChannels,
@@ -72,6 +73,9 @@ export type QueueRequestView = {
   // Null while the owner is still owed an out-of-band nudge about the state
   // this request is in.
   readonly nudgedAt: string | null
+  // The button this campaign publishes with, or null for none — which is the
+  // default, since an operator sets it only after talking to the owner.
+  readonly callToAction: GbpPostCallToAction | null
   readonly createdAt: string
   readonly updatedAt: string
   readonly assets: readonly QueueAssetView[]
@@ -126,6 +130,7 @@ export function toQueueRequestView(
     status: detail.status,
     finalCopy: detail.finalCopy,
     nudgedAt: detail.nudgedAt,
+    callToAction: detail.callToAction,
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,
     assets: detail.assets.map((asset) =>

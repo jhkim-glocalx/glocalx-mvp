@@ -815,6 +815,46 @@ select {
   margin-top: 10px;
 }
 
+/* Action picker + its link field. Wraps rather than shrinking the url input,
+   which has to stay wide enough to read a full link back. */
+.ops-queue-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.ops-queue-cta-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ops-queue-cta-field select,
+.ops-queue-cta-url {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--canvas);
+  color: var(--foreground);
+  font-size: 13px;
+}
+
+.ops-queue-cta-url {
+  flex: 1;
+  min-width: 220px;
+}
+
+.ops-queue-cta-field select:focus,
+.ops-queue-cta-url:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
 .ops-publish-channels {
   margin: 0;
   padding: 0;

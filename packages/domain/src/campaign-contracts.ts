@@ -9,6 +9,7 @@ import {
   publishChannelSchema,
   publishJobStatusSchema,
 } from "./campaign-state-machine"
+import { gbpPostCallToActionSchema } from "./gbp-post-cta"
 
 const nonEmptyStringSchema = z.string().trim().min(1)
 
@@ -28,6 +29,11 @@ export const campaignRequestSchema = z
     // owed — and every status change resets it, since the nudge is about the
     // state the owner is currently sitting in, not the request as a whole.
     nudgedAt: z.string().nullable(),
+    // The button this campaign publishes with (migration 0017). Null unless an
+    // operator chose one — there is no default. Persisted as two columns but
+    // composed into the union here so a CALL carrying a url can't be
+    // represented, let alone reach Google.
+    callToAction: gbpPostCallToActionSchema.nullable(),
     createdAt: nonEmptyStringSchema,
     updatedAt: nonEmptyStringSchema,
   })
@@ -146,6 +152,18 @@ export const setCampaignFinalCopyRequestSchema = z
   .strict()
 export type SetCampaignFinalCopyRequest = z.infer<
   typeof setCampaignFinalCopyRequestSchema
+>
+
+// Null clears the button — an operator who talked the owner out of a link needs
+// a way back to "no button", and that is a distinct intent from never having set
+// one, so the field is required and nullable rather than optional.
+export const setCampaignCallToActionRequestSchema = z
+  .object({
+    callToAction: gbpPostCallToActionSchema.nullable(),
+  })
+  .strict()
+export type SetCampaignCallToActionRequest = z.infer<
+  typeof setCampaignCallToActionRequestSchema
 >
 
 // The operator's publish run. Duplicate channels are rejected rather than

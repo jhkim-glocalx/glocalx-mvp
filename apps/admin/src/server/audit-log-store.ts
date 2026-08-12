@@ -16,6 +16,7 @@ export type AdminAuditAction =
   | "campaign_start_production"
   | "campaign_register_asset"
   | "campaign_set_final_copy"
+  | "campaign_set_call_to_action"
   | "campaign_submit_for_review"
   | "campaign_mark_nudged"
   | "campaign_publish"
