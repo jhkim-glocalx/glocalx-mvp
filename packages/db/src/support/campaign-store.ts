@@ -11,6 +11,8 @@ import type {
   CampaignReviewDecision,
   CampaignStatus,
 } from "@glocalx/domain/campaign-state-machine"
+import { gbpPostCallToActionSchema } from "@glocalx/domain/gbp-post-cta"
+import type { GbpPostCallToAction } from "@glocalx/domain/gbp-post-cta"
 import { z } from "zod"
 
 import type { Queryable } from "../types.ts"
@@ -85,6 +87,16 @@ export type SetCampaignFinalCopyInput = {
   readonly now: Date
 }
 
+// callToAction null clears the button. Unlike the status writes this is not
+// guarded on a expected value: the operator is free to change their mind about
+// the button at any point before publish, and a lost race just means the later
+// choice wins — there is no state machine to corrupt.
+export type SetCampaignCallToActionInput = {
+  readonly requestId: string
+  readonly callToAction: GbpPostCallToAction | null
+  readonly now: Date
+}
+
 export type MarkCampaignNudgedInput = {
   readonly requestId: string
   readonly now: Date
@@ -128,6 +140,9 @@ export interface CampaignStore {
   setCampaignFinalCopy(
     input: SetCampaignFinalCopyInput
   ): Promise<CampaignRequest | undefined>
+  setCampaignCallToAction(
+    input: SetCampaignCallToActionInput
+  ): Promise<CampaignRequest | undefined>
   // Records that an operator personally notified the owner that their material
   // is waiting. Guarded on the request still being unnudged and still in
   // ready_for_review, so a double-click writes one row and the second caller is
@@ -151,6 +166,8 @@ const campaignRequestRowSchema = z.object({
   status: z.string(),
   finalCopy: z.string().nullable(),
   nudgedAt: nullableTimestampSchema,
+  gbpCtaActionType: z.string().nullable(),
+  gbpCtaUrl: z.string().nullable(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 })
@@ -188,6 +205,8 @@ const campaignRequestProjection = `
   status,
   final_copy AS "finalCopy",
   nudged_at AS "nudgedAt",
+  gbp_cta_action_type AS "gbpCtaActionType",
+  gbp_cta_url AS "gbpCtaUrl",
   created_at AS "createdAt",
   updated_at AS "updatedAt"
 `
@@ -200,6 +219,8 @@ const queueRequestProjection = `
   r.status,
   r.final_copy AS "finalCopy",
   r.nudged_at AS "nudgedAt",
+  r.gbp_cta_action_type AS "gbpCtaActionType",
+  r.gbp_cta_url AS "gbpCtaUrl",
   r.created_at AS "createdAt",
   r.updated_at AS "updatedAt"
 `
@@ -226,11 +247,28 @@ const campaignAssetProjection = `
   created_at AS "createdAt"
 `
 
+// Rebuilds the union from the two columns. A row whose pairing is broken (only
+// reachable on SQLite, which has no CHECK constraint) fails here rather than
+// publishing a button whose link silently went missing.
+function toCallToAction(
+  actionType: string | null,
+  url: string | null
+): GbpPostCallToAction | null {
+  if (actionType === null) {
+    return null
+  }
+  return gbpPostCallToActionSchema.parse(
+    actionType === "CALL" ? { actionType } : { actionType, url }
+  )
+}
+
 function toCampaignRequest(row: unknown): CampaignRequest {
-  const parsed = campaignRequestRowSchema.parse(row)
+  const { gbpCtaActionType, gbpCtaUrl, ...parsed } =
+    campaignRequestRowSchema.parse(row)
   return {
     ...parsed,
     status: parsed.status as CampaignStatus,
+    callToAction: toCallToAction(gbpCtaActionType, gbpCtaUrl),
   }
 }
 
@@ -278,6 +316,7 @@ export function createDatabaseCampaignStore(
         status: "submitted",
         finalCopy: null,
         nudgedAt: null,
+        callToAction: null,
         createdAt: now,
         updatedAt: now,
       }
@@ -439,6 +478,33 @@ export function createDatabaseCampaignStore(
             SET final_copy = ?, updated_at = ?
           WHERE id = ?`,
         [input.finalCopy, now, input.requestId]
+      )
+      if (result.changes === 0) {
+        return undefined
+      }
+      const row = await queryable.queryOne(
+        `SELECT ${campaignRequestProjection} FROM campaign_requests WHERE id = ?`,
+        [input.requestId]
+      )
+      return row === undefined ? undefined : toCampaignRequest(row)
+    },
+
+    async setCampaignCallToAction(input) {
+      const now = input.now.toISOString()
+      const callToAction = input.callToAction
+      // CALL stores a null url rather than an empty string: the CHECK constraint
+      // and the row codec both read null as "this action carries no link".
+      const actionType = callToAction === null ? null : callToAction.actionType
+      const url =
+        callToAction === null || callToAction.actionType === "CALL"
+          ? null
+          : callToAction.url
+
+      const result = await queryable.execute(
+        `UPDATE campaign_requests
+            SET gbp_cta_action_type = ?, gbp_cta_url = ?, updated_at = ?
+          WHERE id = ?`,
+        [actionType, url, now, input.requestId]
       )
       if (result.changes === 0) {
         return undefined

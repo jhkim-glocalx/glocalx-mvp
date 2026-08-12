@@ -1,4 +1,5 @@
 import type { QueueEntryView, QueueRequestView } from "@/server/queue-view"
+import type { GbpPostCallToAction } from "@glocalx/domain/gbp-post-cta"
 
 // Fetch helpers for the production queue console, kept out of the component so
 // the request/response shapes live in one place (mirrors the owner app's
@@ -84,6 +85,21 @@ export async function saveFinalCopy(
 ): Promise<QueueActionResult> {
   return readRequestResult(
     await fetch(`${queueUrl}/${requestId}/final-copy`, jsonInit({ finalCopy }))
+  )
+}
+
+// null clears the button. The console only ever holds the union — splitting it
+// back into the two stored columns is the store's job, so a CALL can't pick up
+// a url on the way through.
+export async function saveCallToAction(
+  requestId: string,
+  callToAction: GbpPostCallToAction | null
+): Promise<QueueActionResult> {
+  return readRequestResult(
+    await fetch(
+      `${queueUrl}/${requestId}/call-to-action`,
+      jsonInit({ callToAction })
+    )
   )
 }
 

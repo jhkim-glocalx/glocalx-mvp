@@ -20,6 +20,7 @@ describe("campaign-contracts", () => {
       status: "submitted",
       finalCopy: null,
       nudgedAt: null,
+      callToAction: null,
       createdAt: "2026-07-21T00:00:00.000Z",
       updatedAt: "2026-07-21T00:00:00.000Z",
     })
@@ -35,6 +36,8 @@ describe("campaign-contracts", () => {
       status: "ready_for_review",
       finalCopy: "Brunch is back.",
       nudgedAt: "2026-07-25T01:00:00.000Z",
+      // The populated case: an operator picked a button for this campaign.
+      callToAction: { actionType: "ORDER", url: "https://example.com/order" },
       createdAt: "2026-07-21T00:00:00.000Z",
       updatedAt: "2026-07-25T01:00:00.000Z",
     })
@@ -50,6 +53,7 @@ describe("campaign-contracts", () => {
       status: "not_a_real_status",
       finalCopy: null,
       nudgedAt: null,
+      callToAction: null,
       createdAt: "2026-07-21T00:00:00.000Z",
       updatedAt: "2026-07-21T00:00:00.000Z",
     })

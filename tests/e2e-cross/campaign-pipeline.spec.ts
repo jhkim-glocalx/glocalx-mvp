@@ -15,6 +15,7 @@ const tinyPng = Buffer.from(
 
 const brief = "주말 브런치 신메뉴를 사진과 함께 홍보하고 싶어요"
 const finalCopy = "이번 주말, 새로운 브런치 메뉴를 만나보세요. 토·일 오전 10시."
+const ctaUrl = "https://order.example.com/brunch"
 const demoStoreName = "브런치모먼트 홍대점"
 
 // Re-entering the campaigns tab is what refreshes the owner's status list —
@@ -95,6 +96,23 @@ test("owner submits a campaign, an operator produces it, and the owner approves"
 
   await operatorPage.getByTestId("final-copy").fill(finalCopy)
   await operatorPage.getByTestId("save-final-copy").click()
+
+  // The post's button. It belongs to production because the owner approves the
+  // post they were shown — the route stops accepting one past this status.
+  await operatorPage.getByTestId("cta-action").selectOption("ORDER")
+  await operatorPage.getByTestId("cta-url").fill(ctaUrl)
+  // CALL renders the listing's phone number and takes no link, so the field
+  // disappears rather than sitting there being ignored.
+  await operatorPage.getByTestId("cta-action").selectOption("CALL")
+  await expect(operatorPage.getByTestId("cta-url")).toHaveCount(0)
+  await operatorPage.getByTestId("cta-action").selectOption("ORDER")
+  await expect(operatorPage.getByTestId("cta-url")).toHaveValue(ctaUrl)
+  await operatorPage.getByTestId("save-call-to-action").click()
+  // Both controls are re-seeded from the server's response, so holding the
+  // choice here means it survived the two-column round trip.
+  await expect(operatorPage.getByTestId("cta-action")).toHaveValue("ORDER")
+  await expect(operatorPage.getByTestId("cta-url")).toHaveValue(ctaUrl)
+
   await operatorPage.getByTestId("submit-for-review").click()
   await expect(operatorPage.getByTestId("queue-status")).toHaveText(
     "ready_for_review"

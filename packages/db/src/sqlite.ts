@@ -346,4 +346,10 @@ export function applyMigrations(database: SqliteDatabase): void {
   // postgres/migrations/0015_store_gbp_category.sql).
   ensureColumn(database, "stores", "gbp_primary_category_id", "TEXT")
   ensureColumn(database, "stores", "gbp_primary_category_display_name", "TEXT")
+  // Operator-selected post CTA (matches
+  // postgres/migrations/0017_campaign_gbp_cta.sql). Postgres additionally holds
+  // a CHECK pairing these two; ensureColumn can't add constraints, so on SQLite
+  // the domain schema is the only thing keeping CALL from carrying a url.
+  ensureColumn(database, "campaign_requests", "gbp_cta_action_type", "TEXT")
+  ensureColumn(database, "campaign_requests", "gbp_cta_url", "TEXT")
 }

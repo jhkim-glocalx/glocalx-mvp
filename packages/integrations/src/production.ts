@@ -286,6 +286,9 @@ export function createProductionLocalPosts(
       const response = await fetchImpl(
         `https://mybusiness.googleapis.com/v4/${input.parent}/localPosts`,
         {
+          // sourceUrl is the only media form local posts accept — Google fetches
+          // the bytes itself and copies them, returning its own googleUrl, so a
+          // short-lived signed URL is fine as long as it survives the create call.
           body: JSON.stringify({
             languageCode: "ko",
             media: input.mediaUrls.map((sourceUrl) => ({
@@ -294,6 +297,9 @@ export function createProductionLocalPosts(
             })),
             summary: input.summary,
             topicType: "STANDARD",
+            ...(input.callToAction === undefined
+              ? {}
+              : { callToAction: input.callToAction }),
           }),
           headers: {
             ...googleHeaders(input.accessToken),

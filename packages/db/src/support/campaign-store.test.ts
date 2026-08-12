@@ -240,6 +240,70 @@ describe("campaign queue and review writes", () => {
     expect(detail?.finalCopy).toBe("Brunch is back — every Saturday from 10am.")
   })
 
+  it("round-trips a link call-to-action through both projections", async () => {
+    const request = await submittedRequest()
+    expect(request.callToAction).toBeNull()
+
+    const updated = await campaigns.setCampaignCallToAction({
+      requestId: request.id,
+      callToAction: { actionType: "ORDER", url: "https://example.com/order" },
+      now: at(5),
+    })
+
+    expect(updated?.callToAction).toEqual({
+      actionType: "ORDER",
+      url: "https://example.com/order",
+    })
+    // The operator queue reads through a different, table-qualified projection —
+    // a column missing there would only surface here.
+    const detail = await campaigns.getCampaignRequestForOperator(request.id)
+    expect(detail?.callToAction).toEqual({
+      actionType: "ORDER",
+      url: "https://example.com/order",
+    })
+  })
+
+  // CALL is the shape that has no url at all; storing it must not leave a
+  // stale url behind from a previously chosen link action.
+  it("drops the url when the action switches to CALL", async () => {
+    const request = await submittedRequest()
+    await campaigns.setCampaignCallToAction({
+      requestId: request.id,
+      callToAction: { actionType: "BOOK", url: "https://example.com/book" },
+      now: at(5),
+    })
+
+    const updated = await campaigns.setCampaignCallToAction({
+      requestId: request.id,
+      callToAction: { actionType: "CALL" },
+      now: at(6),
+    })
+
+    expect(updated?.callToAction).toEqual({ actionType: "CALL" })
+    const row = await queryable.queryOne(
+      "SELECT gbp_cta_url AS url FROM campaign_requests WHERE id = ?",
+      [request.id]
+    )
+    expect(row?.["url"]).toBeNull()
+  })
+
+  it("clears the button back to none", async () => {
+    const request = await submittedRequest()
+    await campaigns.setCampaignCallToAction({
+      requestId: request.id,
+      callToAction: { actionType: "SIGN_UP", url: "https://example.com/join" },
+      now: at(5),
+    })
+
+    const cleared = await campaigns.setCampaignCallToAction({
+      requestId: request.id,
+      callToAction: null,
+      now: at(6),
+    })
+
+    expect(cleared?.callToAction).toBeNull()
+  })
+
   it("applies a status update when the expected status still holds", async () => {
     const request = await submittedRequest()
 

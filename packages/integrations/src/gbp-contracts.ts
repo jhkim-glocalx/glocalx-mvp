@@ -1,5 +1,9 @@
+import type { GbpPostCallToAction } from "@glocalx/domain/gbp-post-cta"
+
 import type { AdapterResult, HttpRequestSpec } from "./contracts"
 import type { PublishedSocialPost } from "./social-publishing-contracts"
+
+export type { GbpPostCallToAction }
 
 export type CreateLocationInput = {
   readonly accessToken: string
@@ -33,6 +37,7 @@ export type CreateLocalPostInput = {
   readonly mediaUrls: readonly string[]
   readonly parent: string
   readonly summary: string
+  readonly callToAction?: GbpPostCallToAction
 }
 
 export type ListReviewsInput = {
