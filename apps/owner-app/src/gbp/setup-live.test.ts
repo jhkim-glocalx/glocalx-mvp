@@ -132,7 +132,8 @@ describe("buildLiveGoogleLocationBody", () => {
           locality: "마포구",
           sublocality: "서교동",
           postalCode: "04039",
-          addressLines: ["서울 마포구 양화로 19"],
+          // The 시/구 prefix is dropped because the fields above already carry it.
+          addressLines: ["양화로 19"],
         },
         latlng: { latitude: 37.5563, longitude: 126.9236 },
         phoneNumbers: { primaryPhone: "02-987-6543" },
