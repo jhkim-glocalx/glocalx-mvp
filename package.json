@@ -23,13 +23,26 @@
     "e2e": "npm run e2e -w apps/owner-app",
     "e2e:cross": "playwright test",
     "e2e:postgres": "npm run e2e:postgres -w apps/owner-app",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "eslint --fix --no-warn-ignored",
+      "prettier --write"
+    ],
+    "*.{json,md,css,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@eslint/eslintrc": "latest",
     "@playwright/test": "latest",
     "eslint": "latest",
     "eslint-config-next": "latest",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
     "prettier": "latest",
     "typescript": "latest"
   }
