@@ -91,6 +91,11 @@ export const publishJobSchema = z
     status: publishJobStatusSchema,
     // The channel's own post id once published — the link back to the live post.
     externalRef: z.string().nullable(),
+    // The published post's public address, as the channel itself reported it
+    // (Instagram's permalink, Google's searchUrl). Kept beside externalRef
+    // because an id alone cannot be opened: without this the only way to see
+    // what went live is to hunt for it in the channel's own console.
+    externalUrl: z.url().nullable(),
     attemptCount: z.number().int().nonnegative(),
     lastError: z.string().nullable(),
     createdAt: nonEmptyStringSchema,

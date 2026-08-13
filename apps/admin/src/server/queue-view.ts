@@ -49,6 +49,7 @@ export type QueuePublishJobView = {
   readonly channel: string
   readonly status: string
   readonly externalRef: string | null
+  readonly externalUrl: string | null
   readonly attemptCount: number
   readonly lastError: string | null
   readonly updatedAt: string
@@ -147,6 +148,7 @@ export function toQueueRequestView(
       channel: job.channel,
       status: job.status,
       externalRef: job.externalRef,
+      externalUrl: job.externalUrl,
       attemptCount: job.attemptCount,
       lastError: job.lastError,
       updatedAt: job.updatedAt,

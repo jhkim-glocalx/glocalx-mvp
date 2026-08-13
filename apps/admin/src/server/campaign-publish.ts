@@ -74,8 +74,15 @@ export type RunCampaignPublishInput = {
 
 type PublishAttemptFailure = { readonly failureMessage: string }
 
+// publicUrl is what the channel says the post's address is; both channels
+// report one, and it is the only thing an operator can actually open.
+type PublishAttemptSuccess = {
+  readonly externalPostId: string
+  readonly publicUrl?: string
+}
+
 function isFailure(
-  value: { readonly externalPostId: string } | PublishAttemptFailure
+  value: PublishAttemptSuccess | PublishAttemptFailure
 ): value is PublishAttemptFailure {
   return "failureMessage" in value
 }
@@ -144,7 +151,7 @@ export function instagramCaption(
 async function publishToChannel(
   input: RunCampaignPublishInput,
   channel: PublishChannel
-): Promise<{ readonly externalPostId: string } | PublishAttemptFailure> {
+): Promise<PublishAttemptSuccess | PublishAttemptFailure> {
   const minted = await mintMediaUrls(input.adapters, input.request)
   if (minted.kind === "failed") {
     return { failureMessage: minted.failureMessage }
@@ -188,7 +195,10 @@ async function publishToChannel(
           failureMessage:
             "Google Business Profile publishing is not configured for this environment.",
         }
-      : { externalPostId: result.value.externalPostId }
+      : {
+          externalPostId: result.value.externalPostId,
+          publicUrl: result.value.publicUrl,
+        }
   }
 
   // Instagram's credential is the store's own linked business account. A link
@@ -229,7 +239,10 @@ async function publishToChannel(
         failureMessage:
           "Instagram publishing is not configured for this environment.",
       }
-    : { externalPostId: result.value.externalPostId }
+    : {
+        externalPostId: result.value.externalPostId,
+        publicUrl: result.value.publicUrl,
+      }
 }
 
 // Runs the selected channels in order and settles each job. Channels are
@@ -274,7 +287,7 @@ export async function runCampaignPublish(
       continue
     }
 
-    let attempt: { readonly externalPostId: string } | PublishAttemptFailure
+    let attempt: PublishAttemptSuccess | PublishAttemptFailure
     try {
       attempt = await publishToChannel(input, channel)
     } catch (error) {
@@ -308,6 +321,9 @@ export async function runCampaignPublish(
       requestId: input.request.id,
       channel,
       externalRef: attempt.externalPostId,
+      ...(attempt.publicUrl === undefined
+        ? {}
+        : { externalUrl: attempt.publicUrl }),
       now: input.now,
     })
     outcomes.push({ channel, kind: "published", message: null })

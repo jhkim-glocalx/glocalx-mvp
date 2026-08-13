@@ -1,6 +1,11 @@
+import type { CompletePublishJobInput } from "@glocalx/db/support/publish-job-store"
 import { describe, expect, it } from "vitest"
 
-import { instagramCaption, instagramCaptionMaxLength } from "./campaign-publish"
+import {
+  instagramCaption,
+  instagramCaptionMaxLength,
+  runCampaignPublish,
+} from "./campaign-publish"
 
 // Instagram has no button, so a campaign's call to action has to survive as
 // text. What these pin down is which half loses when the two do not both fit:
@@ -64,5 +69,116 @@ describe("instagramCaption", () => {
     expect(caption).toHaveLength(instagramCaptionMaxLength)
     expect(caption.startsWith("주문: https://example.com/")).toBe(true)
     expect(caption).not.toContain("Brunch")
+  })
+})
+
+// Both channels report where the post went live — Instagram a permalink, Google
+// a searchUrl — and both values were being dropped on the floor, leaving the
+// operator a bare post id they could not open. These pin the value to the job.
+describe("runCampaignPublish external urls", () => {
+  const gbpPost = {
+    externalPostId: "accounts/1/locations/2/localPosts/3",
+    publicUrl: "https://www.google.com/search?kgmid=post-3",
+  }
+  const instagramPost = {
+    externalPostId: "17919891333204452",
+    publicUrl: "https://www.instagram.com/p/DbTEST/",
+  }
+
+  function createHarness() {
+    const completed: CompletePublishJobInput[] = []
+    const publishJobStore = {
+      async reservePublishJob(input: { readonly channel: string }) {
+        return { kind: "reserved", job: { channel: input.channel } }
+      },
+      async completePublishJob(input: CompletePublishJobInput) {
+        completed.push(input)
+        return undefined
+      },
+      async failPublishJob(input: { readonly error: string }) {
+        throw new Error(`unexpected publish failure: ${input.error}`)
+      },
+    }
+    const publishTargetStore = {
+      async readGbpPublishParent() {
+        return "accounts/1/locations/2"
+      },
+      async readStoreChannelToken() {
+        return { kind: "found", accessToken: "ig-token" }
+      },
+      async readStoreChannelLink() {
+        return { status: "linked", externalAccountRef: "17841441013510719" }
+      },
+    }
+    const orgCredentialStore = {
+      async readOrgCredential() {
+        // A null expiry never expires, so the gate stays out of the way of what
+        // this is actually testing.
+        return {
+          kind: "found",
+          accessToken: "google-org-token",
+          expiresAt: null,
+        }
+      },
+    }
+    const adapters = {
+      mediaStore: {
+        async getSignedUrl() {
+          return { kind: "ok", value: "https://blob.example.com/a.jpg?sig=1" }
+        },
+      },
+      gbpLocalPosts: {
+        async createLocalPost() {
+          return { kind: "ok", value: gbpPost }
+        },
+      },
+      instagramPosts: {
+        async createPost() {
+          return { kind: "ok", value: instagramPost }
+        },
+      },
+    }
+    const request = {
+      id: "request-1",
+      storeId: "store-1",
+      finalCopy: "테스트용 게시물입니다",
+      callToAction: null,
+      assets: [
+        { kind: "processed", blobUrl: "https://blob.example.com/a.jpg" },
+      ],
+    }
+    return {
+      adapters,
+      completed,
+      orgCredentialStore,
+      publishJobStore,
+      publishTargetStore,
+      request,
+    }
+  }
+
+  it("records the url each channel reported for its published post", async () => {
+    const harness = createHarness()
+
+    const outcomes = await runCampaignPublish({
+      adapters: harness.adapters,
+      orgCredentialStore: harness.orgCredentialStore,
+      publishJobStore: harness.publishJobStore,
+      publishTargetStore: harness.publishTargetStore,
+      request: harness.request,
+      channels: ["gbp", "instagram"],
+      now: new Date("2026-08-14T00:00:00.000Z"),
+    } as never)
+
+    expect(outcomes.map((outcome) => outcome.kind)).toEqual([
+      "published",
+      "published",
+    ])
+    expect(
+      harness.completed.map((input) => [input.channel, input.externalUrl])
+    ).toEqual([
+      ["gbp", gbpPost.publicUrl],
+      ["instagram", instagramPost.publicUrl],
+    ])
   })
 })
