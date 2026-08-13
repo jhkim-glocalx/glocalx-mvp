@@ -7,9 +7,9 @@
 // Requires the org Google account credentials (same account that manages the
 // GlocalX GBP locations). Run from the repo root:
 //
-//   read -rs 'v?Client ID: ' GOOGLE_CLIENT_ID; echo
-//   read -rs 'v?Client Secret: ' GOOGLE_CLIENT_SECRET; echo
-//   read -rs 'v?Refresh Token: ' GOOGLE_ORG_REFRESH_TOKEN; echo
+//   printf 'Client ID: '; read -rs GOOGLE_CLIENT_ID; echo
+//   printf 'Client Secret: '; read -rs GOOGLE_CLIENT_SECRET; echo
+//   printf 'Refresh Token: '; read -rs GOOGLE_ORG_REFRESH_TOKEN; echo
 //   GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
 //   GOOGLE_ORG_REFRESH_TOKEN="$GOOGLE_ORG_REFRESH_TOKEN" \
 //   node apps/owner-app/scripts/refresh-gbp-categories.mjs
