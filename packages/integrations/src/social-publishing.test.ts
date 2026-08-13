@@ -55,15 +55,49 @@ describe("production social publishing", () => {
       })
     )
   })
+})
 
+// Publishing walks a graph of calls whose ORDER matters — a container must be
+// FINISHED before it is published — so the fake answers by request rather than
+// by position, and records the sequence for the order assertions to read.
+function createInstagramFetch(options?: {
+  readonly statuses?: readonly string[]
+}) {
+  const statuses = [...(options?.statuses ?? [])]
+  const calls: string[] = []
+  let containerCount = 0
+  const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === "GET") {
+      const target = new URL(url)
+      if (target.searchParams.get("fields") === "status_code") {
+        const containerId = target.pathname.split("/").pop() ?? ""
+        calls.push(`status:${containerId}`)
+        return Response.json({ status_code: statuses.shift() ?? "FINISHED" })
+      }
+      calls.push("permalink")
+      return Response.json({
+        permalink: "https://www.instagram.com/p/published-media/",
+      })
+    }
+    const body = new URLSearchParams(String(init?.body))
+    if (url.endsWith("/media_publish")) {
+      calls.push(`publish:${body.get("creation_id")}`)
+      return Response.json({ id: "published-media" })
+    }
+    containerCount += 1
+    const id =
+      body.get("media_type") === "CAROUSEL"
+        ? "carousel-container"
+        : `container-${containerCount}`
+    calls.push(`create:${id}`)
+    return Response.json({ id })
+  })
+  return { calls, fetchImpl }
+}
+
+describe("production Instagram publishing", () => {
   it("publishes one Instagram image and resolves its permalink", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(Response.json({ id: "container-1" }))
-      .mockResolvedValueOnce(Response.json({ id: "media-1" }))
-      .mockResolvedValueOnce(
-        Response.json({ permalink: "https://www.instagram.com/p/media-1/" })
-      )
+    const { calls, fetchImpl } = createInstagramFetch()
     const adapters = createIntegrationAdapters({
       env: productionEnv,
       fetchImpl,
@@ -77,25 +111,70 @@ describe("production social publishing", () => {
     expect(result).toEqual({
       kind: "ok",
       value: {
-        externalPostId: "media-1",
-        publicUrl: "https://www.instagram.com/p/media-1/",
+        externalPostId: "published-media",
+        publicUrl: "https://www.instagram.com/p/published-media/",
       },
     })
-    expect(fetchImpl).toHaveBeenCalledTimes(3)
+    // The container is confirmed FINISHED before it is published: publishing an
+    // unfinished container is what Meta answers with a bare 400.
+    expect(calls).toEqual([
+      "create:container-1",
+      "status:container-1",
+      "publish:container-1",
+      "permalink",
+    ])
+  })
+
+  it("waits for a container that is still building before publishing", async () => {
+    vi.useFakeTimers()
+    try {
+      const { calls, fetchImpl } = createInstagramFetch({
+        statuses: ["IN_PROGRESS", "IN_PROGRESS", "FINISHED"],
+      })
+      const adapters = createIntegrationAdapters({
+        env: productionEnv,
+        fetchImpl,
+      })
+
+      const pending = adapters.instagramPosts.createPost({
+        caption: "아직 처리 중인 사진",
+        mediaUrls: ["https://app.example.com/media/slow.jpg"],
+      } as never)
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      await expect(pending).resolves.toMatchObject({ kind: "ok" })
+      expect(calls).toEqual([
+        "create:container-1",
+        "status:container-1",
+        "status:container-1",
+        "status:container-1",
+        "publish:container-1",
+        "permalink",
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("fails a publish whose container Meta could not build", async () => {
+    const { calls, fetchImpl } = createInstagramFetch({ statuses: ["ERROR"] })
+    const adapters = createIntegrationAdapters({
+      env: productionEnv,
+      fetchImpl,
+    })
+
+    await expect(
+      adapters.instagramPosts.createPost({
+        caption: "받을 수 없는 사진",
+        mediaUrls: ["https://app.example.com/media/broken.jpg"],
+      } as never)
+    ).rejects.toThrow(/could not build the media container \(ERROR\)/)
+    // ERROR is terminal, so it must never reach media_publish.
+    expect(calls).toEqual(["create:container-1", "status:container-1"])
   })
 
   it("creates child containers before an Instagram carousel", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(Response.json({ id: "child-1" }))
-      .mockResolvedValueOnce(Response.json({ id: "child-2" }))
-      .mockResolvedValueOnce(Response.json({ id: "carousel-container" }))
-      .mockResolvedValueOnce(Response.json({ id: "carousel-media" }))
-      .mockResolvedValueOnce(
-        Response.json({
-          permalink: "https://www.instagram.com/p/carousel-media/",
-        })
-      )
+    const { calls, fetchImpl } = createInstagramFetch()
     const adapters = createIntegrationAdapters({
       env: productionEnv,
       fetchImpl,
@@ -111,13 +190,25 @@ describe("production social publishing", () => {
 
     expect(result).toMatchObject({
       kind: "ok",
-      value: { externalPostId: "carousel-media" },
+      value: { externalPostId: "published-media" },
     })
-    expect(fetchImpl).toHaveBeenCalledTimes(5)
-    const carouselBody = String(fetchImpl.mock.calls[2]?.[1]?.body)
-    expect(new URLSearchParams(carouselBody).get("children")).toBe(
-      "child-1,child-2"
+    // Every child is FINISHED before the parent names it, and the parent is
+    // FINISHED before it is published.
+    expect(calls).toEqual([
+      "create:container-1",
+      "create:container-2",
+      "status:container-1",
+      "status:container-2",
+      "create:carousel-container",
+      "status:carousel-container",
+      "publish:carousel-container",
+      "permalink",
+    ])
+    const carouselCall = fetchImpl.mock.calls.find(
+      ([, init]) =>
+        new URLSearchParams(String(init?.body)).get("media_type") === "CAROUSEL"
     )
-    expect(new URLSearchParams(carouselBody).get("media_type")).toBe("CAROUSEL")
+    const carouselBody = new URLSearchParams(String(carouselCall?.[1]?.body))
+    expect(carouselBody.get("children")).toBe("container-1,container-2")
   })
 })

@@ -21,6 +21,23 @@ const graphApiVersion = "v24.0"
 const graphBaseUrl = `https://graph.instagram.com/${graphApiVersion}`
 const idResponseSchema = z.object({ id: z.string().min(1) }).passthrough()
 const permalinkResponseSchema = z.object({ permalink: z.url() }).passthrough()
+const containerStatusSchema = z
+  .object({ status_code: z.string().min(1) })
+  .passthrough()
+
+// A container is not ready the moment Meta returns its id: Meta then downloads
+// our image and only afterwards flips status_code to FINISHED. media_publish on
+// a container in any other state is rejected with a bare 400.
+//
+// This is not defensive coding — it is the fix for a real failure. On
+// 2026-08-13 a two-channel campaign publish settled as partially_published:
+// Google took the post, Instagram returned 400. The stored OAuth token, the
+// signed image URL, the caption and the single asset were each later replayed
+// against live Meta and all accepted, and the account's quota showed no publish
+// had landed. The one difference from the smoke script that DID publish the same
+// image was that the smoke polled the container to FINISHED first.
+const containerReadyTimeoutMs = 25_000
+const containerPollIntervalMs = 1_000
 
 async function graphRequest(
   fetchImpl: ExternalFetch,
@@ -34,9 +51,69 @@ async function graphRequest(
     signal: AbortSignal.timeout(20_000),
   })
   if (!response.ok) {
-    throw new Error(`Instagram publishing failed with ${response.status}.`)
+    // Meta's body carries the only actionable detail — "Media download failed"
+    // (it could not read our image URL) reads nothing like an aspect-ratio
+    // rejection or a missing scope, yet all three arrive as HTTP 400. Without
+    // it a production failure is undiagnosable: campaign-publish.ts logs this
+    // message and shows the operator a generic "the channel rejected it".
+    // Safe to include — the response never echoes the access token, which
+    // travels in the request body.
+    const detail = await response.text().catch(() => "")
+    throw new Error(
+      `Instagram publishing failed with ${response.status}.` +
+        (detail === "" ? "" : ` ${detail.slice(0, 500)}`)
+    )
   }
   return response.json()
+}
+
+/**
+ * Blocks until Meta has finished building a container, so it is safe to publish
+ * or to reference as a carousel child.
+ *
+ * Terminal states other than FINISHED (ERROR, EXPIRED) throw rather than
+ * looping: they never become FINISHED, and the operator needs to know the media
+ * was rejected instead of watching a publish sit there until it times out.
+ */
+async function awaitContainerReady(options: {
+  readonly accessToken: string
+  readonly containerId: string
+  readonly fetchImpl: ExternalFetch
+}): Promise<void> {
+  const deadline = Date.now() + containerReadyTimeoutMs
+  for (;;) {
+    const statusUrl = new URL(`${graphBaseUrl}/${options.containerId}`)
+    statusUrl.searchParams.set("fields", "status_code")
+    statusUrl.searchParams.set("access_token", options.accessToken)
+    const response = await options.fetchImpl(statusUrl.toString(), {
+      method: "GET",
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!response.ok) {
+      throw new Error(
+        `Instagram container status read failed with ${response.status}.`
+      )
+    }
+    const statusCode = containerStatusSchema.parse(
+      await response.json()
+    ).status_code
+    if (statusCode === "FINISHED") {
+      return
+    }
+    if (statusCode !== "IN_PROGRESS") {
+      throw new Error(
+        `Instagram could not build the media container (${statusCode}).`
+      )
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `Instagram did not finish the media container within ${
+          containerReadyTimeoutMs / 1000
+        }s.`
+      )
+    }
+    await new Promise((resolve) => setTimeout(resolve, containerPollIntervalMs))
+  }
 }
 
 async function createImageContainer(options: {
@@ -58,7 +135,16 @@ async function createImageContainer(options: {
     `${graphBaseUrl}/${options.igUserId}/media`,
     body
   )
-  return idResponseSchema.parse(payload).id
+  const containerId = idResponseSchema.parse(payload).id
+  // A child is about to be named in the carousel's children list, and Meta
+  // validates those ids when the parent is created — so the same wait the
+  // published container needs applies here.
+  await awaitContainerReady({
+    accessToken: options.accessToken,
+    containerId,
+    fetchImpl: options.fetchImpl,
+  })
+  return containerId
 }
 
 export function createStubInstagramPosts(): InstagramPostsAdapter {
@@ -142,6 +228,12 @@ export function createProductionInstagramPosts(
           )
         ).id
       }
+
+      await awaitContainerReady({
+        accessToken,
+        containerId: creationId,
+        fetchImpl,
+      })
 
       const publishBody = new URLSearchParams({
         access_token: accessToken,
