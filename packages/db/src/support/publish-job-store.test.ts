@@ -122,13 +122,40 @@ describe("publish job store", () => {
       requestId,
       channel: "instagram",
       externalRef: "ig-post-1",
+      externalUrl: "https://www.instagram.com/p/ig-post-1/",
       now: at(2),
     })
 
     expect(completed).toMatchObject({
       status: "published",
       externalRef: "ig-post-1",
+      externalUrl: "https://www.instagram.com/p/ig-post-1/",
       lastError: null,
+    })
+  })
+
+  it("settles without a url when the channel reported none", async () => {
+    const requestId = await createRequest()
+    await jobs.reservePublishJob({
+      id: randomUUID(),
+      requestId,
+      channel: "gbp",
+      now: at(1),
+    })
+
+    const completed = await jobs.completePublishJob({
+      requestId,
+      channel: "gbp",
+      externalRef: "gbp-post-1",
+      now: at(2),
+    })
+
+    // A missing url is not a failed publish: the post is live either way, and
+    // the operator simply has no link to click.
+    expect(completed).toMatchObject({
+      status: "published",
+      externalRef: "gbp-post-1",
+      externalUrl: null,
     })
   })
 

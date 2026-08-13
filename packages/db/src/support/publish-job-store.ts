@@ -41,6 +41,9 @@ export type CompletePublishJobInput = {
   readonly requestId: string
   readonly channel: PublishChannel
   readonly externalRef: string
+  // Optional because it is the channel's to give: a channel that reports no
+  // public address still publishes successfully, and that must not fail the job.
+  readonly externalUrl?: string
   readonly now: Date
 }
 
@@ -77,6 +80,7 @@ const publishJobRowSchema = z.object({
   channel: z.string(),
   status: z.string(),
   externalRef: z.string().nullable(),
+  externalUrl: z.string().nullable(),
   attemptCount: z.coerce.number().int(),
   lastError: z.string().nullable(),
   createdAt: timestampSchema,
@@ -91,6 +95,7 @@ const publishJobProjection = `
   channel,
   status,
   external_ref AS "externalRef",
+  external_url AS "externalUrl",
   attempt_count AS "attemptCount",
   last_error AS "lastError",
   created_at AS "createdAt",
@@ -104,6 +109,7 @@ const joinedPublishJobProjection = `
   job.channel,
   job.status,
   job.external_ref AS "externalRef",
+  job.external_url AS "externalUrl",
   job.attempt_count AS "attemptCount",
   job.last_error AS "lastError",
   job.created_at AS "createdAt",
@@ -197,6 +203,7 @@ export function createDatabasePublishJobStore(
               channel: input.channel,
               status: "publishing",
               externalRef: null,
+              externalUrl: null,
               attemptCount: 1,
               lastError: null,
               createdAt: now,
@@ -257,10 +264,17 @@ export function createDatabasePublishJobStore(
         `UPDATE publish_jobs
             SET status = 'published',
                 external_ref = ?,
+                external_url = ?,
                 last_error = NULL,
                 updated_at = ?
           WHERE request_id = ? AND channel = ? AND status = 'publishing'`,
-        [input.externalRef, now, input.requestId, input.channel]
+        [
+          input.externalRef,
+          input.externalUrl ?? null,
+          now,
+          input.requestId,
+          input.channel,
+        ]
       )
       return updated.changes === 0
         ? undefined

@@ -352,4 +352,7 @@ export function applyMigrations(database: SqliteDatabase): void {
   // the domain schema is the only thing keeping CALL from carrying a url.
   ensureColumn(database, "campaign_requests", "gbp_cta_action_type", "TEXT")
   ensureColumn(database, "campaign_requests", "gbp_cta_url", "TEXT")
+  // Published post's public url (matches
+  // postgres/migrations/0018_publish_job_external_url.sql).
+  ensureColumn(database, "publish_jobs", "external_url", "TEXT")
 }

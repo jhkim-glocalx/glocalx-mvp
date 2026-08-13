@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import type { QueueEntryView, QueueRequestView } from "@/server/queue-view"
+import type {
+  QueueEntryView,
+  QueuePublishJobView,
+  QueueRequestView,
+} from "@/server/queue-view"
 import {
   gbpPostLinkActionTypes,
   type GbpPostCallToAction,
@@ -32,6 +36,24 @@ const maxPublishAttempts = 3
 const channelLabels: Readonly<Record<string, string>> = {
   gbp: "Google Business Profile",
   instagram: "Instagram",
+}
+
+/**
+ * The published post's address, or undefined when there is nothing safe to open.
+ *
+ * The value reaches us from Google/Instagram and is about to become an href, so
+ * the scheme is checked rather than assumed: `z.url()` parses `javascript:` and
+ * `data:` happily, and either would turn an operator's click into script
+ * execution in the ops console. Jobs settled before external_url existed have no
+ * url at all, which is also this returning undefined.
+ */
+function publishedPostHref(
+  job: QueuePublishJobView | undefined
+): string | undefined {
+  if (job?.externalUrl === undefined || job.externalUrl === null) {
+    return undefined
+  }
+  return job.externalUrl.startsWith("https://") ? job.externalUrl : undefined
 }
 
 // The statuses where a publish run is a legal next step: the owner's go, and
@@ -462,6 +484,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                     job !== undefined &&
                     job.status === "failed" &&
                     job.attemptCount >= maxPublishAttempts
+                  const postHref = publishedPostHref(job)
                   return (
                     <li
                       key={channel}
@@ -493,6 +516,18 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                           ? null
                           : ` · ${job.externalRef}`}
                       </p>
+                      {postHref === undefined ? null : (
+                        <p className="ops-publish-channel-meta">
+                          <a
+                            data-testid={`publish-link-${channel}`}
+                            href={postHref}
+                            rel="noreferrer noopener"
+                            target="_blank"
+                          >
+                            게시물 보기
+                          </a>
+                        </p>
+                      )}
                       {eligibility.message === null ? null : (
                         <p className="ops-publish-channel-blocked">
                           {eligibility.message}

@@ -181,6 +181,17 @@ test("owner submits a campaign, an operator produces it, and the owner approves"
     "published"
   )
 
+  // Each settled channel offers a way to open what actually went live. Without
+  // this the panel shows a bare post id, and checking the result means hunting
+  // through Business Profile Manager or the Instagram profile by hand.
+  await expect(
+    operatorPage.getByTestId("publish-link-instagram")
+  ).toHaveAttribute("href", "https://www.instagram.com/p/stub-instagram-media/")
+  await expect(operatorPage.getByTestId("publish-link-gbp")).toHaveAttribute(
+    "href",
+    /^https:\/\//
+  )
+
   // Owner: the same history, in their own words, on the status timeline.
   await refreshOwnerCampaignList(ownerPage)
   await expect(ownerPage.getByText("게시 완료").first()).toBeVisible({
