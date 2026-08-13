@@ -13,10 +13,10 @@
 //
 // Run from the repo root (values never echoed):
 //
-//   read -rs 'v?Client ID: ' GOOGLE_CLIENT_ID; echo
-//   read -rs 'v?Client Secret: ' GOOGLE_CLIENT_SECRET; echo
-//   read -rs 'v?Org Refresh Token: ' GOOGLE_ORG_REFRESH_TOKEN; echo
-//   read -rs 'v?Geocoding API Key: ' GOOGLE_GEOCODING_API_KEY; echo
+//   printf 'Client ID: '; read -rs GOOGLE_CLIENT_ID; echo
+//   printf 'Client Secret: '; read -rs GOOGLE_CLIENT_SECRET; echo
+//   printf 'Org Refresh Token: '; read -rs GOOGLE_ORG_REFRESH_TOKEN; echo
+//   printf 'Geocoding API Key: '; read -rs GOOGLE_GEOCODING_API_KEY; echo
 //   GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
 //   GOOGLE_ORG_REFRESH_TOKEN="$GOOGLE_ORG_REFRESH_TOKEN" \
 //   GOOGLE_GEOCODING_API_KEY="$GOOGLE_GEOCODING_API_KEY" \

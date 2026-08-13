@@ -14,7 +14,7 @@
 //
 // Run from the repo root:
 //
-//   read -rs 'v?Blob token: ' BLOB_READ_WRITE_TOKEN; echo
+//   printf 'Blob token: '; read -rs BLOB_READ_WRITE_TOKEN; echo
 //   BLOB_READ_WRITE_TOKEN="$BLOB_READ_WRITE_TOKEN" \
 //   BLOB_IMAGE_FILE=~/Desktop/logo.png \
 //   node apps/owner-app/scripts/upload-smoke-image.mjs

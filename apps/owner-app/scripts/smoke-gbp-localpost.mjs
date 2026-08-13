@@ -15,9 +15,9 @@
 //
 // Run from the repo root (values never echoed):
 //
-//   read -rs 'v?Client ID: ' GOOGLE_CLIENT_ID; echo
-//   read -rs 'v?Client Secret: ' GOOGLE_CLIENT_SECRET; echo
-//   read -rs 'v?Refresh Token: ' GOOGLE_ORG_REFRESH_TOKEN; echo
+//   printf 'Client ID: '; read -rs GOOGLE_CLIENT_ID; echo
+//   printf 'Client Secret: '; read -rs GOOGLE_CLIENT_SECRET; echo
+//   printf 'Refresh Token: '; read -rs GOOGLE_ORG_REFRESH_TOKEN; echo
 //   GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
 //   GOOGLE_ORG_REFRESH_TOKEN="$GOOGLE_ORG_REFRESH_TOKEN" \
 //   GBP_SMOKE_LOCATION="accounts/108683171778167253197/locations/941049899414125596" \
