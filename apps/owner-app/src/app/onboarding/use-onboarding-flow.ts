@@ -11,11 +11,13 @@ import { updateStoreProfileDraftField } from "./onboarding-draft-fields"
 import type {
   ConfirmationState,
   ExtractionState,
+  AdoptionState,
   SetupState,
   StoreProfileDraft,
 } from "./onboarding-model"
 import {
   requestExtractionState,
+  requestGbpAdoptionState,
   requestGbpSetupState,
   requestStoreProfileConfirmationState,
 } from "./onboarding-requests"
@@ -37,6 +39,7 @@ export function useOnboardingFlow() {
     StoreProfileDraft | undefined
   >(undefined)
   const [setup, setSetup] = useState<SetupState>({ kind: "idle" })
+  const [adoption, setAdoption] = useState<AdoptionState>({ kind: "idle" })
   const [submittedInput, setSubmittedInput] = useState("")
   const slotTurn = useOnboardingSlotTurn({
     profileDraft,
@@ -181,6 +184,22 @@ export function useOnboardingFlow() {
     }
   }
 
+  async function handleClaimExisting() {
+    setAdoption({ kind: "loading" })
+
+    try {
+      setAdoption(await requestGbpAdoptionState())
+    } catch (error) {
+      setAdoption({
+        kind: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "등록된 프로필 확인에 실패했습니다.",
+      })
+    }
+  }
+
   async function handleSetup() {
     setSetup({ kind: "loading" })
 
@@ -222,6 +241,7 @@ export function useOnboardingFlow() {
     actions: {
       changeDraftField: handleDraftFieldChange,
       checkSetup: handleSetup,
+      claimExisting: handleClaimExisting,
       confirm: handleConfirmation,
       inputChange: setInput,
       naverLinkAttach: handleNaverLinkAttach,
@@ -232,6 +252,7 @@ export function useOnboardingFlow() {
     },
     refs: { inputRef, screenRef },
     state: {
+      adoption,
       confirmation,
       extraction,
       input,

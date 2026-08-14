@@ -14,6 +14,7 @@ import { createDatabaseCampaignStore } from "@glocalx/db/support/campaign-store"
 import type { CampaignStore } from "@glocalx/db/support/campaign-store"
 import { createDatabaseGbpAccessStore } from "@glocalx/db/support/gbp-access-store"
 import type { GbpAccessStore } from "@glocalx/db/support/gbp-access-store"
+import type { Queryable } from "@glocalx/db"
 import { createDatabaseCsConversationStore } from "@glocalx/db/support/conversation-store"
 import type { CsConversationStore } from "@glocalx/db/support/conversation-store"
 import { createDatabaseCsMessageContextStore } from "@glocalx/db/support/message-context-store"
@@ -41,6 +42,9 @@ export type AdminRouteContext = {
   readonly auditLogStore: AdminAuditLogStore
   readonly campaignStore: CampaignStore
   readonly gbpAccessStore: GbpAccessStore
+  // Raw handle for the adoption confirm write, which spans gbp_accounts and
+  // gbp_locations — tables no admin-side store owns.
+  readonly queryable: Queryable
   readonly csConversationStore: CsConversationStore
   readonly csMessageContextStore: CsMessageContextStore
   readonly csMessageStore: CsMessageStore
@@ -144,6 +148,7 @@ export async function withAdminRoute(
       auditLogStore: createAdminAuditLogStore(queryable),
       campaignStore: createDatabaseCampaignStore(queryable),
       gbpAccessStore: createDatabaseGbpAccessStore(queryable),
+      queryable,
       csConversationStore: createDatabaseCsConversationStore(queryable),
       csMessageContextStore: createDatabaseCsMessageContextStore(queryable),
       csMessageStore: createDatabaseCsMessageStore(queryable),

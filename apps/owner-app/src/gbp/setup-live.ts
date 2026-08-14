@@ -387,11 +387,11 @@ async function requestAdminRights(
   return result.kind === "ok" ? { kind: "ok" } : result
 }
 
-type SpecExecution =
+export type SpecExecution =
   | { readonly kind: "ok"; readonly body: unknown }
   | { readonly kind: "upstream_error"; readonly message: string }
 
-async function executeSpecStep(
+export async function executeSpecStep(
   buildSpec: () => Promise<
     | { readonly kind: "ok"; readonly value: HttpRequestSpec }
     | { readonly kind: "blocked_by_credentials" }
@@ -407,7 +407,7 @@ async function executeSpecStep(
   return executeSpec(adapterResult.value, fetchImpl)
 }
 
-async function executeSpec(
+export async function executeSpec(
   spec: HttpRequestSpec,
   fetchImpl: ExternalFetch
 ): Promise<SpecExecution> {
@@ -457,7 +457,7 @@ function isSearchResult(
   return "matches" in value
 }
 
-function upstreamError(message: string): {
+export function upstreamError(message: string): {
   readonly kind: "upstream_error"
   readonly message: string
 } {

@@ -128,6 +128,48 @@ describe("onboarding GBP panels", () => {
     expect(html).toContain("다시 시도")
   })
 
+  it("moves an owner whose adopted listing is attached on to the Instagram step", () => {
+    // Given an operator has confirmed the adoption claim, so a listing is live
+    // on the store. This owner never runs GBP setup, so `ready` — the panel that
+    // normally leads to the onboarding exit — is unreachable for them.
+    const setup = {
+      connected: true,
+      kind: "alreadyLinked",
+      message: "이미 연결된 Google 비즈니스 프로필이 있습니다.",
+    } satisfies SetupState
+
+    // When
+    const html = renderToStaticMarkup(
+      <SetupPanel onRetry={() => undefined} setup={setup} />
+    )
+
+    // Then they land on the same last step as everyone else rather than exiting
+    // straight to the app, so the Instagram question is not skippable by taking
+    // the adoption branch.
+    expect(html).toContain("인스타그램 계정도 운영하고 계신가요?")
+    expect(html).toContain("GBP 연결 확인")
+    expect(html).not.toContain("매장 홍보 처음 시키러 가기")
+  })
+
+  it("makes an owner wait while an operator is still ruling on the claim", () => {
+    // Given
+    const setup = {
+      connected: false,
+      kind: "alreadyLinked",
+      message: "이미 등록된 프로필인지 확인하고 있습니다.",
+    } satisfies SetupState
+
+    // When
+    const html = renderToStaticMarkup(
+      <SetupPanel onRetry={() => undefined} setup={setup} />
+    )
+
+    // Then advancing here would drop the owner into an app with no listing to
+    // publish to, so the only thing on screen is the wait message.
+    expect(html).toContain("이미 등록된 프로필인지 확인하고 있습니다.")
+    expect(html).not.toContain("인스타그램 계정도 운영하고 계신가요?")
+  })
+
   it("guides the owner to re-check the address when it cannot be geocoded", () => {
     // Given
     const setup = {

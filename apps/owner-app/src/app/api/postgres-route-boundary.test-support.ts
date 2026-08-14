@@ -95,6 +95,11 @@ export function createGbpStore(): {
       async persistClaimRequiredRecords() {
         return unexpectedCall("gbpStore.persistClaimRequiredRecords")
       },
+      // Returns undefined so the duplicate guard falls through and the route
+      // boundary under test still reaches provisioning.
+      async readExistingGbpLocation() {
+        return undefined
+      },
       async persistLiveClaimRequiredRecords() {
         return unexpectedCall("gbpStore.persistLiveClaimRequiredRecords")
       },
@@ -272,8 +277,13 @@ export function createGbpAccessStore(): {
         updatedAt: timestamp,
       }
     },
+    async openAdoptionReview() {
+      return unexpectedCall("gbpAccessStore.openAdoptionReview")
+    },
+    // Returns undefined so the duplicate guard sees no in-flight adoption claim
+    // and the route boundary under test still reaches provisioning.
     async getGbpAccessRequestForStore() {
-      return unexpectedCall("gbpAccessStore.getGbpAccessRequestForStore")
+      return undefined
     },
     async getGbpAccessRequestById() {
       return unexpectedCall("gbpAccessStore.getGbpAccessRequestById")

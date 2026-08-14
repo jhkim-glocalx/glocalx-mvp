@@ -2,6 +2,15 @@ import type { LocationStatus } from "@glocalx/domain/location-status"
 import type { GbpSetupResult } from "@/gbp/setup"
 import { shouldScheduleGbpFollowUp } from "@/gbp/state-machine"
 import type { Queryable } from "@glocalx/db"
+import { z } from "zod"
+
+const existingLocationRowSchema = z.object({
+  googleLocationId: z.string().min(1),
+  status: z.string(),
+  requestAdminRightsUrl: z.string().nullable(),
+})
+
+export type ExistingGbpLocation = z.infer<typeof existingLocationRowSchema>
 
 import {
   appendStubSetupAuditLog,
@@ -138,6 +147,28 @@ async function upsertSetupLocation(options: {
       options.createdAt,
     ]
   )
+}
+
+// Does this store already point at a real Google listing? Setup reads this
+// before provisioning so it never creates a second listing for a business that
+// already has one — the failure mode that motivated the whole adoption flow, and
+// one the stable requestId cannot catch (that id is derived from our own store
+// row, so it can never match a listing created outside the app).
+export async function readExistingGbpLocation(
+  queryable: Queryable,
+  storeId: string
+): Promise<ExistingGbpLocation | undefined> {
+  const row = await queryable.queryOne(
+    `SELECT google_location_id AS googleLocationId,
+            status,
+            request_admin_rights_url AS requestAdminRightsUrl
+       FROM gbp_locations
+      WHERE store_id = ? AND google_location_id IS NOT NULL
+      LIMIT 1`,
+    [storeId]
+  )
+  const parsed = existingLocationRowSchema.safeParse(row)
+  return parsed.success ? parsed.data : undefined
 }
 
 export async function persistClaimRequiredGbpRecords(

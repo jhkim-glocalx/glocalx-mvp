@@ -12,6 +12,7 @@ import {
   type StoreProfileField,
 } from "./onboarding-components"
 import type {
+  AdoptionState,
   ConfirmationState,
   SetupState,
   StoreProfileDraft,
@@ -49,12 +50,65 @@ export function StoreProfileFormPanel({
   )
 }
 
+// The owner declares intent instead of the app inferring it. Without this the
+// only path is "create", and for a store already listed on Google that produces
+// a duplicate — the failure this whole branch exists to prevent.
+export function ExistingListingPrompt({
+  adoption,
+  disabled,
+  onClaimExisting,
+}: {
+  readonly adoption: AdoptionState
+  readonly disabled: boolean
+  readonly onClaimExisting: () => void
+}) {
+  if (adoption.kind === "loading") {
+    return <TypingIndicator label="등록된 프로필을 확인하는 중" />
+  }
+  if (adoption.kind === "reviewing" || adoption.kind === "noMatch") {
+    return (
+      <div className="grid gap-3">
+        <ChatMessage message={adoption.message} speaker="assistant" />
+      </div>
+    )
+  }
+  return (
+    <div className="grid gap-3">
+      {adoption.kind === "error" ? (
+        <div role="alert">
+          <ChatMessage message={adoption.message} speaker="assistant" />
+        </div>
+      ) : null}
+      <ChatMessage
+        message="이미 Google 비즈니스 프로필을 등록하셨나요?"
+        speaker="assistant"
+      />
+      <button
+        className="gx-onboarding-secondary"
+        data-testid="gbp-claim-existing"
+        disabled={disabled}
+        onClick={onClaimExisting}
+        type="button"
+      >
+        이미 등록했어요
+      </button>
+    </div>
+  )
+}
+
+// onClaimExisting is optional so the read-only onboarding replay in the app
+// workspace can render this panel without offering a branch it cannot drive; the
+// prompt is hidden rather than shown as a dead button.
 export function GbpHandoffPanel({
+  adoption = { kind: "idle" },
   confirmation,
+  onClaimExisting,
   onSetup,
   setup,
 }: {
+  readonly adoption?: AdoptionState
   readonly confirmation: ConfirmationState
+  readonly onClaimExisting?: (() => void) | undefined
   readonly onSetup: () => void
   readonly setup: SetupState
 }) {
@@ -68,14 +122,25 @@ export function GbpHandoffPanel({
           <ChatMessage message={confirmation.message} speaker="assistant" />
           <StatusCard label="확인 기록" value={confirmation.extractionId} />
           <CategoryPicker />
-          <button
-            className="gx-onboarding-primary"
-            disabled={setup.kind === "loading"}
-            onClick={onSetup}
-            type="button"
-          >
-            다음: GBP 세팅 확인
-          </button>
+          {onClaimExisting === undefined ? null : (
+            <ExistingListingPrompt
+              adoption={adoption}
+              disabled={adoption.kind === "loading" || setup.kind === "loading"}
+              onClaimExisting={onClaimExisting}
+            />
+          )}
+          {/* Creating is hidden once a claim is in review: offering it there is
+              offering the owner the duplicate we just stopped. */}
+          {adoption.kind === "reviewing" ? null : (
+            <button
+              className="gx-onboarding-primary"
+              disabled={setup.kind === "loading" || adoption.kind === "loading"}
+              onClick={onSetup}
+              type="button"
+            >
+              다음: GBP 세팅 확인
+            </button>
+          )}
         </div>
       ) : null}
       {confirmation.kind === "error" ? (
@@ -124,6 +189,25 @@ export function SetupPanel({
             status="warning"
             value="매장 정보의 주소를 다시 확인해주세요"
           />
+        </div>
+      ) : null}
+      {setup.kind === "alreadyLinked" ? (
+        <div className="grid gap-3">
+          <ChatMessage message={setup.message} speaker="assistant" />
+          {/* An adopted store never reaches `ready`, so without this it would
+              never reach the onboarding exit that `ready` leads to — the owner
+              whose listing we attached by hand would sit here forever, which is
+              the exact case adoption exists to serve. It hands off to the same
+              Instagram step rather than exiting directly, so an adopted owner
+              answers that question like everyone else. */}
+          {setup.connected ? (
+            <>
+              <div aria-label="GBP 세팅 상태" className="flex flex-wrap gap-2">
+                <StatusPill>GBP 연결 확인</StatusPill>
+              </div>
+              <InstagramConnectPanel />
+            </>
+          ) : null}
         </div>
       ) : null}
       {setup.kind === "claimRequired" ? (

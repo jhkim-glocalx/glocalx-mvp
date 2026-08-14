@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       const result = await setupGoogleBusinessProfile({
         adapters,
         env: process.env,
+        gbpAccessStore,
         gbpStore,
         gbpVerificationStore,
         mode: parsed.value.mode,

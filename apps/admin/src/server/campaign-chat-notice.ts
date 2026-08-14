@@ -56,6 +56,14 @@ const channelLabels: Readonly<Record<PublishChannel, string>> = {
   instagram: "인스타그램",
 }
 
+// A rejected adoption claim is one of the few pipeline events that needs the
+// owner to *say something back*, so the operator's reason is the message body
+// verbatim rather than a canned line: "확인이 필요합니다" would leave the owner
+// with nothing to answer and the operator re-explaining from scratch.
+export function adoptionRejectedNoticeBody(reason: string): string {
+  return reason
+}
+
 // The owner would otherwise wait silently on a job that will never retry itself
 // — architecture.md §2 makes this message part of the retry policy, not a nicety.
 export function publishRetryLimitNoticeBody(

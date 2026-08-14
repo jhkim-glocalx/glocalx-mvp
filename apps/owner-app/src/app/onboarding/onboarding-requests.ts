@@ -1,11 +1,13 @@
 import type { MissingStoreProfileField } from "./onboarding-draft-fields"
 import { toConversationCandidate } from "./onboarding-conversation-candidate"
 import {
+  toAdoptionState,
   toConfirmationState,
   toConfirmedStoreProfilePayload,
   toExtractionState,
   toOnboardingSlotTurnState,
   toSetupState,
+  type AdoptionState,
   type ConfirmationState,
   type ExtractionState,
   type OnboardingSlotTurnState,
@@ -69,6 +71,15 @@ export async function requestStoreProfileConfirmationState(
   })
   const payload: unknown = await response.json()
   return toConfirmationState(payload)
+}
+
+export async function requestGbpAdoptionState(): Promise<AdoptionState> {
+  const response = await fetch("/api/gbp/adoption", {
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  })
+  const payload: unknown = await response.json()
+  return toAdoptionState(payload)
 }
 
 export async function requestGbpSetupState(): Promise<SetupState> {

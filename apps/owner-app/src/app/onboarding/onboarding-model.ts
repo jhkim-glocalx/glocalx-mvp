@@ -74,6 +74,24 @@ export type SetupState =
   // never misread as a malformed response (the old fall-through to
   // "GBP 세팅 응답 형식이 올바르지 않습니다").
   | { readonly kind: "retryable"; readonly message: string }
+  // The store is already attached to a listing, or an operator is ruling on the
+  // owner's adoption claim. Corrective action is never the answer here; the only
+  // question is whether the owner can move on (`connected`) or must wait.
+  | {
+      readonly connected: boolean
+      readonly kind: "alreadyLinked"
+      readonly message: string
+    }
+  | { readonly kind: "error"; readonly message: string }
+
+// The owner's "이미 등록했어요" claim. Deliberately carries no listing details:
+// the match is resolved server-side and only an operator ever sees which org
+// listing it was.
+export type AdoptionState =
+  | { readonly kind: "idle" }
+  | { readonly kind: "loading" }
+  | { readonly kind: "reviewing"; readonly message: string }
+  | { readonly kind: "noMatch"; readonly message: string }
   | { readonly kind: "error"; readonly message: string }
 
 export type OnboardingChatTurn = {
@@ -256,6 +274,34 @@ export function toConfirmationState(payload: unknown): ConfirmationState {
   }
 }
 
+export function toAdoptionState(payload: unknown): AdoptionState {
+  if (!isRecord(payload)) {
+    return { kind: "error", message: "응답을 읽지 못했습니다." }
+  }
+  const status = readString(payload["status"])
+  const message = readString(payload["message"])
+
+  // REVIEW_OPENED and ALREADY_TRACKED both leave the owner waiting on an
+  // operator, so they render the same way; the distinction only matters to the
+  // operator console.
+  if (status === "REVIEW_OPENED" || status === "ALREADY_TRACKED") {
+    return {
+      kind: "reviewing",
+      message: message ?? "담당자 확인 후 연결해드릴게요.",
+    }
+  }
+  if (status === "NO_MATCH") {
+    return {
+      kind: "noMatch",
+      message: message ?? "등록된 프로필을 찾지 못했어요. 채팅으로 알려주세요.",
+    }
+  }
+  return {
+    kind: "error",
+    message: message ?? "확인에 실패했습니다. 잠시 후 다시 시도해주세요.",
+  }
+}
+
 export function toSetupState(payload: unknown): SetupState {
   if (!isRecord(payload)) {
     return { kind: "error", message: "GBP 세팅 응답을 읽지 못했습니다." }
@@ -282,6 +328,20 @@ export function toSetupState(payload: unknown): SetupState {
         readString(payload["message"]) ??
         "이미 소유자가 있는 Google 비즈니스 프로필입니다.",
       requestAdminRightsUrl,
+    }
+  }
+
+  if (status === "ALREADY_LINKED") {
+    // A location id means a listing is attached right now; its absence means an
+    // operator is still ruling on the owner's adoption claim. Only the former
+    // may finish onboarding — completing on a pending claim would drop the owner
+    // into an app with nothing to publish to.
+    return {
+      connected: readString(payload["googleLocationId"]) !== undefined,
+      kind: "alreadyLinked",
+      message:
+        readString(payload["message"]) ??
+        "이미 연결된 Google 비즈니스 프로필이 있습니다.",
     }
   }
 

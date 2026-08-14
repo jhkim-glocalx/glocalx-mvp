@@ -308,6 +308,63 @@ export function openDatabase(
   return database
 }
 
+// Widen gbp_access_requests.state with 'adoption_review'. SQLite cannot ALTER a
+// CHECK constraint, so rebuild the table (the ensureAiDraftConversationMode
+// pattern). Guarded on the widened CHECK already being present, and idempotent
+// because every open re-runs applyMigrations.
+function ensureAdoptionReviewAccessState(database: SqliteDatabase): void {
+  const row = database
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get("gbp_access_requests") as { readonly sql?: string } | undefined
+  if (row?.sql === undefined) {
+    return
+  }
+  if (row.sql.includes("'adoption_review'")) {
+    return
+  }
+
+  database.pragma("foreign_keys = OFF")
+  try {
+    database.exec(`
+      BEGIN;
+      CREATE TABLE gbp_access_requests_adoption_upgrade (
+        id TEXT PRIMARY KEY,
+        store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+        gbp_location_ref TEXT,
+        state TEXT NOT NULL CHECK (state IN (
+          'not_requested', 'adoption_review', 'invited', 'pending', 'granted',
+          'revoked', 'blocked'
+        )),
+        note TEXT,
+        requested_at TEXT NOT NULL,
+        granted_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      INSERT INTO gbp_access_requests_adoption_upgrade (
+        id, store_id, gbp_location_ref, state, note, requested_at, granted_at,
+        created_at, updated_at
+      )
+      SELECT id, store_id, gbp_location_ref, state, note, requested_at,
+        granted_at, created_at, updated_at
+      FROM gbp_access_requests;
+      DROP TABLE gbp_access_requests;
+      ALTER TABLE gbp_access_requests_adoption_upgrade
+        RENAME TO gbp_access_requests;
+      CREATE UNIQUE INDEX IF NOT EXISTS gbp_access_requests_store_idx
+        ON gbp_access_requests (store_id);
+      COMMIT;
+    `)
+  } catch (error) {
+    if (database.inTransaction) {
+      database.exec("ROLLBACK")
+    }
+    throw error
+  } finally {
+    database.pragma("foreign_keys = ON")
+  }
+}
+
 export function applyMigrations(database: SqliteDatabase): void {
   for (const migrationPath of migrationPaths) {
     database.exec(readFileSync(migrationPath, "utf8"))
@@ -369,4 +426,7 @@ export function applyMigrations(database: SqliteDatabase): void {
     "linked_account_username",
     "TEXT"
   )
+  // Owner-claimed adoption of an org-owned listing (matches
+  // postgres/migrations/0020_gbp_access_adoption_review.sql).
+  ensureAdoptionReviewAccessState(database)
 }
