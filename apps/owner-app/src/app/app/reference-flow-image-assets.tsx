@@ -9,8 +9,10 @@ import type {
 
 export function AssetThumbs({
   imageAssets,
+  onSetPrimary,
 }: {
   readonly imageAssets: readonly MarketingImageAsset[]
+  readonly onSetPrimary: (assetId: string) => void
 }) {
   if (imageAssets.length === 0) {
     return (
@@ -23,10 +25,24 @@ export function AssetThumbs({
 
   return (
     <div className="gx-upload-grid" aria-label="업로드된 이미지">
-      {imageAssets.map((asset) => (
+      {imageAssets.map((asset, index) => (
         <figure key={asset.id}>
           <img alt={asset.name} src={asset.dataUrl} />
           <figcaption>{asset.name}</figcaption>
+          {index === 0 ? (
+            // GBP local posts only ever use the first photo (see
+            // post-marketing-preview.ts), so this is the one visible cue that
+            // tells the owner which upload actually becomes the GBP post image.
+            <span className="gx-primary-badge">GBP 대표 사진</span>
+          ) : (
+            <button
+              className="gx-primary-set-button"
+              onClick={() => onSetPrimary(asset.id)}
+              type="button"
+            >
+              대표 사진으로 설정
+            </button>
+          )}
         </figure>
       ))}
     </div>

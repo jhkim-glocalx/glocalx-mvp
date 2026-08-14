@@ -52,8 +52,8 @@ function baseProps(
     onOnboardingFieldChange: noop,
     onOnboardingSetup: noop,
     onPreviewChange: noop,
-    onPublish: noop,
     onSelect: noop,
+    onSetPrimaryAsset: noop,
     onSuggestionAccept: noop,
     onSuggestionSkip: noop,
     onboardingConfirmation: { kind: "idle" },
@@ -67,7 +67,6 @@ function baseProps(
     onboardingGbpVerificationCard: null,
     postingChatTurns: [],
     postingDecision: overrides.postingDecision ?? { kind: "idle" },
-    publish: { kind: "idle" },
   } satisfies React.ComponentProps<typeof ReferenceFlowScreens>
 }
 
@@ -174,8 +173,8 @@ describe("reference flow screens", () => {
     expect(screen.getByText("제안 반영 완료")).toBeInTheDocument()
   })
 
-  it("publishes the selected Instagram preview without showing GBP errors", () => {
-    const onPublish = vi.fn()
+  it("sends the selected Instagram preview to the campaigns queue instead of publishing directly", () => {
+    const onSelect = vi.fn()
     const onPreviewChange = vi.fn()
     const draft = readyDraft([
       {
@@ -211,13 +210,8 @@ describe("reference flow screens", () => {
           activePreviewKey: "INSTAGRAM",
           draft,
         })}
-        onPublish={onPublish}
         onPreviewChange={onPreviewChange}
-        publish={{
-          kind: "blocked",
-          message: "Google 비즈니스 프로필 인증이 필요합니다.",
-          targetChannel: "GBP",
-        }}
+        onSelect={onSelect}
       />
     )
 
@@ -244,12 +238,9 @@ describe("reference flow screens", () => {
       screen.getByText("週末ブランチの新メニューをお楽しみください。")
     ).toBeInTheDocument()
     fireEvent.click(
-      screen.getByRole("button", { name: "Instagram에 게시하기" })
+      screen.getByRole("button", { name: "마케팅 소재 요청으로 보내기" })
     )
-    expect(onPublish).toHaveBeenCalledWith("INSTAGRAM")
-    expect(
-      screen.queryByText("Google 비즈니스 프로필 인증이 필요합니다.")
-    ).not.toBeInTheDocument()
+    expect(onSelect).toHaveBeenCalledWith("campaigns")
   })
 
   it("responds to mocked review actions without backend routes", () => {

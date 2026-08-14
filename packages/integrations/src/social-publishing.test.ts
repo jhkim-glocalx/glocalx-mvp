@@ -55,6 +55,47 @@ describe("production social publishing", () => {
       })
     )
   })
+
+  it("sends only the first photo to GBP even when the owner uploaded several", async () => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({
+        name: "accounts/123/locations/456/localPosts/789",
+        searchUrl: "https://www.google.com/search?kgmid=post-789",
+      })
+    )
+    const adapters = createIntegrationAdapters({
+      env: productionEnv,
+      fetchImpl,
+    })
+
+    await adapters.gbpLocalPosts.createLocalPost({
+      accessToken: "owner-google-token",
+      mediaUrls: [
+        "https://app.example.com/media/food-1.jpg",
+        "https://app.example.com/media/food-2.jpg",
+        "https://app.example.com/media/food-3.jpg",
+      ],
+      parent: "accounts/123/locations/456",
+      summary: "오늘의 구이 메뉴",
+    })
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://mybusiness.googleapis.com/v4/accounts/123/locations/456/localPosts",
+      expect.objectContaining({
+        body: JSON.stringify({
+          languageCode: "ko",
+          media: [
+            {
+              mediaFormat: "PHOTO",
+              sourceUrl: "https://app.example.com/media/food-1.jpg",
+            },
+          ],
+          summary: "오늘의 구이 메뉴",
+          topicType: "STANDARD",
+        }),
+      })
+    )
+  })
 })
 
 // Publishing walks a graph of calls whose ORDER matters — a container must be
