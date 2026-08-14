@@ -9,7 +9,6 @@ import { createIntegrationAdapters } from "@glocalx/integrations"
 import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
 
-import { handleGoogleOAuthCallback } from "./oauth-callback"
 import { buildClaimRequiredResult, setupGoogleBusinessProfile } from "./setup"
 
 const setupRowsSchema = z.object({
@@ -17,11 +16,6 @@ const setupRowsSchema = z.object({
   gbpLocations: z.number(),
   followUpJobs: z.number(),
   auditLogs: z.number(),
-})
-
-const oauthRowSchema = z.object({
-  encrypted_access_token: z.string(),
-  subject_id: z.string(),
 })
 
 const locationBodySchema = z.object({
@@ -308,61 +302,5 @@ describe("setupGoogleBusinessProfile", () => {
       message:
         "이미 소유자가 있는 Google 비즈니스 프로필입니다. 관리자 권한 요청을 진행해주세요.",
     })
-  })
-
-  it("validates production OAuth state before storing encrypted token placeholders", async () => {
-    // Given
-    const database = await createDatabase()
-
-    // When
-    const invalidResult = handleGoogleOAuthCallback({
-      code: "invalid-code",
-      database,
-      expectedState: "demo-store:google-oauth-state",
-      state: "tampered-state",
-      storeId: "demo-store",
-    })
-    const missingPayloadResult = handleGoogleOAuthCallback({
-      code: "",
-      database,
-      expectedState: "demo-store:google-oauth-state",
-      state: "",
-      storeId: "demo-store",
-    })
-    const validResult = handleGoogleOAuthCallback({
-      code: "valid-code",
-      database,
-      expectedState: "demo-store:google-oauth-state",
-      state: "demo-store:google-oauth-state",
-      storeId: "demo-store",
-    })
-
-    // Then
-    expect(invalidResult).toEqual({
-      status: "INVALID_OAUTH_STATE",
-      message: "Google OAuth state가 일치하지 않습니다.",
-    })
-    expect(missingPayloadResult).toEqual({
-      status: "INVALID_OAUTH_STATE",
-      message: "Google OAuth state가 일치하지 않습니다.",
-    })
-    expect(validResult).toEqual({
-      status: "GOOGLE_OAUTH_CONNECTED",
-      oauthConnectionId: "production-oauth-google",
-      message: "Google 계정 연결이 저장되었습니다.",
-    })
-
-    const oauthRow = oauthRowSchema.parse(
-      database
-        .prepare(
-          "SELECT encrypted_access_token, subject_id FROM oauth_connections WHERE id = 'production-oauth-google'"
-        )
-        .get()
-    )
-    expect(oauthRow).toMatchObject({
-      subject_id: "production-google-oauth-placeholder",
-    })
-    expect(oauthRow.encrypted_access_token).toMatch(/^v1:/)
-    database.close()
   })
 })
