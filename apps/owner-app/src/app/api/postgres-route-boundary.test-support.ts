@@ -181,6 +181,20 @@ export function createStoreChannelLinkStore(): {
       async upsertLink(input) {
         upserts.push(input)
       },
+      async readAccountNames({ channel, storeId }) {
+        const matches = upserts.filter(
+          (upsert: UpsertStoreChannelLinkInput) =>
+            upsert.channel === channel && upsert.storeId === storeId
+        )
+        const latest = matches[matches.length - 1]
+        return latest === undefined
+          ? undefined
+          : {
+              requestedAccountHandle:
+                latest.requestedAccountHandle ?? undefined,
+              linkedAccountUsername: latest.linkedAccountUsername ?? undefined,
+            }
+      },
     },
   }
 }

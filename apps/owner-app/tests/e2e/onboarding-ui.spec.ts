@@ -59,14 +59,20 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
 
   await expect(page.getByText("VERIFICATION_PENDING")).toBeVisible()
   await expect(page.getByText("setup-gbp-audit")).toBeVisible()
+  // GBP done, and the last onboarding step is the Instagram question — the exit
+  // only appears once it is answered.
   await expect(
-    page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" })
+    page.getByText("인스타그램 계정도 운영하고 계신가요?")
   ).toBeVisible()
   await page.screenshot({
     fullPage: true,
     path: evidencePath("task-5-onboarding-success.png"),
   })
 
+  await page.getByRole("button", { name: "아니요, 없어요" }).click()
+  await expect(
+    page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" })
+  ).toBeVisible()
   await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
   await expect(page).toHaveURL(/\/app\?nav=photo/)
   await expect(

@@ -4,6 +4,7 @@ import { ChatMessage } from "@/app/_components/chat-message"
 
 import {
   CandidatePicker,
+  QuickReplyButton,
   StatusPill,
   StoreInfoCard,
   TypingIndicator,
@@ -36,24 +37,6 @@ export function OnboardingTopBar() {
         ⋮
       </span>
     </>
-  )
-}
-
-function QuickReplyButton({
-  children,
-  onClick,
-}: {
-  readonly children: string
-  readonly onClick: () => void
-}) {
-  return (
-    <button
-      className="rounded-full border border-[var(--line)] bg-white px-3 py-2 text-xs font-black text-[var(--ink-soft)] shadow-sm"
-      onClick={onClick}
-      type="button"
-    >
-      {children}
-    </button>
   )
 }
 

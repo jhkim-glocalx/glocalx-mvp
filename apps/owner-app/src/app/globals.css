@@ -307,6 +307,7 @@ a {
 .gx-login-primary,
 .gx-login-demo,
 .gx-onboarding-primary,
+.gx-onboarding-secondary,
 .gx-cta {
   display: inline-flex;
   min-height: 52px;
@@ -332,6 +333,7 @@ a {
 .gx-login-primary:hover,
 .gx-login-demo:hover,
 .gx-onboarding-primary:hover,
+.gx-onboarding-secondary:hover,
 .gx-cta:hover {
   transform: translateY(-1px);
 }
@@ -340,6 +342,7 @@ a {
 .gx-login-primary:active,
 .gx-login-demo:active,
 .gx-onboarding-primary:active,
+.gx-onboarding-secondary:active,
 .gx-cta:active,
 .gx-chip:active,
 .gx-tab:active,
@@ -743,6 +746,19 @@ a {
   font-weight: 900;
 }
 
+/* The quiet full-width counterpart to gx-onboarding-primary: same shape, no
+   fill, so a secondary action (retry, reconnect) cannot compete with the one
+   button that moves the owner forward. */
+.gx-onboarding-secondary {
+  border: 1.5px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.gx-onboarding-secondary:hover {
+  border-color: var(--ink-soft);
+}
+
 .gx-onboarding-primary,
 .gx-cta {
   background: var(--accent);
@@ -899,6 +915,7 @@ a {
   .gx-login-primary:hover,
   .gx-login-demo:hover,
   .gx-onboarding-primary:hover,
+  .gx-onboarding-secondary:hover,
   .gx-cta:hover,
   .gx-chip:hover,
   .gx-tab:hover {
@@ -1099,6 +1116,7 @@ body {
 .gx-login-primary,
 .gx-login-demo,
 .gx-onboarding-primary,
+.gx-onboarding-secondary,
 .gx-cta {
   min-height: 50px;
   border-radius: 14px;

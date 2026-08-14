@@ -74,7 +74,10 @@ function callbackRequest(options: {
   return new NextRequest(url, { method: "GET", headers })
 }
 
-const boundCookie = `${nonce}:${demoStoreId}`
+// The owner named the account the stub adapter authorizes, so the happy path is
+// a clean match; mismatchCookie names a different one.
+const boundCookie = `${nonce}:stub_business:${demoStoreId}`
+const mismatchCookie = `${nonce}:%40bar_seomyeon:${demoStoreId}`
 
 describe("GET /api/instagram/oauth/callback", () => {
   it("sends an unauthenticated caller back to the entry point without writing", async () => {
@@ -130,7 +133,7 @@ describe("GET /api/instagram/oauth/callback", () => {
       callbackRequest({
         code: "any",
         state: nonce,
-        cookieValue: `${nonce}:some-other-store`,
+        cookieValue: `${nonce}:stub_business:some-other-store`,
       })
     )
 
@@ -169,8 +172,62 @@ describe("GET /api/instagram/oauth/callback", () => {
     // The token is encrypted before it reaches the store — never the raw value.
     expect(link?.encryptedToken).toBeTruthy()
     expect(link?.encryptedToken).not.toBe("stub-instagram-long-lived-token")
+    // Both human-readable names are recorded alongside the numeric reference.
+    expect(link?.requestedAccountHandle).toBe("stub_business")
+    expect(link?.linkedAccountUsername).toBe("stub_business")
     // The one-time state is expired on the way out.
     expect(response.cookies.get(instagramOAuthStateCookieName)?.value).toBe("")
+  })
+
+  it("flags a connect that landed on a different account, but still links it", async () => {
+    const linkStore = createStoreChannelLinkStore()
+    installRouteContext(
+      createRouteContext({
+        sessionStore: createSessionStore(demoSession).store,
+        storeChannelLinkStore: linkStore.store,
+      })
+    )
+
+    const response = await connectCallback(
+      callbackRequest({
+        code: "stub-instagram-code",
+        state: nonce,
+        cookieValue: mismatchCookie,
+      })
+    )
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get("Location")).toBe(
+      "/onboarding?instagram=connected_other_account"
+    )
+    // A mismatch is a question for the owner, not a failure: the authorization
+    // succeeded, so the link is written and both names are kept for review.
+    expect(linkStore.upserts).toHaveLength(1)
+    expect(linkStore.upserts[0]?.requestedAccountHandle).toBe("bar_seomyeon")
+    expect(linkStore.upserts[0]?.linkedAccountUsername).toBe("stub_business")
+  })
+
+  it("does not flag a mismatch when the owner named no account", async () => {
+    const linkStore = createStoreChannelLinkStore()
+    installRouteContext(
+      createRouteContext({
+        sessionStore: createSessionStore(demoSession).store,
+        storeChannelLinkStore: linkStore.store,
+      })
+    )
+
+    const response = await connectCallback(
+      callbackRequest({
+        code: "stub-instagram-code",
+        state: nonce,
+        cookieValue: `${nonce}::${demoStoreId}`,
+      })
+    )
+
+    expect(response.headers.get("Location")).toBe(
+      "/onboarding?instagram=connected"
+    )
+    expect(linkStore.upserts[0]?.requestedAccountHandle).toBeNull()
   })
 
   it("maps a personal account to the needs-professional flag, writing no link", async () => {

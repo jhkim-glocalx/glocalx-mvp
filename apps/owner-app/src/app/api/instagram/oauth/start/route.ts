@@ -23,12 +23,33 @@ function redirectToOnboardingError(): NextResponse {
   })
 }
 
+// The owner-typed account name rides along in the state cookie, so bound its
+// length before it becomes a header — an Instagram handle is at most 30
+// characters and a pasted profile URL adds a fixed prefix.
+const maxRequestedHandleLength = 200
+
+async function readRequestedHandle(request: NextRequest): Promise<string> {
+  try {
+    const formData = await request.formData()
+    const value = formData.get("accountHandle")
+    return typeof value === "string"
+      ? value.trim().slice(0, maxRequestedHandleLength)
+      : ""
+  } catch {
+    // No/unparseable body: the connect still proceeds, just without the
+    // account the owner meant to confirm against.
+    return ""
+  }
+}
+
 export async function POST(request: NextRequest) {
   // Same-origin guard: this POST starts a state-changing OAuth flow, so reject
   // cross-site form submissions before touching the session.
   if (!hasSameRequestOrigin(request)) {
     return redirectToOnboardingError()
   }
+
+  const requestedHandle = await readRequestedHandle(request)
 
   return withQueryableRouteDatabase(async ({ adapters, sessionStore }) => {
     const session = await readDatabaseSession(request, sessionStore)
@@ -44,6 +65,7 @@ export async function POST(request: NextRequest) {
     const nonce = crypto.randomUUID()
     const stateCookieValue = encodeInstagramOAuthState({
       nonce,
+      requestedHandle,
       storeId: session.storeId,
     })
 

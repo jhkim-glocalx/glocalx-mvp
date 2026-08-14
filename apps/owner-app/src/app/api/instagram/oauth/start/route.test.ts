@@ -60,12 +60,18 @@ function installRouteContext(context: RouteBoundaryContext): void {
 }
 
 function startRequest(options?: {
+  readonly accountHandle?: string
   readonly sameOrigin?: boolean
 }): NextRequest {
   const url = "http://localhost:3000/api/instagram/oauth/start"
   const headers: Record<string, string> =
     options?.sameOrigin === false ? {} : { origin: "http://localhost:3000" }
-  return new NextRequest(url, { method: "POST", headers })
+  if (options?.accountHandle === undefined) {
+    return new NextRequest(url, { method: "POST", headers })
+  }
+  const body = new FormData()
+  body.set("accountHandle", options.accountHandle)
+  return new NextRequest(url, { method: "POST", headers, body })
 }
 
 describe("POST /api/instagram/oauth/start", () => {
@@ -103,7 +109,9 @@ describe("POST /api/instagram/oauth/start", () => {
       })
     )
 
-    const response = await startConnect(startRequest())
+    const response = await startConnect(
+      startRequest({ accountHandle: "@bar_seomyeon" })
+    )
 
     expect(response.status).toBe(303)
     const location = response.headers.get("Location") ?? ""
@@ -114,9 +122,30 @@ describe("POST /api/instagram/oauth/start", () => {
     const nonce = target.searchParams.get("state")
     expect(nonce).toBeTruthy()
     // The cookie binds that same nonce to the session's store, so the callback
-    // can enforce both replay protection and store ownership.
+    // can enforce both replay protection and store ownership — and carries the
+    // account the owner named, so the callback can compare it with the one Meta
+    // actually authorized.
     expect(response.cookies.get(instagramOAuthStateCookieName)?.value).toBe(
-      `${nonce}:${demoStoreId}`
+      `${nonce}:%40bar_seomyeon:${demoStoreId}`
+    )
+  })
+
+  it("still starts the flow when the owner submits no account name", async () => {
+    installRouteContext(
+      createRouteContext({
+        sessionStore: createSessionStore(demoSession).store,
+      })
+    )
+
+    const response = await startConnect(startRequest())
+
+    expect(response.status).toBe(303)
+    const nonce = new URL(
+      response.headers.get("Location") ?? "",
+      "http://localhost:3000"
+    ).searchParams.get("state")
+    expect(response.cookies.get(instagramOAuthStateCookieName)?.value).toBe(
+      `${nonce}::${demoStoreId}`
     )
   })
 })

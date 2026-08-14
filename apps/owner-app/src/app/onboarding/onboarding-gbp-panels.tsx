@@ -4,6 +4,7 @@ import { ChatMessage } from "@/app/_components/chat-message"
 import { StatusCard } from "@/app/_components/status-card"
 
 import { CategoryPicker } from "./category-picker"
+import { InstagramConnectPanel } from "./onboarding-instagram-panels"
 import {
   StatusPill,
   StoreProfileConfirmForm,
@@ -144,24 +145,19 @@ export function SetupPanel({
               <StatusPill>후속 작업 예약</StatusPill>
             )}
           </div>
-          <form
-            action="/api/onboarding/complete"
-            className="grid gap-3"
-            method="post"
-          >
-            <StatusCard
-              label={setup.apiStatus}
-              status="warning"
-              value="인증 대기"
-            />
-            <StatusCard label="감사 기록" value={setup.auditLogId} />
-            {setup.followUpJobId === undefined ? null : (
-              <StatusCard label="후속 작업" value={setup.followUpJobId} />
-            )}
-            <button className="gx-onboarding-primary" type="submit">
-              매장 홍보 처음 시키러 가기
-            </button>
-          </form>
+          <StatusCard
+            label={setup.apiStatus}
+            status="warning"
+            value="인증 대기"
+          />
+          <StatusCard label="감사 기록" value={setup.auditLogId} />
+          {setup.followUpJobId === undefined ? null : (
+            <StatusCard label="후속 작업" value={setup.followUpJobId} />
+          )}
+          {/* GBP is done; the Instagram question is the last onboarding step and
+              owns the "finish onboarding" action, so an owner cannot skip past
+              it without answering. */}
+          <InstagramConnectPanel />
         </div>
       ) : null}
       {setup.kind === "retryable" ? (
