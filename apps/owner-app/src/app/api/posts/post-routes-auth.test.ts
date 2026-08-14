@@ -249,4 +249,21 @@ describe("post API route authorization", () => {
       status: "FORBIDDEN",
     })
   })
+
+  it("blocks a same-store publish request with the admin-only code", async () => {
+    const response = await publishDraft(
+      createJsonRequest(
+        "http://localhost:3000/api/posts/demo-draft/publish",
+        { storeId: "demo-store" },
+        demoCookieHeader
+      ),
+      { params: Promise.resolve({ draftId: "demo-draft" }) }
+    )
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      status: "BLOCKED",
+      code: "ADMIN_PUBLISH_ONLY",
+    })
+  })
 })

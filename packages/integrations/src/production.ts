@@ -289,9 +289,13 @@ export function createProductionLocalPosts(
           // sourceUrl is the only media form local posts accept — Google fetches
           // the bytes itself and copies them, returning its own googleUrl, so a
           // short-lived signed URL is fine as long as it survives the create call.
+          // Local Post API only honors the first media item even when the array
+          // has more (undocumented, confirmed by Google's own community reports),
+          // so extra owner photos are dropped here rather than sent and silently
+          // ignored by Google.
           body: JSON.stringify({
             languageCode: "ko",
-            media: input.mediaUrls.map((sourceUrl) => ({
+            media: input.mediaUrls.slice(0, 1).map((sourceUrl) => ({
               mediaFormat: "PHOTO",
               sourceUrl,
             })),

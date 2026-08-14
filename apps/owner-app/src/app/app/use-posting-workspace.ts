@@ -1,25 +1,18 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useState } from "react"
 
 import {
-  createIdlePublishStates,
   parseDraftState,
   parsePostingDecisionTurnState,
-  parsePublishState,
   previewKeyForDraft,
   type DraftState,
-  type MarketingPlatform,
   type PostingChatTurn,
   type PostingDecisionTurnState,
-  type PublishStates,
 } from "./app-workspace-model"
 import { readAppJsonResponse } from "./app-workspace-response"
 import { imageAssetRequestPayloads } from "./image-asset-request-payloads"
 import { useImageAssets } from "./use-image-assets"
-
-const publishNetworkErrorMessage =
-  "게시 상태를 확인하지 못했습니다. 잠시 후 다시 시도해주세요."
 
 export function usePostingWorkspace({
   onMoveToPosting,
@@ -37,18 +30,13 @@ export function usePostingWorkspace({
   const [postingDecision, setPostingDecision] =
     useState<PostingDecisionTurnState>({ kind: "idle" })
   const [postingSessionId, setPostingSessionId] = useState<string>()
-  const [publishByPlatform, setPublishByPlatform] = useState<PublishStates>(
-    createIdlePublishStates
-  )
-  const publishInFlightRef = useRef(false)
-  const { handleImageFiles, imageAssets } = useImageAssets({
+  const { handleImageFiles, imageAssets, setPrimaryAsset } = useImageAssets({
     onImagesSelected: () => {
       // Media changes alter the draft payload hash, so posting state is reset with the selection.
       setDraft({ kind: "idle" })
       setPostingChatTurns([])
       setPostingDecision({ kind: "idle" })
       setPostingSessionId(undefined)
-      setPublishByPlatform(createIdlePublishStates())
     },
     onInvalidImage: (message) => {
       setDraft({ kind: "error", message })
@@ -71,7 +59,6 @@ export function usePostingWorkspace({
 
     setDraft({ kind: "loading" })
     setPostingDecision({ kind: "idle" })
-    setPublishByPlatform(createIdlePublishStates())
     try {
       const response = await fetch("/api/posts/drafts", {
         body: JSON.stringify({
@@ -128,7 +115,6 @@ export function usePostingWorkspace({
       },
     ])
     setPostingDecision({ kind: "loading" })
-    setPublishByPlatform(createIdlePublishStates())
 
     try {
       const response = await fetch("/api/posts/conversation/decision", {
@@ -198,61 +184,6 @@ export function usePostingWorkspace({
     await replyToSuggestion("그냥 진행할게")
   }
 
-  async function publishDraft(targetChannel: MarketingPlatform) {
-    const channelPublish = publishByPlatform[targetChannel]
-    if (publishInFlightRef.current || channelPublish.kind === "published") {
-      return
-    }
-    if (draft.kind !== "ready") {
-      // The client blocks empty publishes; the route owns idempotency and retry-limit enforcement.
-      setPublishByPlatform((current) => ({
-        ...current,
-        [targetChannel]: {
-          kind: "blocked",
-          message:
-            "먼저 사진과 알리고 싶은 말이나 단어를 분석해 게시물 초안을 만들어주세요.",
-          targetChannel,
-        },
-      }))
-      return
-    }
-
-    publishInFlightRef.current = true
-    setPublishByPlatform((current) => ({
-      ...current,
-      [targetChannel]: { kind: "loading", targetChannel },
-    }))
-    try {
-      const response = await fetch(`/api/posts/${draft.draftId}/publish`, {
-        body: JSON.stringify({ storeId, targetChannel }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      })
-      const payload = await readAppJsonResponse(
-        response,
-        publishNetworkErrorMessage
-      )
-      setPublishByPlatform((current) => ({
-        ...current,
-        [targetChannel]: parsePublishState(payload, targetChannel),
-      }))
-    } catch (error) {
-      if (!(error instanceof Error)) {
-        throw error
-      }
-      setPublishByPlatform((current) => ({
-        ...current,
-        [targetChannel]: {
-          kind: "blocked",
-          message: publishNetworkErrorMessage,
-          targetChannel,
-        },
-      }))
-    } finally {
-      publishInFlightRef.current = false
-    }
-  }
-
   function selectPreview(previewKey: string) {
     setActivePreviewKey(previewKey)
   }
@@ -266,12 +197,10 @@ export function usePostingWorkspace({
     intent,
     postingChatTurns,
     postingDecision,
-    publish:
-      publishByPlatform[activePreviewKey === "INSTAGRAM" ? "INSTAGRAM" : "GBP"],
-    publishDraft,
     replyToSuggestion,
     setActivePreviewKey: selectPreview,
     setIntent,
+    setPrimaryAsset,
     skipSuggestion,
     submitDraft,
   }

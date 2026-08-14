@@ -57,6 +57,7 @@ export function PhotoScreen({
   onImageFiles,
   onIntentChange,
   onSelect,
+  onSetPrimaryAsset,
   onSuggestionAccept,
   onSuggestionSkip,
   postingChatTurns,
@@ -70,6 +71,7 @@ export function PhotoScreen({
   | "onImageFiles"
   | "onIntentChange"
   | "onSelect"
+  | "onSetPrimaryAsset"
   | "onSuggestionAccept"
   | "onSuggestionSkip"
   | "postingChatTurns"
@@ -98,7 +100,10 @@ export function PhotoScreen({
             />
             <span>알리고 싶은 사진 올리기</span>
           </label>
-          <AssetThumbs imageAssets={imageAssets} />
+          <AssetThumbs
+            imageAssets={imageAssets}
+            onSetPrimary={onSetPrimaryAsset}
+          />
           <label className="gx-intent-field">
             <span>알리고 싶은 말이나 단어</span>
             <textarea

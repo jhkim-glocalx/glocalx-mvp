@@ -18,8 +18,6 @@ import type {
   MarketingImageAsset,
   PostingChatTurn,
   PostingDecisionTurnState,
-  PublishState,
-  MarketingPlatform,
 } from "./app-workspace-model"
 import { CampaignIntakeScreen } from "./campaign-intake-screen"
 import type {
@@ -64,6 +62,7 @@ export type ReferenceFlowScreensProps = {
   readonly onImageFiles: (files: FileList | null) => void
   readonly onIntentChange: (intent: string) => void
   readonly onPreviewChange: (previewKey: string) => void
+  readonly onSetPrimaryAsset: (assetId: string) => void
   readonly onComposerPreset: (message: string) => void
   readonly onboardingConfirmation: ConfirmationState
   readonly onboardingExtraction: ExtractionState
@@ -88,13 +87,11 @@ export type ReferenceFlowScreensProps = {
     value: string
   ) => void
   readonly onOnboardingSetup: () => void
-  readonly onPublish: (platform: MarketingPlatform) => void
   readonly onSelect: (navId: AppNavId) => void
   readonly onSuggestionAccept: () => void
   readonly onSuggestionSkip: () => void
   readonly postingChatTurns: readonly PostingChatTurn[]
   readonly postingDecision: PostingDecisionTurnState
-  readonly publish: PublishState
 }
 
 export function ReferenceFlowScreens({
@@ -122,6 +119,7 @@ export function ReferenceFlowScreens({
   onImageFiles,
   onIntentChange,
   onPreviewChange,
+  onSetPrimaryAsset,
   onComposerPreset,
   onboardingConfirmation,
   onboardingExtraction,
@@ -137,13 +135,11 @@ export function ReferenceFlowScreens({
   onOnboardingConfirm,
   onOnboardingFieldChange,
   onOnboardingSetup,
-  onPublish,
   onSelect,
   onSuggestionAccept,
   onSuggestionSkip,
   postingChatTurns,
   postingDecision,
-  publish,
 }: ReferenceFlowScreensProps) {
   if (activeNavId === "dashboard") {
     return (
@@ -185,6 +181,7 @@ export function ReferenceFlowScreens({
           onImageFiles={onImageFiles}
           onIntentChange={onIntentChange}
           onSelect={onSelect}
+          onSetPrimaryAsset={onSetPrimaryAsset}
           onSuggestionAccept={onSuggestionAccept}
           onSuggestionSkip={onSuggestionSkip}
           postingChatTurns={postingChatTurns}
@@ -197,8 +194,7 @@ export function ReferenceFlowScreens({
           draft={draft}
           imageAssets={imageAssets}
           onPreviewChange={onPreviewChange}
-          onPublish={onPublish}
-          publish={publish}
+          onSelect={onSelect}
         />
       ) : null}
       {activeNavId === "campaigns" ? (

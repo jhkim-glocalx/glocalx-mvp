@@ -109,4 +109,48 @@ describe("app workspace image asset uploads", () => {
     ).toBeVisible()
     expect(draftBodies).toHaveLength(0)
   })
+
+  it("moves a chosen photo to the front when the owner sets it as the GBP representative photo", async () => {
+    // Given: the owner has uploaded two photos, so the first (hero.png) is the GBP representative.
+    const draftBodies: unknown[] = []
+    installPostingFetch({
+      onDraftRequest: (payload) => {
+        draftBodies.push(payload)
+      },
+    })
+    const { container } = render(<AppWorkspace storeId="demo-store" />)
+    fireEvent.click(screen.getByRole("button", { name: "홍보 콘텐츠 넣기" }))
+    fireEvent.change(fileInputFrom(container), {
+      target: {
+        files: [
+          sizedImageFile({
+            name: "hero.png",
+            sizeBytes: 512_000,
+            type: "image/png",
+          }),
+          sizedImageFile({
+            name: "menu.webp",
+            sizeBytes: 512_000,
+            type: "image/webp",
+          }),
+        ],
+      },
+    })
+    await screen.findByText("hero.png")
+    expect(screen.getByText("GBP 대표 사진")).toBeVisible()
+
+    // When: the owner sets the second photo as the representative photo.
+    fireEvent.click(screen.getByRole("button", { name: "대표 사진으로 설정" }))
+
+    // Then: menu.webp is now first, and requesting a draft carries that order.
+    fireEvent.click(
+      screen.getByRole("button", { name: "홍보 문구 분석 및 사진 보정" })
+    )
+    await waitFor(() => expect(draftBodies).toHaveLength(1))
+    const imageAssets = readImageAssets(draftBodies[0])
+    expect(imageAssets.map((asset) => readStringField(asset, "name"))).toEqual([
+      "menu.webp",
+      "hero.png",
+    ])
+  })
 })
