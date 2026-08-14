@@ -34,18 +34,25 @@ export const expiredInstagramOAuthStateCookieOptions = {
 export type InstagramOAuthStateBinding = {
   // Echoed back as the `state` query param — the CSRF/replay guard.
   readonly nonce: string
+  // The account name the owner typed before being sent to Meta. Carried through
+  // the flow in the cookie rather than a pre-written "pending" link row, so an
+  // abandoned connect leaves nothing behind and expires with the state itself.
+  readonly requestedHandle: string
   // The store the owner chose to connect; the callback confirms it still
   // matches the session before writing a link.
   readonly storeId: string
 }
 
-// Cookie value is `${nonce}:${storeId}`. The nonce is a UUID (no colon), so
-// splitting on the first colon recovers a storeId that may itself contain
+// Cookie value is `${nonce}:${encodeURIComponent(requestedHandle)}:${storeId}`.
+// The nonce is a UUID and the encoded handle cannot contain a raw colon, so
+// splitting on the first two colons recovers a storeId that may itself contain
 // colons without ambiguity.
 export function encodeInstagramOAuthState(
   binding: InstagramOAuthStateBinding
 ): string {
-  return `${binding.nonce}:${binding.storeId}`
+  return `${binding.nonce}:${encodeURIComponent(binding.requestedHandle)}:${
+    binding.storeId
+  }`
 }
 
 export function parseInstagramOAuthState(
@@ -54,16 +61,30 @@ export function parseInstagramOAuthState(
   if (cookieValue === undefined) {
     return undefined
   }
-  const separatorIndex = cookieValue.indexOf(":")
-  if (separatorIndex <= 0) {
+  const nonceEnd = cookieValue.indexOf(":")
+  if (nonceEnd <= 0) {
     return undefined
   }
-  const nonce = cookieValue.slice(0, separatorIndex)
-  const storeId = cookieValue.slice(separatorIndex + 1)
+  const handleEnd = cookieValue.indexOf(":", nonceEnd + 1)
+  if (handleEnd < 0) {
+    return undefined
+  }
+  const nonce = cookieValue.slice(0, nonceEnd)
+  const storeId = cookieValue.slice(handleEnd + 1)
   if (nonce === "" || storeId === "") {
     return undefined
   }
-  return { nonce, storeId }
+  let requestedHandle: string
+  try {
+    requestedHandle = decodeURIComponent(
+      cookieValue.slice(nonceEnd + 1, handleEnd)
+    )
+  } catch {
+    // A malformed percent-escape means the cookie was tampered with; treat the
+    // whole binding as unusable rather than linking with a half-read state.
+    return undefined
+  }
+  return { nonce, requestedHandle, storeId }
 }
 
 // The security crux of the callback: a link is written only when the code is
@@ -91,6 +112,11 @@ export function isValidInstagramOAuthCallback(options: {
 export const instagramConnectResultParam = "instagram"
 export type InstagramConnectResult =
   | "connected"
+  // Linked successfully, but to a different account than the one the owner
+  // named on the way in. The link is still written (an owner may simply have
+  // mistyped, or run the shop under a second handle) — the card asks them to
+  // confirm or reconnect rather than silently accepting the swap.
+  | "connected_other_account"
   | "needs_professional_account"
   | "error"
 

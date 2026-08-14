@@ -19,6 +19,27 @@ export function StatusPill({ children }: { readonly children: ReactNode }) {
   )
 }
 
+// The quiet counterpart to gx-onboarding-primary: a chat-style quick reply for
+// the secondary branch of a question ("아니요", "나중에"), so the primary action
+// keeps the only filled button on screen.
+export function QuickReplyButton({
+  children,
+  onClick,
+}: {
+  readonly children: string
+  readonly onClick: () => void
+}) {
+  return (
+    <button
+      className="rounded-full border border-[var(--line)] bg-white px-3 py-2 text-xs font-black text-[var(--ink-soft)] shadow-sm"
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
+  )
+}
+
 export function TypingIndicator({ label }: { readonly label: string }) {
   return (
     <div

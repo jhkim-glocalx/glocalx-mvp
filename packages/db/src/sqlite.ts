@@ -355,4 +355,18 @@ export function applyMigrations(database: SqliteDatabase): void {
   // Published post's public url (matches
   // postgres/migrations/0018_publish_job_external_url.sql).
   ensureColumn(database, "publish_jobs", "external_url", "TEXT")
+  // Owner-stated vs. actually-authorized channel account (matches
+  // postgres/migrations/0019_store_channel_link_handles.sql).
+  ensureColumn(
+    database,
+    "store_channel_links",
+    "requested_account_handle",
+    "TEXT"
+  )
+  ensureColumn(
+    database,
+    "store_channel_links",
+    "linked_account_username",
+    "TEXT"
+  )
 }

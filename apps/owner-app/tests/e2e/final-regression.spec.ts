@@ -89,6 +89,8 @@ async function completeSetup(page: Page): Promise<void> {
   ).toBeVisible()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
   await expect(page.getByText("VERIFICATION_PENDING")).toBeVisible()
+  // Onboarding ends on the Instagram question; decline it to reach the exit.
+  await page.getByRole("button", { name: "아니요, 없어요" }).click()
   await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
 }
 

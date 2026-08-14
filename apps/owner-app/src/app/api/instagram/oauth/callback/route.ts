@@ -6,6 +6,10 @@ import {
   missingTokenEncryptionEnvVars,
 } from "@/auth/token-encryption"
 import {
+  compareInstagramHandles,
+  normalizeInstagramHandle,
+} from "@/instagram/account-handle"
+import {
   expiredInstagramOAuthStateCookieOptions,
   getInstagramOAuthRedirectUri,
   instagramConnectRedirectLocation,
@@ -90,6 +94,18 @@ export async function GET(request: NextRequest) {
         return redirectWithResult("error")
       }
 
+      // Did the owner land on the account they named on the way in? A mismatch
+      // does not block the link — it is surfaced so the owner can confirm or
+      // reconnect, and persisted so the answer survives the redirect.
+      const requestedHandle = normalizeInstagramHandle(
+        binding?.requestedHandle ?? ""
+      )
+      const linkedUsername = normalizeInstagramHandle(outcome.account.username)
+      const handleMatch = compareInstagramHandles(
+        requestedHandle,
+        linkedUsername
+      )
+
       // Ownership already confirmed, so the link is always written to the
       // session's own store; the token is encrypted before it reaches the store.
       await storeChannelLinkStore.upsertLink({
@@ -98,9 +114,13 @@ export async function GET(request: NextRequest) {
         externalAccountRef: outcome.account.accountRef,
         encryptedToken: encryptToken(outcome.account.accessToken),
         status: "linked",
+        requestedAccountHandle: requestedHandle === "" ? null : requestedHandle,
+        linkedAccountUsername: linkedUsername === "" ? null : linkedUsername,
         now: new Date(),
       })
-      return redirectWithResult("connected")
+      return redirectWithResult(
+        handleMatch === "mismatch" ? "connected_other_account" : "connected"
+      )
     }
   )
 }

@@ -67,7 +67,7 @@ describe("onboarding GBP panels", () => {
     expect(html).not.toContain("매장 정보 확인")
   })
 
-  it("uses the first-promotion wording for the final GBP setup CTA", () => {
+  it("asks about Instagram once GBP setup is ready, before offering the exit", () => {
     // Given
     const setup = {
       apiStatus: "VERIFICATION_PENDING",
@@ -83,7 +83,12 @@ describe("onboarding GBP panels", () => {
     )
 
     // Then
-    expect(html).toContain("매장 홍보 처음 시키러 가기")
+    expect(html).toContain("인스타그램 계정도 운영하고 계신가요?")
+    expect(html).toContain("네, 연결할게요")
+    expect(html).toContain("아니요, 없어요")
+    // The onboarding exit now sits behind that answer, so it is not yet on
+    // screen — InstagramConnectPanel owns it from here.
+    expect(html).not.toContain("매장 홍보 처음 시키러 가기")
     expect(html).not.toContain("대시보드로 이동")
   })
 
