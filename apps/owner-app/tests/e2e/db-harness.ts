@@ -82,3 +82,54 @@ export async function resetFirstTimeE2eDatabase(
   await resetE2eDatabase(env)
   await updateDemoStoreOnboardingStatus("NOT_STARTED", env)
 }
+
+function clearSqliteDemoStoreGbpLocation(env: DatabaseEnvironment): void {
+  const database = openDatabase(resolveDefaultDatabasePath(env))
+
+  try {
+    database
+      .prepare("DELETE FROM gbp_locations WHERE store_id = ?")
+      .run("demo-store")
+  } finally {
+    database.close()
+  }
+}
+
+async function clearPostgresDemoStoreGbpLocation(
+  env: DatabaseEnvironment
+): Promise<void> {
+  const sql = openPostgresDatabase(readDatabaseUrlDirect(env))
+
+  try {
+    await sql`DELETE FROM gbp_locations WHERE store_id = 'demo-store'`
+  } finally {
+    await sql.end()
+  }
+}
+
+/**
+ * Puts the demo store back to "has never had a GBP listing".
+ *
+ * The seeded demo store ships with a VERIFIED listing so most suites can publish
+ * against it. Specs that exercise GBP *setup* need the opposite: setup refuses to
+ * create when a listing already exists, because creating a second one is how a
+ * store ends up with a duplicate Google listing. Without this the setup path is
+ * unreachable and those specs assert against the seeded listing instead of the
+ * one under test.
+ */
+export async function resetE2eDatabaseWithoutGbpLocation(
+  env: DatabaseEnvironment = process.env
+): Promise<void> {
+  await resetE2eDatabase(env)
+
+  const config: DatabaseConfig = resolveDatabaseConfig(env)
+
+  switch (config.provider) {
+    case "sqlite":
+      return clearSqliteDemoStoreGbpLocation(env)
+    case "postgres":
+      return clearPostgresDemoStoreGbpLocation(env)
+  }
+
+  return assertNeverDatabaseConfig(config)
+}

@@ -1,12 +1,14 @@
 import { expect, test } from "@playwright/test"
 
-import { resetE2eDatabase } from "./db-harness"
+import { resetE2eDatabaseWithoutGbpLocation } from "./db-harness"
 
 const demoCookieHeader =
   "glocalx_demo_session=demo-owner; glocalx_demo_store=demo-store"
 
+// Setup refuses to create when the store already has a listing, so the seeded
+// one has to go for the create path to be reachable at all.
 test.beforeEach(async () => {
-  await resetE2eDatabase()
+  await resetE2eDatabaseWithoutGbpLocation()
 })
 
 test("Stub GBP setup reaches verification pending and records an audit log", async ({

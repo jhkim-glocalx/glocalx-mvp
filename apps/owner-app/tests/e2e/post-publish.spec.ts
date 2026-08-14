@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test"
 
-import { resetE2eDatabase } from "./db-harness"
+import {
+  resetE2eDatabase,
+  resetE2eDatabaseWithoutGbpLocation,
+} from "./db-harness"
 
 test.describe.configure({ mode: "serial" })
 
@@ -61,6 +64,11 @@ test("Stub post draft and publish returns deterministic GBP history", async ({
 test("Publish is blocked for an unverified GBP location", async ({
   request,
 }) => {
+  // The seeded listing is VERIFIED and setup will not replace it, so this test
+  // has to start from a store with none — otherwise it publishes against the
+  // seeded listing and never reaches the unverified guard it exists to check.
+  await resetE2eDatabaseWithoutGbpLocation()
+
   await request.post("/api/gbp/setup", {
     data: { mode: "stub" },
     headers: { Cookie: demoCookieHeader },
