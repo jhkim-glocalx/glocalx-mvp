@@ -28,7 +28,12 @@ export async function withRepositoryTestContext(
   const databaseContext = await openDatabaseContext()
   applyMigrations(databaseContext.legacySqliteDatabase)
   seedDemoData(databaseContext.legacySqliteDatabase)
-  const adapters = createIntegrationAdapters({ env: {} })
+  // Pin time: this harness characterizes rows whose timestamps and ordering
+  // must not drift with the wall clock.
+  const adapters = createIntegrationAdapters({
+    env: {},
+    now: new Date("2026-06-04T00:00:00.000Z"),
+  })
 
   try {
     await work({

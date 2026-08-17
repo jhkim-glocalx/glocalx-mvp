@@ -79,7 +79,12 @@ describe("setupGoogleBusinessProfile", () => {
   it("creates demo OAuth, GBP location, follow-up job, and audit log records", async () => {
     // Given
     const database = await createDatabase()
-    const adapters = createIntegrationAdapters({ database, env: {} })
+    // Pin time: the follow-up job's run_after is asserted as a literal one week out.
+    const adapters = createIntegrationAdapters({
+      database,
+      env: {},
+      now: new Date("2026-06-04T00:00:00.000Z"),
+    })
 
     // When
     const result = await setupGoogleBusinessProfile({

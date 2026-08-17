@@ -304,7 +304,10 @@ export function createRouteContext(options: {
   readonly storeChannelLinkStore?: StoreChannelLinkStore
 }): RouteBoundaryContext {
   return {
-    adapters: options.adapters ?? createIntegrationAdapters(),
+    // Pin time so the recorded store calls stay comparable across runs.
+    adapters:
+      options.adapters ??
+      createIntegrationAdapters({ now: new Date("2026-06-04T00:00:00.000Z") }),
     gbpAccessStore: options.gbpAccessStore ?? createGbpAccessStore().store,
     gbpCategoryStore:
       options.gbpCategoryStore ?? createGbpCategoryStore().store,

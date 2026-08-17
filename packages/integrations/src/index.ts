@@ -17,6 +17,7 @@ import {
 import { createProductionMarketingGeneration } from "./openai-production"
 import { createProductionGeocoding } from "./geocoding-production"
 import { createProductionCsAssistant } from "./openai-cs-assistant"
+import { createSystemClock } from "./clock"
 import { createProductionPerformance } from "./production-performance"
 import {
   shouldUsePreviewMediaStoreStub,
@@ -59,7 +60,13 @@ export function createIntegrationAdapters(
   const env = options.env ?? process.env
   const mode =
     env["APP_INTEGRATION_MODE"] === "production" ? "production" : "stub"
-  const now = options.now ?? new Date("2026-06-04T00:00:00.000Z")
+  // Time is real unless a caller pins it. A hard-coded default here used to
+  // reach production and persist a fixed date as real row timestamps, so the
+  // frozen clock is now opt-in: only an explicit `options.now` selects it.
+  const clock =
+    options.now === undefined
+      ? createSystemClock()
+      : createStubClock(options.now)
   const fetchImpl = options.fetchImpl ?? globalThis.fetch
 
   if (mode === "production") {
@@ -88,7 +95,7 @@ export function createIntegrationAdapters(
       postingConversation: createProductionPostingConversation(env, fetchImpl),
       csAssistant: createProductionCsAssistant(env, fetchImpl),
       translation: createStubTranslation(),
-      clock: createStubClock(now),
+      clock,
       jobScheduler: createStubJobScheduler(),
       // Preview/dev deployments may lack a provisioned Blob store, same rationale as the Naver fallback above.
       mediaStore: shouldUsePreviewMediaStoreStub(env)
@@ -115,7 +122,7 @@ export function createIntegrationAdapters(
     postingConversation: createStubPostingConversation(),
     csAssistant: createStubCsAssistant(),
     translation: createStubTranslation(),
-    clock: createStubClock(now),
+    clock,
     jobScheduler: createStubJobScheduler(),
     mediaStore: new StubMediaStore(),
   }
