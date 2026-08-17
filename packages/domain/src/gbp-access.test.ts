@@ -41,6 +41,43 @@ describe("transitionGbpAccess", () => {
     expect(transitionGbpAccess("pending", { type: "BLOCK" })).toBe("blocked")
   })
 
+  it("confirms an owner-claimed adoption straight to granted, skipping the invite hop", () => {
+    expect(
+      transitionGbpAccess("adoption_review", { type: "CONFIRM_ADOPTION" })
+    ).toBe("granted")
+    expect(transitionGbpAccess("blocked", { type: "CONFIRM_ADOPTION" })).toBe(
+      "granted"
+    )
+  })
+
+  it("parks a rejected adoption in blocked so nothing resumes without an operator", () => {
+    expect(
+      transitionGbpAccess("adoption_review", {
+        type: "REJECT_ADOPTION",
+        reason: "저희 계정에서 찾지 못했어요.",
+      })
+    ).toBe("blocked")
+    expect(gbpAccessOwnerPhase("blocked")).toBe("attention")
+  })
+
+  it("refuses an adoption verdict where there is no claim to rule on", () => {
+    for (const state of ["not_requested", "invited", "pending"] as const) {
+      expect(() =>
+        transitionGbpAccess(state, {
+          type: "REJECT_ADOPTION",
+          reason: "저희 계정에서 찾지 못했어요.",
+        })
+      ).toThrow(InvalidGbpAccessTransitionError)
+      expect(() =>
+        transitionGbpAccess(state, { type: "CONFIRM_ADOPTION" })
+      ).toThrow(InvalidGbpAccessTransitionError)
+    }
+  })
+
+  it("shows an adoption awaiting an operator as ordinary progress to the owner", () => {
+    expect(gbpAccessOwnerPhase("adoption_review")).toBe("in_progress")
+  })
+
   it("revokes only a granted request", () => {
     expect(transitionGbpAccess("granted", { type: "REVOKE" })).toBe("revoked")
   })

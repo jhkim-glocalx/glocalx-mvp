@@ -5,8 +5,15 @@ import { z } from "zod"
 // polling in v2 — so this machine's whole job is to reject an incoherent jump,
 // not to advance anything on its own. It is unrelated to the v1 location
 // verification machine in gbp-eligibility.ts, which gates publishing.
+// `adoption_review` is the one state waiting on *us* rather than on the owner or
+// Google: the owner said in onboarding that this store is already live on a
+// listing our org account owns, and an operator has to confirm that match before
+// anything is attached. Deliberately not named after "claim" — that word already
+// means requesting admin rights on someone *else's* listing
+// (requestAdminRightsUrl), which is the opposite direction of trust.
 export const gbpAccessStateSchema = z.enum([
   "not_requested",
+  "adoption_review",
   "invited",
   "pending",
   "granted",
@@ -26,6 +33,9 @@ export type GbpAccessOwnerPhase = "in_progress" | "granted" | "attention"
 const ownerPhaseByState: Readonly<Record<GbpAccessState, GbpAccessOwnerPhase>> =
   {
     not_requested: "in_progress",
+    // The owner has done their part and is waiting on an operator, so this reads
+    // as ordinary progress — never as something the owner must act on again.
+    adoption_review: "in_progress",
     invited: "in_progress",
     pending: "in_progress",
     granted: "granted",
@@ -45,9 +55,18 @@ export function gbpAccessOwnerPhase(
 // walks the owner-visible progression; OVERRIDE is the audited escape hatch for
 // out-of-band grants and corrections. Keeping the two apart lets the audit log
 // distinguish "the flow advanced" from "an operator forced a state".
+//
+// CONFIRM_ADOPTION/REJECT_ADOPTION are the operator's verdict on an owner's
+// "이미 등록했어요" claim. They are natural actions, not overrides: the operator
+// is answering a question the owner asked, which is exactly the guided flow.
 export type GbpAccessAction =
   | { readonly type: "SEND_INVITE" }
   | { readonly type: "MARK_PENDING" }
+  | { readonly type: "CONFIRM_ADOPTION" }
+  // reason is what the owner is actually told: it becomes the assistant message
+  // in their chat thread. A rejection with no reason leaves them staring at
+  // "확인이 필요합니다" with nothing to answer, so the console requires one.
+  | { readonly type: "REJECT_ADOPTION"; readonly reason: string }
   | { readonly type: "GRANT" }
   | { readonly type: "REVOKE" }
   // reason is `string | undefined` (not just optional) so the value parsed from
@@ -62,6 +81,13 @@ export type GbpAccessAction =
 export const gbpAccessActionRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("SEND_INVITE") }).strict(),
   z.object({ type: z.literal("MARK_PENDING") }).strict(),
+  z.object({ type: z.literal("CONFIRM_ADOPTION") }).strict(),
+  z
+    .object({
+      type: z.literal("REJECT_ADOPTION"),
+      reason: z.string().trim().min(1).max(500),
+    })
+    .strict(),
   z.object({ type: z.literal("GRANT") }).strict(),
   z.object({ type: z.literal("REVOKE") }).strict(),
   z
@@ -135,6 +161,33 @@ export function transitionGbpAccess(
         action.type,
         ["invited", "blocked"],
         "pending"
+      )
+
+    // Straight to granted with no invite hop: the org account already manages
+    // this listing, so confirming the owner's claim is recognizing access that
+    // exists rather than requesting it. Accepts blocked as a source like the
+    // other forward steps — an operator who first rejected a claim and then
+    // found it was right resumes without an override.
+    case "CONFIRM_ADOPTION":
+      return fromStates(
+        currentState,
+        action.type,
+        ["adoption_review", "blocked"],
+        "granted"
+      )
+
+    // Rejection parks the store in blocked rather than resetting it, which is
+    // the point: blocked maps to the owner phase "attention", so the owner is
+    // told a human is looking rather than being silently dropped back into the
+    // flow that would create a *second* listing. Nothing resumes here until an
+    // operator acts, which is exactly the guarantee a wrong rejection needs.
+    // Only from adoption_review — there is no claim to reject in any other state.
+    case "REJECT_ADOPTION":
+      return fromStates(
+        currentState,
+        action.type,
+        ["adoption_review"],
+        "blocked"
       )
 
     // Reachable from invited too: an owner can grant access before the operator

@@ -57,6 +57,10 @@ describe("setupGoogleBusinessProfile", () => {
     const database = openDatabase(join(tempPath, "gbp.db"))
     applyMigrations(database)
     seedDemoData(database)
+    // The demo seed hands demo-store a VERIFIED listing, which is exactly what
+    // the duplicate guard refuses to provision over. Setup tests are about the
+    // *first* provisioning, so start them from a store with no listing yet.
+    database.exec("DELETE FROM gbp_locations WHERE store_id = 'demo-store'")
     return database
   }
 
@@ -75,6 +79,111 @@ describe("setupGoogleBusinessProfile", () => {
       },
     }
   }
+
+  it("refuses to provision over a listing the store already has", async () => {
+    // Given a store set up outside the app (the hand-built org-account case):
+    // a location row exists but nothing this app did produced it.
+    const database = await createDatabase()
+    database.exec(
+      `INSERT INTO gbp_locations (id, store_id, gbp_account_id, google_location_id, status, request_admin_rights_url, created_at, updated_at)
+       VALUES ('manual-location', 'demo-store', 'demo-gbp-account', 'locations/set-up-by-hand', 'VERIFIED', NULL, '2026-08-14T00:00:00.000Z', '2026-08-14T00:00:00.000Z')`
+    )
+    let createCalls = 0
+    const adapters = createCapturedLocationAdapters(
+      createIntegrationAdapters({ database, env: {} }),
+      () => {
+        createCalls += 1
+      }
+    )
+
+    // When
+    const result = await setupGoogleBusinessProfile({
+      adapters,
+      database,
+      mode: "stub",
+      storeId: "demo-store",
+    })
+
+    // Then Google is never asked to create anything.
+    expect(result).toEqual({
+      status: "ALREADY_LINKED",
+      googleLocationId: "locations/set-up-by-hand",
+      message: "이미 연결된 Google 비즈니스 프로필이 있습니다.",
+    })
+    expect(createCalls).toBe(0)
+    database.close()
+  })
+
+  it("hands back the admin-rights link when a claim is still outstanding", async () => {
+    // Given a previous run that stopped at CLAIM_REQUIRED
+    const database = await createDatabase()
+    database.exec(
+      `INSERT INTO gbp_locations (id, store_id, gbp_account_id, google_location_id, status, request_admin_rights_url, created_at, updated_at)
+       VALUES ('claim-location', 'demo-store', 'demo-gbp-account', 'googleLocations/claimed', 'CLAIM_REQUIRED', 'https://business.google.com/claim/abc', '2026-08-14T00:00:00.000Z', '2026-08-14T00:00:00.000Z')`
+    )
+    const adapters = createIntegrationAdapters({ database, env: {} })
+
+    // When the owner retries setup
+    const result = await setupGoogleBusinessProfile({
+      adapters,
+      database,
+      mode: "stub",
+      storeId: "demo-store",
+    })
+
+    // Then the retry returns the claim they still have to finish, not a dead end.
+    expect(result).toEqual(
+      buildClaimRequiredResult({
+        googleLocationId: "googleLocations/claimed",
+        requestAdminRightsUrl: "https://business.google.com/claim/abc",
+      })
+    )
+    database.close()
+  })
+
+  it("holds off provisioning while an operator is ruling on an adoption claim", async () => {
+    // Given
+    const database = await createDatabase()
+    let createCalls = 0
+    const adapters = createCapturedLocationAdapters(
+      createIntegrationAdapters({ database, env: {} }),
+      () => {
+        createCalls += 1
+      }
+    )
+
+    // When the store has an adoption claim awaiting an operator verdict
+    const result = await setupGoogleBusinessProfile({
+      adapters,
+      database,
+      gbpAccessStore: {
+        async getGbpAccessRequestForStore() {
+          return {
+            id: "access-request",
+            storeId: "demo-store",
+            gbpLocationRef: "locations/org-owned",
+            state: "adoption_review",
+            note: null,
+            requestedAt: "2026-08-14T00:00:00.000Z",
+            grantedAt: null,
+            createdAt: "2026-08-14T00:00:00.000Z",
+            updatedAt: "2026-08-14T00:00:00.000Z",
+          }
+        },
+      },
+      mode: "stub",
+      storeId: "demo-store",
+    })
+
+    // Then
+    expect(result).toEqual({
+      status: "ALREADY_LINKED",
+      message:
+        "이미 등록된 프로필인지 확인하고 있습니다. 확인이 끝나면 알려드릴게요.",
+    })
+    expect(createCalls).toBe(0)
+    database.close()
+  })
 
   it("creates demo OAuth, GBP location, follow-up job, and audit log records", async () => {
     // Given
@@ -205,13 +314,17 @@ describe("setupGoogleBusinessProfile", () => {
       title: "라멘하우스 합정점",
     })
 
+    // Re-running setup now stops at the duplicate guard instead of provisioning
+    // again. The row counts below still prove no second location was written —
+    // the difference is that the block happens before Google, not after a
+    // dedup-by-requestId that only holds for calls this app made itself.
     const secondResult = await setupGoogleBusinessProfile({
       adapters,
       database,
       mode: "stub",
       storeId: "demo-store",
     })
-    expect(secondResult.status).toBe("VERIFICATION_PENDING")
+    expect(secondResult.status).toBe("ALREADY_LINKED")
 
     const rows = setupRowsSchema.parse(
       database

@@ -19,7 +19,9 @@ import {
   persistLiveClaimRequiredGbpRecords,
   persistLiveSetupGbpRecords,
   persistStubSetupGbpRecords,
+  readExistingGbpLocation,
 } from "./gbp-setup-store"
+import type { ExistingGbpLocation } from "./gbp-setup-store"
 
 export interface GbpStore {
   persistClaimRequiredRecords(options: {
@@ -47,6 +49,11 @@ export interface GbpStore {
     readonly now: Date
     readonly storeId: string
   }): Promise<void>
+  // Undefined when the store has no Google listing yet. Setup's duplicate guard
+  // reads this before provisioning.
+  readExistingGbpLocation(
+    storeId: string
+  ): Promise<ExistingGbpLocation | undefined>
   readPerformanceConnection(storeId: string): Promise<GbpPerformanceConnection>
   readPerformanceLocation(storeId: string): Promise<GbpPerformanceLocation>
   readPerformanceSummaryData(
@@ -94,6 +101,10 @@ export function createDatabaseGbpStore(queryable: Queryable): GbpStore {
         queryable,
         storeId: options.storeId,
       })
+    },
+
+    readExistingGbpLocation(storeId) {
+      return readExistingGbpLocation(queryable, storeId)
     },
 
     readPerformanceConnection(storeId) {

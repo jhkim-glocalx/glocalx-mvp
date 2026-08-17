@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS gbp_access_requests (
   store_id TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
   gbp_location_ref TEXT,
   state TEXT NOT NULL CHECK (state IN (
-    'not_requested', 'invited', 'pending', 'granted', 'revoked', 'blocked'
+    'not_requested', 'adoption_review', 'invited', 'pending', 'granted',
+    'revoked', 'blocked'
   )),
   note TEXT,
   requested_at TEXT NOT NULL,

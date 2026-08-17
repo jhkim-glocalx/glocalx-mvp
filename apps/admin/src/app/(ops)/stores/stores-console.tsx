@@ -148,6 +148,7 @@ function StoreCard({
 }) {
   const [overrideTarget, setOverrideTarget] = useState<GbpAccessState | "">("")
   const [noteDraft, setNoteDraft] = useState(store.note ?? "")
+  const [rejectReason, setRejectReason] = useState("")
 
   const naturalActions = naturalActionsByState[store.state]
   const overrideOptions = gbpAccessStates.filter(
@@ -199,6 +200,39 @@ function StoreCard({
             {label}
           </button>
         ))}
+        {store.state === "adoption_review" ? (
+          <div className="ops-store-reject">
+            {/* The reason is sent to the owner word for word, so it is written
+                here as a message to them — not as an internal status code. */}
+            <label className="ops-store-reject-label">
+              Reject — what should the owner be told?
+              <input
+                data-testid={`store-reject-reason-${store.storeId}`}
+                disabled={busy}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="예: 저희 계정에서 찾지 못했어요. 지도에 등록된 상호를 알려주시겠어요?"
+                type="text"
+                value={rejectReason}
+              />
+            </label>
+            <button
+              className="ops-store-btn"
+              data-testid={`store-action-REJECT_ADOPTION-${store.storeId}`}
+              disabled={busy || rejectReason.trim() === ""}
+              onClick={() =>
+                onAction(() =>
+                  applyStoreAction(store.requestId, {
+                    type: "REJECT_ADOPTION",
+                    reason: rejectReason.trim(),
+                  })
+                )
+              }
+              type="button"
+            >
+              Reject adoption
+            </button>
+          </div>
+        ) : null}
         {canBlock[store.state] ? (
           <button
             className="ops-store-btn"

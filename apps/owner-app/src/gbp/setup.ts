@@ -11,6 +11,7 @@ import type {
 } from "@glocalx/integrations/contracts"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import type { GbpStore } from "@/server/repositories/gbp-store"
+import type { ExistingGbpLocation } from "@/server/repositories/gbp-setup-store"
 import type { StoreProfileRepository } from "@/server/repositories/store-profile"
 
 import {
@@ -22,6 +23,7 @@ import {
 } from "./setup-records"
 import { runGbpVerificationAttempt } from "./verification"
 import type { GbpVerificationStore } from "@glocalx/db/support/gbp-verification-store"
+import type { GbpAccessStore } from "@glocalx/db/support/gbp-access-store"
 import {
   buildLiveGoogleLocationBody,
   resolveLiveGbpCredentials,
@@ -87,6 +89,15 @@ export type GbpSetupResult =
       readonly status: "SETUP_UPSTREAM_ERROR"
       readonly message: string
     }
+  | {
+      // The store is already attached to a Google listing, or an operator is
+      // still ruling on the owner's claim that it should be. Terminal for this
+      // call by design: creating here is what produces a duplicate listing, and
+      // a duplicate costs a merge request and a lost verification to undo.
+      readonly status: "ALREADY_LINKED"
+      readonly googleLocationId?: string
+      readonly message: string
+    }
 
 export type SetupGoogleBusinessProfileOptions = {
   readonly adapters: IntegrationAdapters
@@ -96,6 +107,10 @@ export type SetupGoogleBusinessProfileOptions = {
   readonly env?: AdapterEnvironment
   readonly fetchImpl?: ExternalFetch
   readonly gbpStore?: GbpStore
+  // Read by the duplicate guard: an in-flight adoption claim must hold off
+  // provisioning until an operator rules on it. Optional so existing callers and
+  // tests that predate the guard keep working — absent means "nothing claimed".
+  readonly gbpAccessStore?: Pick<GbpAccessStore, "getGbpAccessRequestForStore">
   // Injectable for tests; the live path falls back to a database-backed store.
   readonly gbpVerificationStore?: GbpVerificationStore
   readonly mode: GbpSetupMode
@@ -155,9 +170,82 @@ async function readConfirmedGbpStoreProfile(
   throw new GbpSetupConfigurationError()
 }
 
+const guardLocationRowSchema = z.object({
+  googleLocationId: z.string().min(1),
+  status: z.string(),
+  requestAdminRightsUrl: z.string().nullable(),
+})
+
+function readExistingGbpLocationFromDatabase(
+  options: SetupGoogleBusinessProfileOptions
+): ExistingGbpLocation | undefined {
+  if (options.database === undefined) {
+    return undefined
+  }
+  const row = options.database
+    .prepare(
+      "SELECT google_location_id AS googleLocationId, status, request_admin_rights_url AS requestAdminRightsUrl FROM gbp_locations WHERE store_id = ? AND google_location_id IS NOT NULL LIMIT 1"
+    )
+    .get(options.storeId)
+  const parsed = guardLocationRowSchema.safeParse(row)
+  return parsed.success ? parsed.data : undefined
+}
+
+// Runs before anything reaches Google. Both branches mean "this store's listing
+// question is already settled or being settled elsewhere", and in both cases the
+// only harmful thing setup could do is create a second listing.
+async function readDuplicateGuardBlock(
+  options: SetupGoogleBusinessProfileOptions
+): Promise<GbpSetupResult | undefined> {
+  // Reads through whichever handle the caller supplied, the same dual path
+  // readConfirmedGbpStoreProfile uses. A guard that silently no-ops when only a
+  // database is passed would be worse than no guard — it would read as covered.
+  const existing =
+    options.gbpStore !== undefined
+      ? await options.gbpStore.readExistingGbpLocation(options.storeId)
+      : readExistingGbpLocationFromDatabase(options)
+
+  if (existing !== undefined) {
+    // A claim still waiting on the current owner is unfinished business, not a
+    // completed link: re-return it so a retry hands the owner back the
+    // admin-rights URL they still need instead of a dead end.
+    if (
+      existing.status === "CLAIM_REQUIRED" &&
+      existing.requestAdminRightsUrl !== null
+    ) {
+      return buildClaimRequiredResult({
+        googleLocationId: existing.googleLocationId,
+        requestAdminRightsUrl: existing.requestAdminRightsUrl,
+      })
+    }
+    return {
+      status: "ALREADY_LINKED",
+      googleLocationId: existing.googleLocationId,
+      message: "이미 연결된 Google 비즈니스 프로필이 있습니다.",
+    }
+  }
+
+  const accessRequest =
+    await options.gbpAccessStore?.getGbpAccessRequestForStore(options.storeId)
+  if (accessRequest?.state === "adoption_review") {
+    return {
+      status: "ALREADY_LINKED",
+      message:
+        "이미 등록된 프로필인지 확인하고 있습니다. 확인이 끝나면 알려드릴게요.",
+    }
+  }
+
+  return undefined
+}
+
 export async function setupGoogleBusinessProfile(
   options: SetupGoogleBusinessProfileOptions
 ): Promise<GbpSetupResult> {
+  const duplicateBlock = await readDuplicateGuardBlock(options)
+  if (duplicateBlock !== undefined) {
+    return duplicateBlock
+  }
+
   const storeProfileResult = await readConfirmedGbpStoreProfile(options)
   if (storeProfileResult.kind === "missing") {
     // A GBP listing cannot be created until onboarding has confirmed the public store facts.

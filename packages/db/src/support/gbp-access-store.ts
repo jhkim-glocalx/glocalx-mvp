@@ -35,6 +35,23 @@ export type EnsureGbpAccessRequestInput = {
   readonly now: Date
 }
 
+export type OpenAdoptionReviewInput = {
+  readonly id: string
+  readonly storeId: string
+  // The org listing the owner's claim resolved to. Unlike ensureGbpAccessRequest
+  // this is required: an adoption review with no candidate gives the operator
+  // nothing to rule on.
+  readonly gbpLocationRef: string
+  readonly now: Date
+}
+
+export type OpenAdoptionReviewResult =
+  | { readonly kind: "opened"; readonly request: GbpAccessRequest }
+  // The store already has an access request that is past the point where an
+  // adoption claim makes sense. Never overwrites it — an owner re-submitting a
+  // claim must not reset operator-advanced state.
+  | { readonly kind: "already_tracked"; readonly request: GbpAccessRequest }
+
 // `expectedState` is the state the caller read before computing nextState
 // through the domain transition function. It becomes the WHERE clause, so the
 // state column itself is the concurrency token: a caller that lost the race
@@ -62,6 +79,12 @@ export interface GbpAccessStore {
   ensureGbpAccessRequest(
     input: EnsureGbpAccessRequestInput
   ): Promise<GbpAccessRequest>
+  // Opens an operator review of an owner's "this listing is already mine" claim.
+  // Idempotent on store_id like ensureGbpAccessRequest, and equally refuses to
+  // move a row that already exists.
+  openAdoptionReview(
+    input: OpenAdoptionReviewInput
+  ): Promise<OpenAdoptionReviewResult>
   getGbpAccessRequestForStore(
     storeId: string
   ): Promise<GbpAccessRequest | undefined>
@@ -164,6 +187,26 @@ export function createDatabaseGbpAccessStore(
       // The INSERT either created the row or conflicted onto an existing one; a
       // SELECT by store_id resolves to exactly one either way.
       return toGbpAccessRequest(row)
+    },
+
+    async openAdoptionReview(input) {
+      const now = input.now.toISOString()
+      const inserted = await queryable.execute(
+        `INSERT INTO gbp_access_requests (
+           id, store_id, gbp_location_ref, state, note,
+           requested_at, granted_at, created_at, updated_at
+         ) VALUES (?, ?, ?, 'adoption_review', NULL, ?, NULL, ?, ?)
+         ON CONFLICT (store_id) DO NOTHING`,
+        [input.id, input.storeId, input.gbpLocationRef, now, now, now]
+      )
+      const row = await queryable.queryOne(
+        `SELECT ${gbpAccessProjection} FROM gbp_access_requests WHERE store_id = ?`,
+        [input.storeId]
+      )
+      const request = toGbpAccessRequest(row)
+      return inserted.changes > 0
+        ? { kind: "opened", request }
+        : { kind: "already_tracked", request }
     },
 
     async getGbpAccessRequestForStore(storeId) {
