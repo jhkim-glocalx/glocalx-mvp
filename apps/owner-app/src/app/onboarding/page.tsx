@@ -10,6 +10,11 @@ import { createDatabaseStoreChannelLinkStore } from "@/server/repositories/store
 import { InstagramConnectResultPanel } from "./onboarding-instagram-panels"
 import { OnboardingFlow } from "./onboarding-flow"
 import { OnboardingTopBar } from "./onboarding-panels"
+import { readOnboardingResumeState } from "./onboarding-resume"
+import {
+  AdoptionReviewingPanel,
+  GbpConnectedResumePanel,
+} from "./onboarding-resume-panels"
 
 async function readInstagramAccountNames(storeId: string) {
   const databaseContext = await openDatabaseContext()
@@ -56,6 +61,28 @@ export default async function OnboardingPage({
             requestedAccountHandle={accountNames?.requestedAccountHandle}
             result={connectResult}
           />
+        </MobileShell>
+      </main>
+    )
+  }
+
+  // Same reload problem as the Instagram callback above, but reached by the
+  // owner simply waiting: adoption is the one onboarding step that hands off to
+  // a human operator, so the tab will be closed and reopened before it resolves.
+  const resume =
+    session.storeId === ""
+      ? { kind: "none" as const }
+      : await readOnboardingResumeState(session.storeId)
+
+  if (resume.kind !== "none") {
+    return (
+      <main className="gx-route-page">
+        <MobileShell topBar={<OnboardingTopBar />}>
+          {resume.kind === "reviewing" ? (
+            <AdoptionReviewingPanel />
+          ) : (
+            <GbpConnectedResumePanel />
+          )}
         </MobileShell>
       </main>
     )
