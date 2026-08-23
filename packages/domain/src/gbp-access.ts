@@ -11,6 +11,14 @@ import { z } from "zod"
 // anything is attached. Deliberately not named after "claim" — that word already
 // means requesting admin rights on someone *else's* listing
 // (requestAdminRightsUrl), which is the opposite direction of trust.
+// The states CONFIRM_ADOPTION may proceed from. Exported as data (not just
+// encoded in the transition) so route-level guards can mirror the machine
+// without hand-copying the list — drift there fails silently successful.
+export const confirmAdoptionSourceStates = [
+  "adoption_review",
+  "blocked",
+] as const
+
 export const gbpAccessStateSchema = z.enum([
   "not_requested",
   "adoption_review",
@@ -184,7 +192,7 @@ export function transitionGbpAccess(
       return fromStates(
         currentState,
         action.type,
-        ["adoption_review", "blocked"],
+        confirmAdoptionSourceStates,
         "granted"
       )
 

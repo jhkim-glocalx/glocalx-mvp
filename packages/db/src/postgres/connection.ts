@@ -65,7 +65,11 @@ export function readDatabaseUrlDirect(
 
 export function openPostgresDatabase(url: string): PostgresClient {
   return postgres(url, {
-    connect_timeout: 5,
+    // Neon's TLS+SCRAM handshake takes ~6s from some networks (measured
+    // 2026-08-24); 5s made every remote migrate/verify time out just short.
+    // Tooling-only client (migrate/verify/seed/e2e harness) — the request-path
+    // client in runtime-client.ts keeps its own tighter timeout.
+    connect_timeout: 30,
     idle_timeout: 5,
     max: 1,
     onnotice: () => undefined,
