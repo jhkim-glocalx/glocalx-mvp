@@ -62,12 +62,12 @@ test("owner message reaches the operator inbox with context and the reply return
       .locator(".ops-msg-body", { hasText: ownerMessage })
   ).toBeVisible()
   await expect(operatorPage.getByTestId("msg-context").first()).toContainText(
-    "home"
+    "홈"
   )
 
   // The operator replies; it renders as an operator-authored bubble.
-  await operatorPage.getByRole("textbox", { name: "Reply" }).fill(operatorReply)
-  await operatorPage.getByRole("button", { name: "Send" }).click()
+  await operatorPage.getByRole("textbox", { name: "답장" }).fill(operatorReply)
+  await operatorPage.getByRole("button", { name: "전송" }).click()
   await expect(
     operatorPage.locator(".ops-msg-admin", { hasText: operatorReply })
   ).toBeVisible()

@@ -27,7 +27,7 @@ test("admin login round-trips through the seeded operator", async ({
   await page.getByRole("button", { name: "로그인" }).click()
 
   await expect(page).toHaveURL(/\/stores/)
-  await expect(page.getByRole("heading", { name: "Stores" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "매장" })).toBeVisible()
   await expect(page.getByText("E2E Operator")).toBeVisible()
 })
 

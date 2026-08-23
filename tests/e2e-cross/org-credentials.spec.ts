@@ -19,10 +19,10 @@ test("an operator sees credential status and can save a new one", async ({
 
   await expect(
     operatorPage.getByTestId("credential-status-google_org")
-  ).toHaveText("Linked")
+  ).toHaveText("연결됨")
   await expect(
     operatorPage.getByTestId("credential-status-meta_app")
-  ).toHaveText("Not configured")
+  ).toHaveText("설정되지 않음")
 
   await operatorPage.getByTestId("credential-provider").selectOption("meta_app")
   await operatorPage
@@ -36,7 +36,7 @@ test("an operator sees credential status and can save a new one", async ({
   await expect(operatorPage.getByTestId("credential-saved")).toBeVisible()
   await expect(
     operatorPage.getByTestId("credential-status-meta_app")
-  ).toHaveText("Linked")
+  ).toHaveText("연결됨")
 
   // The pasted secret is cleared from the form the moment the save lands, so a
   // shared operator screen isn't left displaying it.
@@ -51,7 +51,7 @@ test("an operator sees credential status and can save a new one", async ({
   await operatorPage.reload()
   await expect(
     operatorPage.getByTestId("credential-status-meta_app")
-  ).toHaveText("Linked")
+  ).toHaveText("연결됨")
 
   await operatorContext.close()
 })
