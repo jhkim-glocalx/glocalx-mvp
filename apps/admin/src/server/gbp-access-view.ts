@@ -63,9 +63,21 @@ export async function applyGbpAccessAction(
   store: GbpAccessStore,
   requestId: string,
   action: GbpAccessAction,
-  now: Date
+  now: Date,
+  options: {
+    // A caller that already read the row (to run pre-transition guards) passes
+    // its snapshot here so ONE read serves as the concurrency token: the
+    // guarded UPDATE's expectedState comes from the same state the guards saw,
+    // and a row that moved in between becomes a conflict instead of a second
+    // read silently legitimizing the transition.
+    readonly preloaded?: GbpAccessRequestListEntry
+    // Rides the same guarded UPDATE so the ref lands atomically with the state
+    // change and the returned row already carries it.
+    readonly gbpLocationRef?: string
+  } = {}
 ): Promise<GbpAccessTransitionOutcome> {
-  const current = await store.getGbpAccessListEntryById(requestId)
+  const current =
+    options.preloaded ?? (await store.getGbpAccessListEntryById(requestId))
   if (current === undefined) {
     return { kind: "not_found" }
   }
@@ -93,6 +105,7 @@ export async function applyGbpAccessAction(
       action.type === "BLOCK" || action.type === "REJECT_ADOPTION"
         ? action.reason
         : undefined,
+    gbpLocationRef: options.gbpLocationRef,
     now,
   })
   if (updated === undefined) {

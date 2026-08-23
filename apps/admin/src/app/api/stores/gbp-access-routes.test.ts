@@ -237,6 +237,12 @@ describe("adoption verdict", () => {
     )
 
     expect(response.status).toBe(200)
+    // The response row must already carry the operator's pick — the console
+    // swaps the rendered card for this object, so a stale ref here shows the
+    // matcher's guess while the database holds the operator's choice.
+    expect((await response.json()).request.gbpLocationRef).toBe(
+      "locations/hand-built"
+    )
     expect(await currentState(requestId)).toBe("granted")
     const locations = await withDatabase(async (queryable) =>
       queryable.query(
@@ -263,6 +269,45 @@ describe("adoption verdict", () => {
     // exists to prevent, so it is a conflict rather than a silent success.
     expect(response.status).toBe(409)
     expect((await response.json()).status).toBe("MISSING_LOCATION_REF")
+    // A refused adoption must not advance the state machine (#70): the guards
+    // run before the transition is persisted, so the claim stays reviewable.
+    expect(await currentState(requestId)).toBe("adoption_review")
+  })
+
+  it("reports the state conflict, not a guard error, for a stale confirm", async () => {
+    // Request never entered adoption_review and the store keeps its seeded
+    // listing. The hoisted guards must yield to the transition's
+    // STATUS_CONFLICT here — the console's stale-view reload hint reads
+    // currentState, which a guard 409 would hide.
+    const requestId = await seedAccessRequest()
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "CONFIRM_ADOPTION", gbpLocationRef: "locations/hand-built" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    expect(response.status).toBe(409)
+    const body = await response.json()
+    expect(body.status).toBe("STATUS_CONFLICT")
+    expect(body.currentState).toBe("not_requested")
+    expect(await currentState(requestId)).toBe("not_requested")
+  })
+
+  it("404s a confirm for an unknown request before running guards", async () => {
+    const response = await transition(
+      transitionRequest(
+        "missing",
+        { type: "CONFIRM_ADOPTION", gbpLocationRef: "locations/hand-built" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params("missing")
+    )
+
+    expect(response.status).toBe(404)
   })
 
   it("refuses to attach a listing already adopted by another store", async () => {
@@ -303,6 +348,7 @@ describe("adoption verdict", () => {
     // the only place left to catch two stores pointed at one Google location.
     expect(response.status).toBe(409)
     expect((await response.json()).status).toBe("LOCATION_ALREADY_ADOPTED")
+    expect(await currentState(requestId)).toBe("adoption_review")
     const locations = await withDatabase(async (queryable) =>
       queryable.query(
         "SELECT google_location_id AS id FROM gbp_locations WHERE store_id = ?",
@@ -331,6 +377,7 @@ describe("adoption verdict", () => {
     // silently repoint an already-working publish target.
     expect(response.status).toBe(409)
     expect((await response.json()).status).toBe("STORE_ALREADY_HAS_LOCATION")
+    expect(await currentState(requestId)).toBe("adoption_review")
     const locations = await withDatabase(async (queryable) =>
       queryable.query(
         "SELECT google_location_id AS id FROM gbp_locations WHERE store_id = ?",
