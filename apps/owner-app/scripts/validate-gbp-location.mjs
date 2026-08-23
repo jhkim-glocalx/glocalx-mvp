@@ -35,7 +35,8 @@
 //
 // Overridable inputs (env): GBP_VALIDATE_NAME, GBP_VALIDATE_CATEGORY_GCID,
 // GBP_VALIDATE_REQUEST_ID. Passing GBP_VALIDATE_ADDRESS (optionally with
-// GBP_VALIDATE_PHONE) replaces the whole matrix with that single address.
+// GBP_VALIDATE_PHONE) replaces the whole matrix; separate several addresses
+// with ";" to compare variants of one address in a single run.
 
 import { buildStorefrontAddressLines } from "../src/gbp/address-lines.ts"
 
@@ -97,16 +98,19 @@ const DEFAULT_MATRIX = [
   },
 ]
 
-const singleAddress = process.env.GBP_VALIDATE_ADDRESS
+// Semicolon-separated so a probe can compare variants of one address in a
+// single run — e.g. with and without a trailing "2층".
+const customAddresses = (process.env.GBP_VALIDATE_ADDRESS ?? "")
+  .split(";")
+  .map((entry) => entry.trim())
+  .filter((entry) => entry !== "")
 const matrix =
-  singleAddress && singleAddress.trim() !== ""
-    ? [
-        {
-          label: "custom",
-          address: singleAddress.trim(),
-          phone: process.env.GBP_VALIDATE_PHONE ?? "02-1234-5678",
-        },
-      ]
+  customAddresses.length > 0
+    ? customAddresses.map((address) => ({
+        label: "custom",
+        address,
+        phone: process.env.GBP_VALIDATE_PHONE ?? "02-1234-5678",
+      }))
     : DEFAULT_MATRIX
 
 const name = process.env.GBP_VALIDATE_NAME ?? "글로컬엑스 검증 매장"
@@ -256,7 +260,12 @@ async function validateOnly(location, requestId) {
 // --- sweep -------------------------------------------------------------------
 
 let index = 0
-let failures = 0
+// Kept apart because they mean different things: a geocoding gap is the app
+// refusing to build a body at all (ADDRESS_NOT_GEOCODABLE), which this change
+// neither causes nor fixes, while a rejection is Google refusing the body we
+// now send.
+let geocodeGaps = 0
+let rejections = 0
 
 for (const row of matrix) {
   index += 1
@@ -266,8 +275,8 @@ for (const row of matrix) {
 
   const geocoded = await geocode(row.address)
   if (geocoded.error) {
-    console.error(`  ❌ ${geocoded.error}`)
-    failures += 1
+    console.error(`  ⚠️  ${geocoded.error}`)
+    geocodeGaps += 1
     continue
   }
   const { parts, latlng } = geocoded
@@ -320,19 +329,26 @@ for (const row of matrix) {
       )
       // Only the "after" body is the one the app actually sends; a rejected
       // "before" is informational, not a regression in this change.
-      if (variant.tag.trim() === "after") failures += 1
+      if (variant.tag.trim() === "after") rejections += 1
     }
   }
 }
 
 console.log(`\n${"=".repeat(72)}`)
-if (failures > 0) {
+if (geocodeGaps > 0) {
+  console.log(
+    `⚠️  ${geocodeGaps} of ${matrix.length} address(es) never reached Google: ` +
+      `geocoding returned no usable parts, so the app would stop at ` +
+      `ADDRESS_NOT_GEOCODABLE. Unrelated to how addressLines are built.`
+  )
+}
+if (rejections > 0) {
   console.error(
-    `❌ ${failures} of ${matrix.length} address(es) failed with the body the app sends.`
+    `❌ ${rejections} address(es) were REJECTED with the body the app sends.`
   )
   process.exit(1)
 }
 console.log(
-  `✅ All ${matrix.length} address(es) accepted with the prefix-stripped body ` +
-    `the app sends. No location was created.`
+  `✅ All ${matrix.length - geocodeGaps} validated address(es) accepted with ` +
+    `the prefix-stripped body the app sends. No location was created.`
 )

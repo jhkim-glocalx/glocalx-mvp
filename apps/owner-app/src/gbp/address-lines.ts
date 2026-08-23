@@ -4,9 +4,13 @@
 // passing it through verbatim double-prints the 시/구: the live listing created
 // 2026-08-13 rendered as "대전광역시 유성구 대전 유성구 어은로48번길 12 2층".
 //
-// An earlier validateOnly probe with "서울 마포구 양화로 19" saw Google collapse
-// the duplicate itself, but that normalization does not hold outside Seoul, so
-// the redundant prefix is stripped here rather than left to Google.
+// Google does often collapse the duplicate itself: a validateOnly sweep on
+// 2026-08-23 sent the raw address for 서울/대전/전남 and got the stripped form
+// echoed back every time. But the 하레 listing above proves that normalization
+// is conditional, not guaranteed — the one thing it carried that the sweep did
+// not is a trailing unit ("2층"). Rather than depend on a rule we cannot see,
+// the redundant prefix is removed here so the rendered listing is correct
+// whether Google normalizes or not.
 //
 // The stripping rule is deliberately narrow: a leading token is dropped only
 // when it names a part this same body already sends structurally. Whatever is

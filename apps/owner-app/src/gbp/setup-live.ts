@@ -141,7 +141,8 @@ function assembleLiveLocation(
       postalCode: address.postalCode,
       // Google prints the structured fields above in front of addressLines, so
       // the confirmed address goes in with its 시/구 prefix removed to stop the
-      // rendered listing repeating them.
+      // rendered listing repeating them. Google's own normalization sometimes
+      // does this too, but not reliably — see address-lines.ts.
       addressLines: buildStorefrontAddressLines(profile.address, address),
     },
     latlng: {
