@@ -202,8 +202,11 @@ async function publishToChannel(
   }
 
   // Instagram's credential is the store's own linked business account. A link
-  // that carries no token yet falls through to the environment account, which
-  // is what keeps stub mode and the v1 composer working unchanged.
+  // with no token yet passes account: undefined below — the production adapter
+  // refuses that (no environment-credential fallback), so the job fails as not
+  // configured rather than silently publishing under the org's own account.
+  // The stub adapter ignores account entirely, which is what keeps stub mode
+  // and the v1 composer working unchanged.
   const channelToken = await input.publishTargetStore.readStoreChannelToken(
     input.request.storeId,
     "instagram"

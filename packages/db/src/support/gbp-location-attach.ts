@@ -21,6 +21,35 @@ export type AttachOrgLocationInput = {
   readonly now: Date
 }
 
+// The other store already sitting on this listing, if any. Nothing in the
+// schema stops two stores from claiming the same google_location_id — an
+// operator mis-picking from the org list would silently move a live listing's
+// publish target to the wrong owner, so the caller checks before attaching.
+export async function findStoreAdoptedByGoogleLocation(
+  queryable: Queryable,
+  googleLocationId: string
+): Promise<string | undefined> {
+  const row = await queryable.queryOne(
+    `SELECT store_id FROM gbp_locations WHERE google_location_id = ?`,
+    [googleLocationId]
+  )
+  return row === undefined ? undefined : String(row["store_id"])
+}
+
+// Whether a store already has a listing attached. Adoption exists for stores
+// with none — running it again on one that already has a verified location
+// would silently repoint an already-working publish target.
+export async function storeHasAttachedGbpLocation(
+  queryable: Queryable,
+  storeId: string
+): Promise<boolean> {
+  const row = await queryable.queryOne(
+    `SELECT id FROM gbp_locations WHERE store_id = ? AND google_location_id IS NOT NULL`,
+    [storeId]
+  )
+  return row !== undefined
+}
+
 export async function attachOrgLocationToStore(
   queryable: Queryable,
   input: AttachOrgLocationInput

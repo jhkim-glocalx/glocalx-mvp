@@ -69,6 +69,11 @@ export type GbpPublishingCredentials = {
   readonly parent: string
 }
 
+export type InstagramPublishingCredentials = {
+  readonly accessToken: string
+  readonly accountRef: string
+}
+
 export type PostDraftResult = {
   readonly status: "DRAFT_READY"
   readonly draftId: string

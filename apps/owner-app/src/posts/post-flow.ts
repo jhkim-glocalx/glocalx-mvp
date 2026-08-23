@@ -90,7 +90,16 @@ async function publishBodyForDraft(
     return adapterResult.value
   }
 
+  // No environment-credential fallback: a store with no linked Instagram
+  // account is blocked before the adapter is ever called, rather than quietly
+  // publishing under the org's own test account.
+  const instagramCredentials =
+    await options.postStore.readInstagramPublishingCredentials(options.storeId)
+  if (instagramCredentials === undefined) {
+    return publishingNotConfigured("INSTAGRAM")
+  }
   const adapterResult = await options.adapters.instagramPosts.createPost({
+    account: instagramCredentials,
     caption: summary,
     mediaUrls,
   })

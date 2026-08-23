@@ -162,7 +162,11 @@ export const demoBaseTables: readonly DemoTable[] = [
     ],
   },
   {
-    // Instagram link so demo-store has both publish channels eligible.
+    // Instagram link so demo-store has both publish channels eligible. The
+    // token is a legacy-placeholder value (decryptToken accepts the
+    // "encrypted:" prefix outside production) — publishing now refuses to run
+    // without one, so leaving this null would block every demo/e2e Instagram
+    // publish instead of exercising it.
     table: "store_channel_links",
     rows: [
       {
@@ -170,7 +174,7 @@ export const demoBaseTables: readonly DemoTable[] = [
         store_id: demoStoreId,
         channel: "instagram",
         external_account_ref: "17841400000000000",
-        encrypted_token: null,
+        encrypted_token: "encrypted:demo-instagram-access-token",
         status: "linked",
         created_at: HAPPY_PATH_AT,
         updated_at: HAPPY_PATH_AT,

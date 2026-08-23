@@ -92,7 +92,7 @@ async function auditActions(): Promise<readonly string[]> {
 // A store whose owner claimed an already-org-managed listing in onboarding: the
 // seam the operator verdict starts from.
 async function seedAdoptionReview(
-  gbpLocationRef = "locations/org-owned"
+  gbpLocationRef: string | null = "locations/org-owned"
 ): Promise<string> {
   return withDatabase(async (queryable) => {
     const result = await createDatabaseGbpAccessStore(
@@ -177,6 +177,167 @@ describe("adoption verdict", () => {
       { id: "locations/hand-built", status: "VERIFIED" },
     ])
     expect(await auditActions()).toContain("gbp_access_confirm_adoption")
+  })
+
+  it("attaches the listing the operator picked, not the one the matcher guessed", async () => {
+    const requestId = await seedAdoptionReview("locations/matcher-guess")
+    await withDatabase(async (queryable) => {
+      await queryable.execute("DELETE FROM gbp_locations WHERE store_id = ?", [
+        storeId,
+      ])
+    })
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        {
+          type: "CONFIRM_ADOPTION",
+          gbpLocationRef: "locations/operator-knows-better",
+        },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    expect(response.status).toBe(200)
+    // The matcher compares names and addresses; the operator built these
+    // listings. A guess that survives the operator correcting it would connect
+    // the owner to another customer's business.
+    const locations = await withDatabase(async (queryable) =>
+      queryable.query(
+        "SELECT google_location_id AS id FROM gbp_locations WHERE store_id = ?",
+        [storeId]
+      )
+    )
+    expect(locations).toEqual([{ id: "locations/operator-knows-better" }])
+    // Persisted too, so the console shows what was actually connected.
+    const stored = await withDatabase(async (queryable) =>
+      createDatabaseGbpAccessStore(queryable).getGbpAccessRequestById(requestId)
+    )
+    expect(stored?.gbpLocationRef).toBe("locations/operator-knows-better")
+  })
+
+  it("connects a claim the matcher could not resolve once an operator picks one", async () => {
+    // The population this feature serves is hand-built listings, whose addresses
+    // are typed inconsistently — so a miss is expected, not exceptional.
+    const requestId = await seedAdoptionReview(null)
+    await withDatabase(async (queryable) => {
+      await queryable.execute("DELETE FROM gbp_locations WHERE store_id = ?", [
+        storeId,
+      ])
+    })
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "CONFIRM_ADOPTION", gbpLocationRef: "locations/hand-built" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    expect(response.status).toBe(200)
+    expect(await currentState(requestId)).toBe("granted")
+    const locations = await withDatabase(async (queryable) =>
+      queryable.query(
+        "SELECT google_location_id AS id FROM gbp_locations WHERE store_id = ?",
+        [storeId]
+      )
+    )
+    expect(locations).toEqual([{ id: "locations/hand-built" }])
+  })
+
+  it("refuses to confirm a claim that would attach no listing", async () => {
+    const requestId = await seedAdoptionReview(null)
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "CONFIRM_ADOPTION" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    // Granting without a listing is the "connected to nothing" state the attach
+    // exists to prevent, so it is a conflict rather than a silent success.
+    expect(response.status).toBe(409)
+    expect((await response.json()).status).toBe("MISSING_LOCATION_REF")
+  })
+
+  it("refuses to attach a listing already adopted by another store", async () => {
+    const otherStoreId = "other-demo-store"
+    await withDatabase(async (queryable) => {
+      await queryable.execute("DELETE FROM gbp_locations WHERE store_id = ?", [
+        storeId,
+      ])
+      await queryable.execute(
+        `INSERT INTO stores (id, owner_user_id, name, address, category, onboarding_status, created_at)
+         SELECT ?, owner_user_id, '다른 가게', '서울', '카페', 'COMPLETED', ?
+         FROM stores WHERE id = ?`,
+        [otherStoreId, new Date().toISOString(), storeId]
+      )
+      await queryable.execute(
+        `INSERT INTO gbp_accounts (id, store_id, google_account_id, account_name, created_at)
+         VALUES ('other-gbp-account', ?, 'accounts/other', 'Other GBP', ?)`,
+        [otherStoreId, new Date().toISOString()]
+      )
+      await queryable.execute(
+        `INSERT INTO gbp_locations (id, store_id, gbp_account_id, google_location_id, status, created_at, updated_at)
+         VALUES ('other-gbp-location', ?, 'other-gbp-account', 'locations/already-owned', 'VERIFIED', ?, ?)`,
+        [otherStoreId, new Date().toISOString(), new Date().toISOString()]
+      )
+    })
+    const requestId = await seedAdoptionReview("locations/already-owned")
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "CONFIRM_ADOPTION" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    // The picker has no way to know who already owns a listing; the server is
+    // the only place left to catch two stores pointed at one Google location.
+    expect(response.status).toBe(409)
+    expect((await response.json()).status).toBe("LOCATION_ALREADY_ADOPTED")
+    const locations = await withDatabase(async (queryable) =>
+      queryable.query(
+        "SELECT google_location_id AS id FROM gbp_locations WHERE store_id = ?",
+        [storeId]
+      )
+    )
+    expect(locations).toEqual([])
+  })
+
+  it("refuses to re-adopt a store that already has an attached listing", async () => {
+    // demo-store already carries locations/demo from the seed — left in place
+    // this time, unlike the other tests, because that is exactly what is under
+    // test here.
+    const requestId = await seedAdoptionReview("locations/hand-built")
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "CONFIRM_ADOPTION" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    // Adoption is for stores with no listing yet; running it again would
+    // silently repoint an already-working publish target.
+    expect(response.status).toBe(409)
+    expect((await response.json()).status).toBe("STORE_ALREADY_HAS_LOCATION")
+    const locations = await withDatabase(async (queryable) =>
+      queryable.query(
+        "SELECT google_location_id AS id FROM gbp_locations WHERE store_id = ?",
+        [storeId]
+      )
+    )
+    expect(locations).toEqual([{ id: "locations/demo" }])
   })
 
   it("sends the operator's reason to the owner's chat when a claim is rejected", async () => {

@@ -8,7 +8,11 @@ import {
   adoptionRejectedNoticeBody,
   postCampaignAssistantNotice,
 } from "@/server/campaign-chat-notice"
-import { attachOrgLocationToStore } from "@glocalx/db/support/gbp-location-attach"
+import {
+  attachOrgLocationToStore,
+  findStoreAdoptedByGoogleLocation,
+  storeHasAttachedGbpLocation,
+} from "@glocalx/db/support/gbp-location-attach"
 import { resolveGoogleOrgAccountName } from "@glocalx/integrations/google-org-auth"
 import {
   notFoundResponse,
@@ -69,12 +73,50 @@ export async function POST(request: NextRequest, routeContext: RouteContext) {
       // listing is attached: without these rows the owner is "granted" but the
       // publish path still has no location to post to.
       if (action.type === "CONFIRM_ADOPTION") {
-        const googleLocationId = outcome.request.gbpLocationRef
-        if (googleLocationId === null) {
+        // The operator's pick wins over the matcher's guess. The matcher compares
+        // names and addresses; the operator built these listings by hand and is
+        // the authority on which one is which.
+        const googleLocationId =
+          action.gbpLocationRef ?? outcome.request.gbpLocationRef
+        if (googleLocationId === null || googleLocationId === undefined) {
           return Response.json(
             { status: "MISSING_LOCATION_REF" },
             { status: 409 }
           )
+        }
+        // A store that already has a listing has already been through adoption
+        // or live setup; running it again would silently repoint a working
+        // publish target onto whatever the operator picked this time.
+        if (
+          await storeHasAttachedGbpLocation(
+            context.queryable,
+            outcome.request.storeId
+          )
+        ) {
+          return Response.json(
+            { status: "STORE_ALREADY_HAS_LOCATION" },
+            { status: 409 }
+          )
+        }
+        // The picker shows every org listing regardless of who already owns it —
+        // it has no way to know. Two stores attached to the same listing would
+        // point both owners' publish paths at one Google location.
+        const adoptedBy = await findStoreAdoptedByGoogleLocation(
+          context.queryable,
+          googleLocationId
+        )
+        if (adoptedBy !== undefined && adoptedBy !== outcome.request.storeId) {
+          return Response.json(
+            { status: "LOCATION_ALREADY_ADOPTED" },
+            { status: 409 }
+          )
+        }
+        if (action.gbpLocationRef !== undefined) {
+          await context.gbpAccessStore.setGbpLocationRef({
+            requestId,
+            gbpLocationRef: action.gbpLocationRef,
+            now: new Date(),
+          })
         }
         await attachOrgLocationToStore(context.queryable, {
           accountId: `adopted-account-${outcome.request.storeId}`,

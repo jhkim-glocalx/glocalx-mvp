@@ -9,6 +9,53 @@ import type { GbpVerificationState } from "@glocalx/domain/gbp-verification-stat
 // request/response shapes live in one place (mirrors queue-client.ts).
 
 const storesUrl = "/api/stores/access-requests"
+const orgLocationsUrl = "/api/stores/org-locations"
+
+export type OrgLocationOption = {
+  readonly name: string
+  readonly title: string
+  readonly addressLine: string
+}
+
+export type OrgLocationsResult =
+  | { readonly kind: "ok"; readonly locations: readonly OrgLocationOption[] }
+  | { readonly kind: "error"; readonly message: string }
+
+/**
+ * The org account's listings, for the adoption picker.
+ *
+ * Failure is returned rather than thrown: the picker is an aid, and losing it
+ * must not take the rest of the console's actions down with it.
+ */
+export async function fetchOrgLocations(): Promise<OrgLocationsResult> {
+  let payload: unknown
+  try {
+    payload = await (await fetch(orgLocationsUrl)).json()
+  } catch {
+    return { kind: "error", message: "Could not load the org listings." }
+  }
+
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("locations" in payload) ||
+    !Array.isArray(payload.locations)
+  ) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "message" in payload &&
+      typeof payload.message === "string"
+        ? payload.message
+        : "Could not load the org listings."
+    return { kind: "error", message }
+  }
+
+  return {
+    kind: "ok",
+    locations: payload.locations as readonly OrgLocationOption[],
+  }
+}
 
 export type StoreActionResult =
   | { readonly kind: "ok"; readonly request: GbpAccessStoreView }

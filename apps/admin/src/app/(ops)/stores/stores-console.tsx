@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import type { GbpAccessStoreView } from "@/server/gbp-access-view"
 import type { StoreVerificationView } from "@/server/gbp-verification-view"
@@ -12,11 +12,13 @@ import {
 import {
   applyStoreAction,
   canBlock,
+  fetchOrgLocations,
   fetchStores,
   naturalActionsByState,
   saveStoreNote,
   stateLabels,
   verificationStateLabels,
+  type OrgLocationOption,
   type StoreActionResult,
 } from "./stores-client"
 
@@ -56,6 +58,44 @@ export function StoresConsole({
     useState<readonly GbpAccessStoreView[]>(initialStores)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [orgLocations, setOrgLocations] = useState<
+    readonly OrgLocationOption[]
+  >([])
+  // null = not fetched yet (or nothing needs it); a string is why the fetch
+  // failed. Kept separate from an empty orgLocations array so "Google returned
+  // zero listings" never reads as "the request failed" or vice versa.
+  const [orgLocationsError, setOrgLocationsError] = useState<string | null>(
+    null
+  )
+
+  // Fetched once for the whole console rather than per card: it is the same org
+  // listing set for every store, and it calls Google in production.
+  const needsOrgLocations = stores.some((store) =>
+    naturalActionsByState[store.state].some(
+      (entry) => entry.action.type === "CONFIRM_ADOPTION"
+    )
+  )
+
+  useEffect(() => {
+    if (!needsOrgLocations) {
+      return
+    }
+    let active = true
+    void fetchOrgLocations().then((result) => {
+      if (!active) {
+        return
+      }
+      if (result.kind === "ok") {
+        setOrgLocations(result.locations)
+        setOrgLocationsError(null)
+      } else {
+        setOrgLocationsError(result.message)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [needsOrgLocations])
 
   // Verification is read-only here (no transitions), so it needs no state — just
   // a lookup by storeId for the line each card renders.
@@ -125,6 +165,8 @@ export function StoresConsole({
           <StoreCard
             key={store.requestId}
             busy={pendingId === store.requestId}
+            orgLocations={orgLocations}
+            orgLocationsError={orgLocationsError}
             store={store}
             verification={verificationByStoreId.get(store.storeId) ?? null}
             onAction={(work) => run(store.requestId, work)}
@@ -137,11 +179,15 @@ export function StoresConsole({
 
 function StoreCard({
   busy,
+  orgLocations,
+  orgLocationsError,
   store,
   verification,
   onAction,
 }: {
   readonly busy: boolean
+  readonly orgLocations: readonly OrgLocationOption[]
+  readonly orgLocationsError: string | null
   readonly store: GbpAccessStoreView
   readonly verification: StoreVerificationView | null
   readonly onAction: (work: () => Promise<StoreActionResult>) => void
@@ -149,8 +195,21 @@ function StoreCard({
   const [overrideTarget, setOverrideTarget] = useState<GbpAccessState | "">("")
   const [noteDraft, setNoteDraft] = useState(store.note ?? "")
   const [rejectReason, setRejectReason] = useState("")
+  // Seeded from the matcher's guess, which is a starting point rather than a
+  // verdict — the operator built these listings and outranks it.
+  const [locationChoice, setLocationChoice] = useState(
+    store.gbpLocationRef ?? ""
+  )
 
-  const naturalActions = naturalActionsByState[store.state]
+  const allNaturalActions = naturalActionsByState[store.state]
+  // Confirm is rendered inside the adoption block so it sits with the picker
+  // whose value it submits, rather than as a bare button above it.
+  const naturalActions = allNaturalActions.filter(
+    (entry) => entry.action.type !== "CONFIRM_ADOPTION"
+  )
+  const canConfirmAdoption = allNaturalActions.some(
+    (entry) => entry.action.type === "CONFIRM_ADOPTION"
+  )
   const overrideOptions = gbpAccessStates.filter(
     (state) => state !== store.state
   )
@@ -200,6 +259,52 @@ function StoreCard({
             {label}
           </button>
         ))}
+        {canConfirmAdoption ? (
+          <div className="ops-store-adopt">
+            {/* The owner is told nothing about which listing matched, so this is
+                the only place the decision is made — and the matcher only ever
+                guesses. An operator who recognizes the store picks it here. */}
+            <label className="ops-store-adopt-label">
+              Connect to which listing in our org account?
+              <select
+                data-testid={`store-adopt-location-${store.storeId}`}
+                disabled={busy || orgLocations.length === 0}
+                onChange={(event) => setLocationChoice(event.target.value)}
+                value={locationChoice}
+              >
+                <option value="">Select a listing…</option>
+                {orgLocations.map((location) => (
+                  <option key={location.name} value={location.name}>
+                    {location.title} — {location.addressLine}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {orgLocationsError !== null ? (
+              <p className="ops-store-meta" role="alert">
+                Org listings unavailable — {orgLocationsError}
+              </p>
+            ) : orgLocations.length === 0 ? (
+              <p className="ops-store-meta">No org listings found.</p>
+            ) : null}
+            <button
+              className="ops-store-btn"
+              data-testid={`store-action-CONFIRM_ADOPTION-${store.storeId}`}
+              disabled={busy || locationChoice.trim() === ""}
+              onClick={() =>
+                onAction(() =>
+                  applyStoreAction(store.requestId, {
+                    type: "CONFIRM_ADOPTION",
+                    gbpLocationRef: locationChoice.trim(),
+                  })
+                )
+              }
+              type="button"
+            >
+              Confirm adoption
+            </button>
+          </div>
+        ) : null}
         {store.state === "adoption_review" ? (
           <div className="ops-store-reject">
             {/* The reason is sent to the owner word for word, so it is written

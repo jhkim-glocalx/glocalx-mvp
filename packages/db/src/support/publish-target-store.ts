@@ -20,6 +20,11 @@ export type GbpPublishingCredentials = {
   readonly parent: string
 }
 
+export type InstagramPublishingCredentials = {
+  readonly accessToken: string
+  readonly accountRef: string
+}
+
 export type StoreChannelLink = {
   readonly id: string
   readonly storeId: string
@@ -49,6 +54,13 @@ export interface PublishTargetStore {
   // location's `parent` without requiring the owner's Google connection to
   // exist at all. v1's owner-token path keeps using the pair above.
   readGbpPublishParent(storeId: string): Promise<string | undefined>
+  // The store's own linked Instagram account, or undefined when no usable link
+  // exists — no row, an unlinked/expired/revoked status, or no token stored yet.
+  // There is deliberately no environment-credential fallback here: an org-wide
+  // token would publish to the org's own test account under a customer's name.
+  readInstagramPublishingCredentials(
+    storeId: string
+  ): Promise<InstagramPublishingCredentials | undefined>
   readStoreChannelLink(
     storeId: string,
     channel: PublishChannel
@@ -224,6 +236,20 @@ export async function readStoreChannelLink(
   }
 }
 
+export async function readInstagramPublishingCredentials(
+  queryable: Queryable,
+  storeId: string
+): Promise<InstagramPublishingCredentials | undefined> {
+  const link = await readStoreChannelLink(queryable, storeId, "instagram")
+  if (link === undefined || link.status !== "linked") {
+    return undefined
+  }
+  const token = await readStoreChannelToken(queryable, storeId, "instagram")
+  return token.kind === "found"
+    ? { accessToken: token.accessToken, accountRef: link.externalAccountRef }
+    : undefined
+}
+
 export function createDatabasePublishTargetStore(
   queryable: Queryable
 ): PublishTargetStore {
@@ -236,6 +262,9 @@ export function createDatabasePublishTargetStore(
     },
     readGbpPublishParent(storeId) {
       return readGbpPublishParent(queryable, storeId)
+    },
+    readInstagramPublishingCredentials(storeId) {
+      return readInstagramPublishingCredentials(queryable, storeId)
     },
     readStoreChannelLink(storeId, channel) {
       return readStoreChannelLink(queryable, storeId, channel)

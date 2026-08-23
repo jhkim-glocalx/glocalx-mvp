@@ -62,20 +62,16 @@ export async function POST(request: NextRequest) {
           message: resolved.message,
         })
       }
-      if (resolved.kind === "no_match") {
-        // Not an error the owner can fix by retrying, and not a dead end either:
-        // the onboarding copy routes them to chat from here.
-        return Response.json({
-          status: "NO_MATCH",
-          message:
-            "등록된 프로필을 찾지 못했어요. 채팅으로 알려주시면 확인해드릴게요.",
-        })
-      }
-
+      // A miss opens the review anyway, with no candidate attached. The matcher
+      // compares names and addresses; the operator hand-built these listings and
+      // knows which one belongs to whom. Returning a dead end here would hide the
+      // owner from the console precisely when the operator's knowledge is the
+      // only thing that can connect them.
       const review = await gbpAccessStore.openAdoptionReview({
         id: randomUUID(),
         storeId: session.storeId,
-        gbpLocationRef: resolved.match.location.name,
+        gbpLocationRef:
+          resolved.kind === "matched" ? resolved.match.location.name : null,
         now: adapters.clock.now(),
       })
 
@@ -87,9 +83,13 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      // Same answer whether or not the matcher hit: the owner is waiting on the
+      // same person either way, and telling them "찾지 못했어요" would read as a
+      // rejection of a claim nobody has ruled on yet.
       return Response.json({
         status: "REVIEW_OPENED",
-        message: "등록된 프로필을 찾았어요. 담당자 확인 후 연결해드릴게요.",
+        message:
+          "등록된 프로필을 확인하고 있어요. 담당자 확인 후 연결해드릴게요.",
       })
     }
   )
