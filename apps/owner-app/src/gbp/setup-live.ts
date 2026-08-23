@@ -16,6 +16,7 @@ import {
   resolveGoogleOrgAccountName,
 } from "@glocalx/integrations/google-org-auth"
 
+import { buildStorefrontAddressLines } from "./address-lines"
 import type { ConfirmedGbpStoreProfile } from "./store-profile"
 
 // The live (org-account) GBP provisioning path. Unlike the stub path — which
@@ -120,12 +121,15 @@ function assembleLiveLocation(
   categoryId: string,
   address: GeocodedAddress
 ): Readonly<Record<string, unknown>> {
-  // languageCode ties the whole listing to Korean (immutable at create), and
-  // storeCode ties Google's record back to this local store for retries.
+  // languageCode ties the whole listing to Korean (immutable at create).
+  //
+  // No storeCode: Google prints it as the first column of the owner's Business
+  // Profile dashboard, so sending our internal store id put "store-KrH38ojG19…"
+  // in front of the customer. Nothing reads it back, and create/validate retries
+  // stay idempotent through the requestId query param instead.
   return {
     languageCode: "ko",
     title: profile.name,
-    storeCode: profile.storeId,
     storefrontAddress: {
       regionCode: "KR",
       languageCode: "ko",
@@ -135,7 +139,11 @@ function assembleLiveLocation(
         ? {}
         : { sublocality: address.sublocality }),
       postalCode: address.postalCode,
-      addressLines: [profile.address],
+      // Google prints the structured fields above in front of addressLines, so
+      // the confirmed address goes in with its 시/구 prefix removed to stop the
+      // rendered listing repeating them. Google's own normalization sometimes
+      // does this too, but not reliably — see address-lines.ts.
+      addressLines: buildStorefrontAddressLines(profile.address, address),
     },
     latlng: {
       latitude: address.latitude,

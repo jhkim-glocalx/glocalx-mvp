@@ -28,7 +28,6 @@ const locationBodySchema = z.object({
   phoneNumbers: z.object({
     primaryPhone: z.string(),
   }),
-  storeCode: z.string(),
   storefrontAddress: z.object({
     addressLines: z.array(z.string()),
     regionCode: z.literal("KR"),
@@ -197,13 +196,15 @@ describe("setupGoogleBusinessProfile", () => {
       phoneNumbers: {
         primaryPhone: "02-987-6543",
       },
-      storeCode: "demo-store",
       storefrontAddress: {
         addressLines: ["서울 마포구 양화로 19"],
         regionCode: "KR",
       },
       title: "라멘하우스 합정점",
     })
+    // Asserted on the raw body: locationBodySchema strips unknown keys, so it
+    // cannot catch our internal store id reappearing in the owner's dashboard.
+    expect(capturedLocation).not.toHaveProperty("storeCode")
 
     const secondResult = await setupGoogleBusinessProfile({
       adapters,

@@ -71,10 +71,15 @@ export function getConfirmedGbpStoreProfile(
 export function buildGoogleLocationBody(
   profile: ConfirmedGbpStoreProfile
 ): Readonly<Record<string, unknown>> {
-  // Google receives the confirmed store fields verbatim; storeCode ties retries back to this local store.
+  // Google receives the confirmed store fields verbatim, minus storeCode — it
+  // renders as the first column of the owner's dashboard, so neither this body
+  // nor the live one leaks our internal store id there; retries key off requestId.
+  //
+  // Unlike the live body in setup-live.ts, this stub body sends no
+  // administrativeArea/locality, so the address must keep its 시/구 prefix here —
+  // there is nothing else carrying it, and nothing to duplicate against.
   return {
     title: profile.name,
-    storeCode: profile.storeId,
     storefrontAddress: {
       regionCode: "KR",
       addressLines: [profile.address],
