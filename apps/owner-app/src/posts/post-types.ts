@@ -115,6 +115,7 @@ export type PublishPostResult =
         | "PUBLISH_IN_PROGRESS"
         | "PUBLISH_FAILED"
         | "LOCATION_NOT_VERIFIED"
+        | "ADMIN_PUBLISH_ONLY"
       readonly message: string
     }
   | {

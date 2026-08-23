@@ -107,13 +107,15 @@ test("full unified stub happy path", async ({ page }) => {
   await uploadMarketingImageAndGenerateDraft(page)
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await expect(page.getByText("완성된 게시물을 확인해주세요")).toBeVisible()
-  await page.getByRole("button", { name: "GBP에 게시하기" }).click()
   await expect(
-    page.getByText("Google 비즈니스 프로필 인증이 완료되어야")
+    page.getByText("지금은 담당 운영팀이 사진과 문구를 검토한 뒤 게시합니다")
   ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "마케팅 소재 요청으로 보내기" })
+  ).toBeEnabled()
   writeFileSync(
     evidencePath("task-13-full-happy-path.txt"),
-    "PASS: demo login -> onboarding extraction -> GBP setup -> app post draft -> publish blocked recovery\n"
+    "PASS: demo login -> onboarding extraction -> GBP setup -> app post draft -> operator handoff\n"
   )
 })
 

@@ -210,6 +210,7 @@ export function AppWorkspace({
           onImageFiles={posting.handleImageFiles}
           onIntentChange={posting.setIntent}
           onPreviewChange={posting.setActivePreviewKey}
+          onSetPrimaryAsset={posting.setPrimaryAsset}
           onComposerPreset={handleComposerPreset}
           onboardingConfirmation={onboarding.confirmation}
           onboardingExtraction={onboarding.extraction}
@@ -245,13 +246,11 @@ export function AppWorkspace({
           onOnboardingConfirm={onboarding.confirm}
           onOnboardingFieldChange={onboarding.changeDraftField}
           onOnboardingSetup={onboarding.checkSetup}
-          onPublish={posting.publishDraft}
           onSelect={handleNavChange}
           onSuggestionAccept={posting.acceptSuggestion}
           onSuggestionSkip={posting.skipSuggestion}
           postingChatTurns={posting.postingChatTurns}
           postingDecision={posting.postingDecision}
-          publish={posting.publish}
         />
       </MobileShell>
     </main>

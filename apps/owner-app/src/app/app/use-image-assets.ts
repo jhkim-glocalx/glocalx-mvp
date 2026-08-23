@@ -213,8 +213,29 @@ export function useImageAssets({
     onImagesSelected()
   }
 
+  // The first asset becomes each platform preview's featured photo
+  // (post-marketing-preview.ts picks imageAssets[0]), so "대표 사진으로 설정"
+  // just moves the chosen asset to the front rather than tracking a separate flag.
+  function setPrimaryAsset(assetId: string): void {
+    setImageAssets((currentAssets) => {
+      const index = currentAssets.findIndex((asset) => asset.id === assetId)
+      if (index <= 0) {
+        return currentAssets
+      }
+      const reordered = [...currentAssets]
+      const [asset] = reordered.splice(index, 1)
+      if (asset === undefined) {
+        return currentAssets
+      }
+      reordered.unshift(asset)
+      return reordered
+    })
+    onImagesSelected()
+  }
+
   return {
     handleImageFiles,
     imageAssets,
+    setPrimaryAsset,
   }
 }
