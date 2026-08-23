@@ -74,11 +74,13 @@ export async function POST(
         )
       ) {
         await context.adapters.mediaStore.deleteAsset(parsed.value.blobUrl)
-        return assetRejectedResponse(`Unsupported file type: ${contentType}`)
+        return assetRejectedResponse(
+          `지원하지 않는 파일 형식입니다: ${contentType}`
+        )
       }
       if (sizeBytes > mediaStoreMaxFileSizeBytes) {
         await context.adapters.mediaStore.deleteAsset(parsed.value.blobUrl)
-        return assetRejectedResponse("File exceeds the 10MB limit.")
+        return assetRejectedResponse("파일이 10MB 제한을 초과했습니다.")
       }
 
       await context.campaignStore.registerCampaignAsset({

@@ -23,7 +23,7 @@ export default async function QueuePage() {
 
   return (
     <>
-      <h1 className="ops-page-title">Queue</h1>
+      <h1 className="ops-page-title">대기열</h1>
       <QueueConsole initialRequests={initialRequests} />
     </>
   )

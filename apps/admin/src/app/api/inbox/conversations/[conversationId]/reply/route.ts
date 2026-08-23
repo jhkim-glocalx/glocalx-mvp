@@ -16,7 +16,7 @@ type ConversationRouteContext = {
 
 function conversationResolvedResponse(): Response {
   return Response.json(
-    { status: "CONVERSATION_RESOLVED", message: "Conversation is resolved." },
+    { status: "CONVERSATION_RESOLVED", message: "해결된 대화입니다." },
     { status: 409 }
   )
 }

@@ -43,11 +43,11 @@ function formatResponseTime(milliseconds: number | null): string {
   }
   const totalSeconds = Math.round(milliseconds / 1000)
   if (totalSeconds < 60) {
-    return `${totalSeconds}s`
+    return `${totalSeconds}초`
   }
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
-  return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`
+  return seconds === 0 ? `${minutes}분` : `${minutes}분 ${seconds}초`
 }
 
 export default async function SettingsPage() {
@@ -55,31 +55,29 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <h1 className="ops-page-title">Settings</h1>
+      <h1 className="ops-page-title">설정</h1>
 
-      <section className="ops-metrics" aria-label="Weekly chat metrics">
-        <h2 className="ops-section-title">Chat kill metrics — last 7 days</h2>
+      <section className="ops-metrics" aria-label="주간 채팅 지표">
+        <h2 className="ops-section-title">채팅 킬 지표 — 최근 7일</h2>
         <div className="ops-metric-grid">
           <div className="ops-metric-card">
             <span className="ops-metric-value" data-testid="metric-response">
               {formatResponseTime(metrics.medianOwnerResponseTimeMs)}
             </span>
-            <span className="ops-metric-label">Median owner response time</span>
-            <span className="ops-metric-note">kill threshold vs. Kakao</span>
+            <span className="ops-metric-label">사장님 응답 시간 중앙값</span>
+            <span className="ops-metric-note">카카오 대비 킬 임계값</span>
           </div>
           <div className="ops-metric-card">
             <span className="ops-metric-value">{metrics.activation}</span>
-            <span className="ops-metric-label">Weekly activation (stores)</span>
-            <span className="ops-metric-note">context signal</span>
+            <span className="ops-metric-label">주간 활성화 매장 수</span>
+            <span className="ops-metric-note">참고 지표</span>
           </div>
           <div className="ops-metric-card">
             <span className="ops-metric-value">
               {metrics.ownerInitiatedConversationCount}
             </span>
-            <span className="ops-metric-label">
-              Owner-initiated conversations
-            </span>
-            <span className="ops-metric-note">context signal</span>
+            <span className="ops-metric-label">사장님이 먼저 시작한 대화</span>
+            <span className="ops-metric-note">참고 지표</span>
           </div>
         </div>
       </section>
@@ -87,8 +85,8 @@ export default async function SettingsPage() {
       <OrgCredentialsPanel initialCredentials={credentials} />
 
       <div className="ops-empty">
-        <strong>More configuration coming</strong>
-        <p>Operator accounts are managed here from Phase 3 onward.</p>
+        <strong>추가 설정 예정</strong>
+        <p>운영자 계정은 Phase 3부터 이곳에서 관리됩니다.</p>
       </div>
     </>
   )

@@ -24,7 +24,7 @@ export default async function PostsPage() {
 
   return (
     <>
-      <h1 className="ops-page-title">Posts</h1>
+      <h1 className="ops-page-title">게시물</h1>
       <PostDraftsList drafts={drafts} />
     </>
   )

@@ -23,7 +23,7 @@ export default async function InboxPage() {
 
   return (
     <>
-      <h1 className="ops-page-title">Inbox</h1>
+      <h1 className="ops-page-title">인박스</h1>
       <InboxConsole
         operatorAdminId={session.adminUserId}
         initialConversations={initialConversations}
