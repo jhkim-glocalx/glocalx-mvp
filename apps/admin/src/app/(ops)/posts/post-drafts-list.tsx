@@ -10,16 +10,16 @@ const channelLabels: Readonly<Record<string, string>> = {
 }
 
 const statusLabels: Readonly<Record<string, string>> = {
-  DRAFT: "Draft",
-  APPROVED: "Approved",
-  PUBLISHED: "Published",
-  FAILED: "Failed",
+  DRAFT: "초안",
+  APPROVED: "승인됨",
+  PUBLISHED: "게시됨",
+  FAILED: "실패",
 }
 
 const attemptStatusLabels: Readonly<Record<string, string>> = {
-  REQUESTED: "Requested",
-  SUCCEEDED: "Succeeded",
-  FAILED: "Failed",
+  REQUESTED: "요청됨",
+  SUCCEEDED: "성공",
+  FAILED: "실패",
 }
 
 // The published post's address, or undefined when there is nothing safe to
@@ -36,8 +36,8 @@ export function PostDraftsList({ drafts }: PostDraftsListProps) {
   if (drafts.length === 0) {
     return (
       <div className="ops-empty">
-        <strong>No owner drafts yet</strong>
-        <p>Drafts created from the owner app&apos;s Posts flow appear here.</p>
+        <strong>아직 사장님 초안이 없습니다</strong>
+        <p>오너 앱의 게시물 플로우에서 만든 초안이 여기에 표시됩니다.</p>
       </div>
     )
   }
@@ -58,15 +58,14 @@ export function PostDraftsList({ drafts }: PostDraftsListProps) {
           <p className="ops-posts-intent">{draft.ownerIntent}</p>
           <p className="ops-posts-copy">{draft.koreanCopy}</p>
           <div className="ops-posts-meta">
-            <span>{new Date(draft.createdAt).toLocaleString()}</span>
+            <span>{new Date(draft.createdAt).toLocaleString("ko-KR")}</span>
             {draft.attemptCount > 0 ? (
               <span>
-                {draft.attemptCount} publish attempt
-                {draft.attemptCount === 1 ? "" : "s"} ·{" "}
+                게시 시도 {draft.attemptCount}회 ·{" "}
                 {draft.latestAttemptStatus !== null
                   ? (attemptStatusLabels[draft.latestAttemptStatus] ??
                     draft.latestAttemptStatus)
-                  : "unknown"}
+                  : "알 수 없음"}
                 {publicPostHref(draft.latestAttemptPublicUrl) !== undefined ? (
                   <>
                     {" "}
@@ -76,13 +75,13 @@ export function PostDraftsList({ drafts }: PostDraftsListProps) {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      View post
+                      게시물 보기
                     </a>
                   </>
                 ) : null}
               </span>
             ) : (
-              <span>No publish attempts</span>
+              <span>게시 시도 없음</span>
             )}
           </div>
         </li>

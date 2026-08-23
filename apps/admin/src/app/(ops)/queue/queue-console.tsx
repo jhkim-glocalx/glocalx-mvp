@@ -8,6 +8,7 @@ import type {
   QueueRequestView,
 } from "@/server/queue-view"
 import {
+  captionLabels,
   gbpPostLinkActionTypes,
   type GbpPostCallToAction,
   type GbpPostLinkActionType,
@@ -59,6 +60,12 @@ function statusLabel(status: string): string {
   return statusLabels[status] ?? status
 }
 
+const reviewDecisionLabels: Readonly<Record<string, string>> = {
+  go: "승인",
+  no_go: "거절",
+  changes_requested: "수정 요청",
+}
+
 /**
  * The published post's address, or undefined when there is nothing safe to open.
  *
@@ -81,13 +88,11 @@ function publishedPostHref(
 // the two settled-but-incomplete outcomes a retry can resume from.
 const publishableStatuses = ["approved", "partially_published", "failed"]
 
-const linkActionLabels: Readonly<Record<GbpPostLinkActionType, string>> = {
-  BOOK: "예약하기",
-  ORDER: "주문하기",
-  SHOP: "쇼핑하기",
-  LEARN_MORE: "자세히 보기",
-  SIGN_UP: "가입하기",
-}
+// Reuses the domain's own Korean wording (captionLabels) rather than a
+// second translation — this picker is read by our staff, but the same words
+// become the Instagram caption the owner's customers see, and a drifted
+// second translation would let an operator misjudge what a customer sees.
+const linkActionLabels = captionLabels
 
 // "none" is the selection, not a stored value — the request holds null. Kept
 // distinct so the picker has something to sit on while still round-tripping the
@@ -433,7 +438,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
               ) : (
                 <p className="ops-queue-nudge-done" data-testid="nudge-done">
                   사장님 알림 완료{" "}
-                  {new Date(selected.nudgedAt).toLocaleString()}
+                  {new Date(selected.nudgedAt).toLocaleString("ko-KR")}
                 </p>
               )}
             </div>
@@ -480,7 +485,9 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
               >
                 {selected.reviewEvents.map((event) => (
                   <li key={event.id}>
-                    <strong>{event.decision}</strong>
+                    <strong>
+                      {reviewDecisionLabels[event.decision] ?? event.decision}
+                    </strong>
                     {event.note === null ? null : <span> — {event.note}</span>}
                   </li>
                 ))}

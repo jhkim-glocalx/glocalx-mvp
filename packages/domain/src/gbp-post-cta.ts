@@ -39,8 +39,10 @@ export const gbpPostCallToActionSchema = z.union([
 // channels and an owner who agreed to a link expects it to reach followers
 // either way. So a GBP button degrades into a caption line there. Labels are
 // deliberately here, next to the action types, so the two channels can never
-// describe the same button differently.
-const captionLabels: Record<GbpPostLinkActionType, string> = {
+// describe the same button differently — exported so the admin operator
+// picker renders the exact same Korean wording the owner's customers see,
+// rather than a second translation that can drift from this one.
+export const captionLabels: Record<GbpPostLinkActionType, string> = {
   BOOK: "예약",
   ORDER: "주문",
   SHOP: "구매",

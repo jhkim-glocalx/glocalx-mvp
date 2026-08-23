@@ -36,13 +36,26 @@ export type PublishEligibilityFacts = {
 
 const eligible: PublishEligibility = { kind: "eligible" }
 
+// Only this blocked-state message interpolates a raw LocationStatus value, so
+// the label map lives here rather than as a general-purpose export.
+const locationStatusLabels: Readonly<Record<LocationStatus, string>> = {
+  DISCOVERED: "발견됨",
+  CLAIM_REQUIRED: "소유권 확인 필요",
+  CREATE_REQUESTED: "생성 요청됨",
+  VERIFICATION_PENDING: "인증 대기 중",
+  VERIFIED: "인증됨",
+  DUPLICATE: "중복 리스팅",
+  FAILED: "실패",
+  MANUAL_FOLLOW_UP: "수동 후속 조치 필요",
+}
+
 function evaluateGbp(status: LocationStatus | undefined): PublishEligibility {
   if (status === undefined) {
     return {
       kind: "blocked",
       code: "GBP_LOCATION_MISSING",
       message:
-        "This store has no connected Google Business Profile location yet.",
+        "이 매장은 아직 연결된 Google 비즈니스 프로필 리스팅이 없습니다.",
     }
   }
 
@@ -56,7 +69,7 @@ function evaluateGbp(status: LocationStatus | undefined): PublishEligibility {
   return {
     kind: "blocked",
     code: "GBP_LOCATION_NOT_VERIFIED",
-    message: `The Google Business Profile location is "${status}", not verified. Publishing waits for verification.`,
+    message: `Google 비즈니스 프로필 리스팅 상태가 "${locationStatusLabels[status]}"이며 아직 인증되지 않았습니다. 인증이 완료될 때까지 게시가 보류됩니다.`,
   }
 }
 
@@ -71,21 +84,21 @@ function evaluateInstagram(
         kind: "blocked",
         code: "INSTAGRAM_LINK_EXPIRED",
         message:
-          "The store's Instagram link has expired. Re-link the account before publishing.",
+          "매장의 Instagram 연결이 만료되었습니다. 게시 전 계정을 다시 연결해 주세요.",
       }
     case "revoked":
       return {
         kind: "blocked",
         code: "INSTAGRAM_LINK_REVOKED",
         message:
-          "The store revoked its Instagram link. Re-link the account before publishing.",
+          "매장이 Instagram 연결을 해제했습니다. 게시 전 계정을 다시 연결해 주세요.",
       }
     default:
       return {
         kind: "blocked",
         code: "INSTAGRAM_NOT_LINKED",
         message:
-          "This store has no linked Instagram business account. Link one before publishing.",
+          "이 매장은 연결된 Instagram 비즈니스 계정이 없습니다. 게시 전 계정을 연결해 주세요.",
       }
   }
 }

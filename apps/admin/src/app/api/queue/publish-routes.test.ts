@@ -328,9 +328,7 @@ describe("campaign publish", () => {
       "instagram:published",
     ])
     expect(await requestStatus(requestId)).toBe("partially_published")
-    expect(jobs[0]?.lastError).toContain(
-      "No organization publishing credential"
-    )
+    expect(jobs[0]?.lastError).toContain("조직 게시 자격 증명이 없습니다")
   })
 
   it("fails the GBP job when the org credential has expired", async () => {
@@ -344,7 +342,7 @@ describe("campaign publish", () => {
 
     const jobs = await publishJobs(requestId)
     expect(jobs[0]).toMatchObject({ channel: "gbp", status: "failed" })
-    expect(jobs[0]?.lastError).toContain("expired")
+    expect(jobs[0]?.lastError).toContain("만료")
   })
 
   it("publishes Instagram with the store's own token when the link carries one", async () => {
