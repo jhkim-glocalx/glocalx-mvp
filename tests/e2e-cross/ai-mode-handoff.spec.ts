@@ -55,7 +55,14 @@ test("operator drives an AI draft then hands the conversation back to human", as
   })
   await expect(conversationItem).toBeVisible({ timeout: 10_000 })
   await conversationItem.click()
-  await expect(operatorPage.getByText(openingMessage)).toBeVisible()
+  // Wait on the DETAIL transcript, not the list preview — the preview renders the
+  // same body, so a page-wide text match is satisfied before the detail poll has
+  // landed and the steps below would flip the mode against a half-loaded panel.
+  await expect(
+    operatorPage
+      .getByTestId("inbox-detail")
+      .locator(".ops-msg-body", { hasText: openingMessage })
+  ).toBeVisible()
 
   // Operator opts the conversation into AI-draft mode.
   const aiDraftButton = operatorPage.getByTestId("mode-ai_draft")
