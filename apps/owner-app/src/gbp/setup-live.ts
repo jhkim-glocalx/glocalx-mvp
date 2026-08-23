@@ -121,12 +121,15 @@ function assembleLiveLocation(
   categoryId: string,
   address: GeocodedAddress
 ): Readonly<Record<string, unknown>> {
-  // languageCode ties the whole listing to Korean (immutable at create), and
-  // storeCode ties Google's record back to this local store for retries.
+  // languageCode ties the whole listing to Korean (immutable at create).
+  //
+  // No storeCode: Google prints it as the first column of the owner's Business
+  // Profile dashboard, so sending our internal store id put "store-KrH38ojG19…"
+  // in front of the customer. Nothing reads it back, and create/validate retries
+  // stay idempotent through the requestId query param instead.
   return {
     languageCode: "ko",
     title: profile.name,
-    storeCode: profile.storeId,
     storefrontAddress: {
       regionCode: "KR",
       languageCode: "ko",

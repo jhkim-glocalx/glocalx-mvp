@@ -34,7 +34,7 @@
 //   node apps/owner-app/scripts/validate-gbp-location.mjs
 //
 // Overridable inputs (env): GBP_VALIDATE_NAME, GBP_VALIDATE_CATEGORY_GCID,
-// GBP_VALIDATE_STORE_CODE. Passing GBP_VALIDATE_ADDRESS (optionally with
+// GBP_VALIDATE_REQUEST_ID. Passing GBP_VALIDATE_ADDRESS (optionally with
 // GBP_VALIDATE_PHONE) replaces the whole matrix with that single address.
 
 import { buildStorefrontAddressLines } from "../src/gbp/address-lines.ts"
@@ -112,8 +112,10 @@ const matrix =
 const name = process.env.GBP_VALIDATE_NAME ?? "글로컬엑스 검증 매장"
 const categoryId =
   process.env.GBP_VALIDATE_CATEGORY_GCID ?? "categories/gcid:restaurant"
-const storeCodeSeed =
-  process.env.GBP_VALIDATE_STORE_CODE ?? `gbp-validate-${Date.now()}`
+// Each validate call needs its own requestId; Google dedupes repeat calls that
+// reuse one. The body itself carries no storeCode — the app stopped sending it.
+const requestIdSeed =
+  process.env.GBP_VALIDATE_REQUEST_ID ?? `gbp-validate-${Date.now()}`
 
 // --- geocoding (mirrors geocoding-production.ts) -----------------------------
 
@@ -184,11 +186,10 @@ async function geocode(address) {
 
 // --- body assembly (mirrors setup-live.ts assembleLiveLocation) --------------
 
-function assemble({ row, parts, latlng, storeCode, addressLines }) {
+function assemble({ row, parts, latlng, addressLines }) {
   return {
     languageCode: "ko",
     title: name,
-    storeCode,
     storefrontAddress: {
       regionCode: "KR",
       languageCode: "ko",
@@ -231,9 +232,9 @@ console.log(`  ✓ access token obtained (not printed)`)
 // This is the whole point: prove Google ACCEPTS the body without creating a
 // real location. We deliberately never send validateOnly=false here.
 
-async function validateOnly(location) {
+async function validateOnly(location, requestId) {
   const url = new URL(`${BIZ_INFO_BASE}/${accountName}/locations`)
-  url.searchParams.set("requestId", `gbp-validate-${location.storeCode}`)
+  url.searchParams.set("requestId", requestId)
   url.searchParams.set("validateOnly", "true")
 
   const response = await fetch(url.toString(), {
@@ -302,10 +303,12 @@ for (const row of matrix) {
       row,
       parts,
       latlng,
-      storeCode: `${storeCodeSeed}-${index}-${variant.tag.trim()}`,
       addressLines: variant.addressLines,
     })
-    const result = await validateOnly(location)
+    const result = await validateOnly(
+      location,
+      `${requestIdSeed}-${index}-${variant.tag.trim()}`
+    )
     if (result.ok) {
       console.log(
         `\n  ✅ ${variant.tag} — accepted (HTTP ${result.status})` +
