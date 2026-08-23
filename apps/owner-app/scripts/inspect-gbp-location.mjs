@@ -29,6 +29,8 @@
 
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 const BIZ_INFO_BASE = "https://mybusinessbusinessinformation.googleapis.com/v1"
+const ACCOUNT_MGMT_BASE =
+  "https://mybusinessaccountmanagement.googleapis.com/v1"
 const READ_MASK = "name,title,storefrontAddress,latlng,metadata"
 
 function fail(message) {
@@ -51,11 +53,6 @@ const missing = [
   .filter(([, value]) => !value || value.trim() === "")
   .map(([name]) => name)
 if (missing.length > 0) fail(`missing env vars: ${missing.join(", ")}`)
-if (!rawLocationId && !rawAccountId) {
-  fail(
-    "set GBP_LOCATION_ID to read one location, or GOOGLE_BUSINESS_ACCOUNT_ID to list them"
-  )
-}
 
 const locationName = rawLocationId
   ? rawLocationId.startsWith("locations/")
@@ -138,13 +135,41 @@ async function listLocations(account) {
       signal: AbortSignal.timeout(20000),
     })
     const body = await response.text()
-    if (!response.ok)
-      fail(`listing ${account} failed (HTTP ${response.status}):\n${body}`)
+    if (!response.ok) {
+      console.error(`  ⚠️  listing ${account} failed (HTTP ${response.status})`)
+      console.error(`     ${body}`)
+      return locations
+    }
     const page = JSON.parse(body)
     locations.push(...(page.locations ?? []))
     pageToken = page.nextPageToken
   } while (pageToken)
   return locations
+}
+
+// A single org can own several accounts — a personal one plus location groups —
+// and a listing missing from one is routinely present in another. Enumerating
+// them is the difference between "not on this account" and "does not exist".
+async function listAccounts() {
+  const accounts = []
+  let pageToken
+  do {
+    const url = new URL(`${ACCOUNT_MGMT_BASE}/accounts`)
+    url.searchParams.set("pageSize", "20")
+    if (pageToken) url.searchParams.set("pageToken", pageToken)
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(20000),
+    })
+    const body = await response.text()
+    if (!response.ok) {
+      fail(`listing accounts failed (HTTP ${response.status}):\n${body}`)
+    }
+    const page = JSON.parse(body)
+    accounts.push(...(page.accounts ?? []))
+    pageToken = page.nextPageToken
+  } while (pageToken)
+  return accounts
 }
 
 if (locationName) {
@@ -154,32 +179,57 @@ if (locationName) {
     process.exit(0)
   }
   console.error(`\n⚠️  HTTP ${result.status}\n${result.body}`)
-  if (!accountName) {
-    fail(
-      "set GOOGLE_BUSINESS_ACCOUNT_ID to search the account's listings by name instead"
-    )
-  }
   // A dashboard URL exposes a CID, not the API location name, so a 404 here is
   // usually the wrong id space rather than a missing listing.
-  console.log(`\nFalling back to listing ${accountName} — the id may be a CID.`)
+  console.log(
+    `\nThe id may be a CID; searching the account's listings instead.`
+  )
 }
 
-const locations = await listLocations(accountName)
-console.log(`\n${locations.length} location(s) on ${accountName}`)
-
-const matches = titleFilter
-  ? locations.filter((location) => (location.title ?? "").includes(titleFilter))
-  : locations
-if (titleFilter) {
-  console.log(`${matches.length} matching title containing "${titleFilter}"`)
+const accounts = await listAccounts()
+console.log(`\n${accounts.length} account(s) reachable with this token:`)
+for (const account of accounts) {
+  console.log(
+    `  ${account.name} — ${account.accountName ?? "(unnamed)"}` +
+      ` [${account.type ?? "?"}${account.role ? `, ${account.role}` : ""}]` +
+      (account.name === accountName ? "  ← GOOGLE_BUSINESS_ACCOUNT_ID" : "")
+  )
 }
-if (matches.length === 0) {
-  console.log("\nTitles on this account:")
+
+const found = []
+for (const account of accounts) {
+  const locations = await listLocations(account.name)
+  console.log(`\n${account.name}: ${locations.length} location(s)`)
   for (const location of locations) {
+    const address = location.storefrontAddress ?? {}
+    const rendered = [
+      address.administrativeArea,
+      address.locality,
+      address.sublocality,
+      ...(address.addressLines ?? []),
+    ]
+      .filter(Boolean)
+      .join(" ")
     console.log(`  ${location.name} — ${location.title}`)
+    console.log(`      renders as: "${rendered}"`)
+    if (
+      !titleFilter ||
+      (location.title ?? "").includes(titleFilter) ||
+      rendered.includes(titleFilter)
+    ) {
+      found.push(location)
+    }
   }
+}
+
+if (titleFilter && found.length === 0) {
+  console.log(
+    `\nNothing matching "${titleFilter}" on any reachable account. ` +
+      `The listing is either owned elsewhere or no longer exists.`
+  )
   process.exit(0)
 }
-for (const location of matches) {
+
+for (const location of found) {
   report(location)
 }
