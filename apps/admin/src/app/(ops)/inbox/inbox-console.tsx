@@ -58,20 +58,60 @@ export function InboxConsole({
   const cursorRef = useRef<string | null>(null)
   const selectedRef = useRef<string | null>(null)
   const draftIdRef = useRef<string | null>(null)
+  const detailTicketRef = useRef(0)
+  const appliedDetailTicketRef = useRef(0)
+  const listTicketRef = useRef(0)
+  const appliedListTicketRef = useRef(0)
+  const detailConfirmedRef = useRef(false)
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     selectedRef.current = selectedId
   }, [selectedId])
 
+  // Detail state is last-write-wins by *arrival*, so a slow poll landing after a
+  // newer one (or after an operator action) would revert the conversation's mode
+  // and drop the pending draft — which re-seeds the editor and silently discards
+  // an in-progress edit. Every detail read and every action that writes detail
+  // state claims a ticket in issue order, then commits against a watermark of
+  // what has already been applied.
+  const claimDetailTicket = useCallback(() => {
+    detailTicketRef.current += 1
+    return detailTicketRef.current
+  }, [])
+
+  // False when this ticket is older than the state already applied. Gating on
+  // the watermark rather than "is this the newest ticket issued" matters when
+  // responses run slower than the poll interval: every response would then be
+  // superseded before it arrived, and gating on newest-issued would apply none
+  // of them, freezing the panel for as long as the backend stayed slow.
+  const commitDetailTicket = useCallback((ticket: number) => {
+    if (ticket <= appliedDetailTicketRef.current) {
+      return false
+    }
+    appliedDetailTicketRef.current = ticket
+    return true
+  }, [])
+
+  // Same arrival-order hazard as the detail poll, with milder stakes: the list
+  // is replaced wholesale and holds no operator input, so a stale one only
+  // shows outdated previews and unread badges until the next tick. Ordered for
+  // the same reason regardless — an unread badge that flickers back after being
+  // cleared reads as a real new message.
   const pollList = useCallback(async () => {
     const url = "/api/inbox/conversations"
+    listTicketRef.current += 1
+    const ticket = listTicketRef.current
     try {
       const response = await fetch(url)
       if (!response.ok) {
         return
       }
       const data = (await response.json()) as ConversationListResponse
+      if (ticket <= appliedListTicketRef.current) {
+        return
+      }
+      appliedListTicketRef.current = ticket
       setConversations(data.conversations)
     } catch {
       // Best-effort; the next tick reconciles.
@@ -83,6 +123,7 @@ export function InboxConsole({
     if (conversationId === null) {
       return
     }
+    const ticket = claimDetailTicket()
     const cursor = cursorRef.current
     const url =
       cursor === null
@@ -94,11 +135,16 @@ export function InboxConsole({
         return
       }
       const data = (await response.json()) as ConversationDetailResponse
-      // The conversation may have been switched while the request was in
-      // flight — drop a stale response rather than cross-render it.
-      if (selectedRef.current !== conversationId) {
+      // The conversation may have been switched, or newer state may have landed,
+      // while the request was in flight — drop a stale response rather than
+      // cross-render it or roll newer state back.
+      if (
+        selectedRef.current !== conversationId ||
+        !commitDetailTicket(ticket)
+      ) {
         return
       }
+      detailConfirmedRef.current = true
       setConversation(data.conversation)
       // Seed the editable draft only when a *new* draft id appears, so a poll
       // mid-edit never clobbers the operator's in-progress text.
@@ -121,7 +167,7 @@ export function InboxConsole({
     } catch {
       // Best-effort; the next tick reconciles.
     }
-  }, [])
+  }, [claimDetailTicket, commitDetailTicket])
 
   useEffect(() => {
     // The list is server-rendered on mount, so the first refresh can wait for
@@ -146,6 +192,11 @@ export function InboxConsole({
   }, [messages])
 
   function selectConversation(next: InboxConversationView): void {
+    commitDetailTicket(claimDetailTicket())
+    // Seeded from the list row so the panel renders at once, but the list is up
+    // to one poll interval old. Until the detail read lands, its `mode` is a
+    // guess and must not be trusted to short-circuit a mode change.
+    detailConfirmedRef.current = false
     cursorRef.current = null
     draftIdRef.current = null
     setMessages([])
@@ -185,7 +236,9 @@ export function InboxConsole({
 
   async function setMode(mode: string): Promise<void> {
     const conversationId = selectedId
-    if (conversationId === null || busy || conversation?.mode === mode) {
+    const alreadyInMode =
+      detailConfirmedRef.current && conversation?.mode === mode
+    if (conversationId === null || busy || alreadyInMode) {
       return
     }
     setBusy(true)
@@ -202,7 +255,16 @@ export function InboxConsole({
         const data = (await response.json()) as {
           conversation: InboxConversationView
         }
-        setConversation(data.conversation)
+        // The list stays clickable while an action is in flight, so the operator
+        // may have selected another conversation by now. Applying this response
+        // would render THAT conversation's header over this one's while the
+        // composer still targets the selected id — a reply meant for one store
+        // owner sent to another.
+        if (selectedRef.current === conversationId) {
+          commitDetailTicket(claimDetailTicket())
+          detailConfirmedRef.current = true
+          setConversation(data.conversation)
+        }
         await pollList()
       }
     } catch {
@@ -234,7 +296,8 @@ export function InboxConsole({
           method: "POST",
         }
       )
-      if (response.ok) {
+      if (response.ok && selectedRef.current === conversationId) {
+        commitDetailTicket(claimDetailTicket())
         draftIdRef.current = null
         setPendingDraft(null)
         setDraftInput("")
@@ -264,7 +327,8 @@ export function InboxConsole({
           method: "POST",
         }
       )
-      if (response.ok) {
+      if (response.ok && selectedRef.current === conversationId) {
+        commitDetailTicket(claimDetailTicket())
         draftIdRef.current = null
         setPendingDraft(null)
         setDraftInput("")
@@ -295,6 +359,13 @@ export function InboxConsole({
         const data = (await response.json()) as {
           conversation: InboxConversationView
         }
+        if (selectedRef.current !== conversationId) {
+          // Same cross-conversation guard as setMode.
+          await pollList()
+          return
+        }
+        commitDetailTicket(claimDetailTicket())
+        detailConfirmedRef.current = true
         setConversation(data.conversation)
         if (action === "resolve") {
           setSelectedId(null)

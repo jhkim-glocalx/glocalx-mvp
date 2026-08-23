@@ -55,7 +55,12 @@ test("owner message reaches the operator inbox with context and the reply return
 
   // Opening it shows the owner's message WITH the section it was sent from.
   await conversationItem.click()
-  await expect(operatorPage.getByText(ownerMessage)).toBeVisible()
+  // The detail transcript, not the list preview that renders the same body.
+  await expect(
+    operatorPage
+      .getByTestId("inbox-detail")
+      .locator(".ops-msg-body", { hasText: ownerMessage })
+  ).toBeVisible()
   await expect(operatorPage.getByTestId("msg-context").first()).toContainText(
     "home"
   )
