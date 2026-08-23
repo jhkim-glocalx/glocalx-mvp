@@ -24,10 +24,62 @@ const detailPollMs = 5000
 // The three per-conversation postures an operator can flip between (delivery-plan
 // Phase 2 §3). Labels are operator-facing; the owner never sees any of this.
 const modeOptions = [
-  { value: "human", label: "Human" },
-  { value: "ai_draft", label: "AI draft" },
-  { value: "ai", label: "AI auto" },
+  { value: "human", label: "수동" },
+  { value: "ai_draft", label: "AI 초안" },
+  { value: "ai", label: "AI 자동" },
 ] as const
+
+const conversationStatusLabels: Readonly<Record<string, string>> = {
+  open: "진행 중",
+  resolved: "해결됨",
+}
+
+// Activity-telemetry tags (packages/domain/src/support/activity.ts) — closed
+// enums surfaced verbatim in the "where the owner is" context tag and the
+// activity trail, so an untranslated addition there falls back to the raw
+// English/snake_case tag rather than breaking.
+const activitySectionLabels: Readonly<Record<string, string>> = {
+  onboarding: "온보딩",
+  gbp_connect: "GBP 연결",
+  home: "홈",
+  marketing: "마케팅",
+  reviews: "리뷰",
+  performance: "실적",
+  chat: "채팅",
+}
+
+const activityStageLabels: Readonly<Record<string, string>> = {
+  store_input: "매장 정보 입력",
+  extracting: "정보 추출 중",
+  candidate_selection: "후보 선택",
+  manual_entry: "직접 입력",
+  profile_summary: "프로필 요약",
+  oauth: "OAuth 인증",
+  location_select: "리스팅 선택",
+  access_pending: "권한 대기 중",
+  intake: "접수",
+  review: "검토",
+}
+
+const activityActionLabels: Readonly<Record<string, string>> = {
+  section_viewed: "화면 조회",
+  onboarding_started: "온보딩 시작",
+  store_extraction_submitted: "매장 정보 제출",
+  store_extraction_failed: "매장 정보 추출 실패",
+  store_confirmed: "매장 정보 확인",
+  gbp_connect_started: "GBP 연결 시작",
+  gbp_oauth_completed: "GBP OAuth 완료",
+  gbp_connect_failed: "GBP 연결 실패",
+  gbp_access_requested: "GBP 권한 요청",
+  campaign_intake_opened: "캠페인 접수 화면 열림",
+  campaign_upload_failed: "캠페인 업로드 실패",
+  campaign_submitted: "캠페인 제출",
+  campaign_review_opened: "캠페인 검토 화면 열림",
+  campaign_decision_submitted: "캠페인 결정 제출",
+  chat_opened: "채팅 열림",
+  chat_closed: "채팅 닫힘",
+  chat_message_sent: "채팅 메시지 전송",
+}
 
 type InboxConsoleProps = {
   readonly operatorAdminId: string
@@ -387,9 +439,9 @@ export function InboxConsole({
 
   return (
     <div className="ops-inbox">
-      <aside className="ops-inbox-list" aria-label="Conversations">
+      <aside className="ops-inbox-list" aria-label="대화 목록">
         {conversations.length === 0 ? (
-          <p className="ops-inbox-empty">No open conversations.</p>
+          <p className="ops-inbox-empty">진행 중인 대화가 없습니다.</p>
         ) : (
           conversations.map((item) => (
             <button
@@ -406,7 +458,7 @@ export function InboxConsole({
                   <span
                     className="ops-inbox-flag-dot"
                     data-testid="inbox-flag-dot"
-                    title="AI composition failed"
+                    title="AI 작성 실패"
                   >
                     ⚑
                   </span>
@@ -431,14 +483,17 @@ export function InboxConsole({
 
       {conversation === null ? (
         <section className="ops-inbox-detail ops-inbox-detail-empty">
-          <p>Select a conversation to view its context and reply.</p>
+          <p>대화를 선택하면 맥락을 보고 답장할 수 있습니다.</p>
         </section>
       ) : (
         <section className="ops-inbox-detail" data-testid="inbox-detail">
           <header className="ops-inbox-detail-head">
             <div>
               <strong>{conversation.storeName}</strong>
-              <span className="ops-inbox-status">{conversation.status}</span>
+              <span className="ops-inbox-status">
+                {conversationStatusLabels[conversation.status] ??
+                  conversation.status}
+              </span>
             </div>
             <div className="ops-inbox-actions">
               <button
@@ -453,8 +508,8 @@ export function InboxConsole({
                 onClick={() => void runAction("assign")}
               >
                 {conversation.assignedAdminId === operatorAdminId
-                  ? "Assigned to me"
-                  : "Assign to me"}
+                  ? "나에게 할당됨"
+                  : "나에게 할당"}
               </button>
               <button
                 type="button"
@@ -462,7 +517,7 @@ export function InboxConsole({
                 disabled={busy || resolved}
                 onClick={() => void runAction("resolve")}
               >
-                Resolve
+                해결 완료
               </button>
             </div>
           </header>
@@ -470,9 +525,9 @@ export function InboxConsole({
           <div
             className="ops-inbox-modebar"
             role="group"
-            aria-label="Response mode"
+            aria-label="응답 모드"
           >
-            <span className="ops-modebar-label">Mode</span>
+            <span className="ops-modebar-label">모드</span>
             {modeOptions.map((option) => (
               <button
                 key={option.value}
@@ -492,11 +547,11 @@ export function InboxConsole({
 
           {conversation.flaggedAt !== null ? (
             <div className="ops-inbox-flag" role="status">
-              ⚑ AI composition failed
+              ⚑ AI 작성 실패
               {conversation.flagReason !== null
                 ? ` (${conversation.flagReason})`
                 : ""}
-              . Review and reply manually.
+              . 검토 후 직접 답장해 주세요.
             </div>
           ) : null}
 
@@ -508,28 +563,33 @@ export function InboxConsole({
               >
                 {message.sender !== "owner" ? (
                   <span className="ops-msg-author">
-                    {message.authorKind === "ai" ? "AI" : "Operator"}
+                    {message.authorKind === "ai" ? "AI" : "운영자"}
                   </span>
                 ) : null}
                 <div className="ops-msg-body">{message.body}</div>
                 {message.context !== null ? (
                   <div className="ops-msg-context" data-testid="msg-context">
                     <span className="ops-context-tag">
-                      📍 {message.context.section}
+                      📍{" "}
+                      {activitySectionLabels[message.context.section] ??
+                        message.context.section}
                       {message.context.stage !== null
-                        ? ` · ${message.context.stage}`
+                        ? ` · ${activityStageLabels[message.context.stage] ?? message.context.stage}`
                         : ""}
                     </span>
                     {message.context.activityTrail.length > 0 ? (
                       <details className="ops-context-trail">
                         <summary>
-                          Recent actions ({message.context.activityTrail.length}
-                          )
+                          최근 활동 ({message.context.activityTrail.length})
                         </summary>
                         <ol>
                           {message.context.activityTrail.map((event, index) => (
                             <li key={`${message.id}-${index}`}>
-                              {event.section} · {event.action}
+                              {activitySectionLabels[event.section] ??
+                                event.section}{" "}
+                              ·{" "}
+                              {activityActionLabels[event.action] ??
+                                event.action}
                             </li>
                           ))}
                         </ol>
@@ -544,10 +604,10 @@ export function InboxConsole({
           {pendingDraft !== null ? (
             <div className="ops-inbox-draft" data-testid="ai-draft">
               <span className="ops-draft-label">
-                AI draft — review before sending
+                AI 초안 — 전송 전 검토해 주세요
               </span>
               <textarea
-                aria-label="AI draft"
+                aria-label="AI 초안"
                 className="ops-inbox-input"
                 rows={3}
                 value={draftInput}
@@ -561,7 +621,7 @@ export function InboxConsole({
                   disabled={busy}
                   onClick={() => void discardDraft()}
                 >
-                  Discard
+                  삭제
                 </button>
                 <button
                   type="button"
@@ -569,7 +629,7 @@ export function InboxConsole({
                   disabled={busy || draftInput.trim().length === 0 || resolved}
                   onClick={() => void sendDraft()}
                 >
-                  Send draft
+                  초안 전송
                 </button>
               </div>
             </div>
@@ -577,9 +637,9 @@ export function InboxConsole({
 
           <div className="ops-inbox-composer">
             <textarea
-              aria-label="Reply"
+              aria-label="답장"
               className="ops-inbox-input"
-              placeholder="Reply to the owner…"
+              placeholder="사장님에게 답장…"
               rows={2}
               value={input}
               disabled={resolved}
@@ -597,7 +657,7 @@ export function InboxConsole({
               disabled={busy || input.trim().length === 0 || resolved}
               onClick={() => void sendReply()}
             >
-              Send
+              전송
             </button>
           </div>
         </section>

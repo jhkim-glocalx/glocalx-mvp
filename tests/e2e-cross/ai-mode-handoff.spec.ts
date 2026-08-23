@@ -80,7 +80,7 @@ test("operator drives an AI draft then hands the conversation back to human", as
   // The draft surfaces in the operator console for review (5s detail poll).
   const draftCard = operatorPage.getByTestId("ai-draft")
   await expect(draftCard).toBeVisible({ timeout: 15_000 })
-  const draftEditor = draftCard.getByRole("textbox", { name: "AI draft" })
+  const draftEditor = draftCard.getByRole("textbox", { name: "AI 초안" })
   await expect(draftEditor).not.toHaveValue("")
 
   // The owner has NOT received any assistant bubble — the draft is invisible
@@ -90,7 +90,7 @@ test("operator drives an AI draft then hands the conversation back to human", as
   // Operator edits the draft and sends it; the owner receives exactly the edited
   // text as the single assistant persona.
   await draftEditor.fill(editedDraftReply)
-  await draftCard.getByRole("button", { name: "Send draft" }).click()
+  await draftCard.getByRole("button", { name: "초안 전송" }).click()
   await expect(
     ownerPage.locator(".gx-chat-bubble-assistant", {
       hasText: editedDraftReply,
@@ -118,11 +118,11 @@ test("operator drives an AI draft then hands the conversation back to human", as
 
   // The operator replies by hand; it reaches the owner as the same assistant.
   await operatorPage
-    .getByRole("textbox", { name: "Reply" })
+    .getByRole("textbox", { name: "답장" })
     .fill(operatorManualReply)
   await operatorPage
     .locator(".ops-inbox-composer")
-    .getByRole("button", { name: "Send" })
+    .getByRole("button", { name: "전송" })
     .click()
   await expect(
     ownerPage.locator(".gx-chat-bubble-assistant", {

@@ -32,7 +32,7 @@ export async function saveOrgCredential(
       method: "POST",
     })
   } catch {
-    return { kind: "error", message: "The request could not be sent." }
+    return { kind: "error", message: "요청을 보낼 수 없습니다." }
   }
 
   let payload: unknown
@@ -41,7 +41,7 @@ export async function saveOrgCredential(
   } catch {
     return {
       kind: "error",
-      message: "The server returned an unreadable response.",
+      message: "서버가 해석할 수 없는 응답을 반환했습니다.",
     }
   }
 
@@ -52,6 +52,6 @@ export async function saveOrgCredential(
   const message =
     typeof payload === "object" && payload !== null && "message" in payload
       ? String((payload as { message: unknown }).message)
-      : "The credential could not be saved."
+      : "자격 증명을 저장할 수 없습니다."
   return { kind: "error", message }
 }

@@ -4,11 +4,11 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 const sections = [
-  { href: "/stores", label: "Stores" },
-  { href: "/inbox", label: "Inbox" },
-  { href: "/queue", label: "Queue" },
-  { href: "/posts", label: "Posts" },
-  { href: "/settings", label: "Settings" },
+  { href: "/stores", label: "매장" },
+  { href: "/inbox", label: "인박스" },
+  { href: "/queue", label: "대기열" },
+  { href: "/posts", label: "게시물" },
+  { href: "/settings", label: "설정" },
 ] as const
 
 type OpsShellProps = {
@@ -25,7 +25,7 @@ export function OpsShell({ children, operatorName }: OpsShellProps) {
         <div className="ops-brand">
           GlocalX <span>Ops</span>
         </div>
-        <nav aria-label="Sections">
+        <nav aria-label="섹션">
           {sections.map((section) => (
             <Link
               key={section.href}
@@ -44,7 +44,7 @@ export function OpsShell({ children, operatorName }: OpsShellProps) {
           <span className="ops-operator-name">{operatorName}</span>
           <form action="/api/auth/logout" method="post">
             <button type="submit" className="ops-logout-button">
-              Log out
+              로그아웃
             </button>
           </form>
         </div>

@@ -74,9 +74,7 @@ test("owner submits a campaign, an operator produces it, and the owner approves"
 
   // Claim it into production, which reveals the production controls.
   await operatorPage.getByTestId("start-production").click()
-  await expect(operatorPage.getByTestId("queue-status")).toHaveText(
-    "in_production"
-  )
+  await expect(operatorPage.getByTestId("queue-status")).toHaveText("제작 중")
 
   // The material is incomplete, so the owner hand-off is refused until both a
   // processed asset and the final copy exist.
@@ -92,7 +90,7 @@ test("owner submits a campaign, an operator produces it, and the owner approves"
     mimeType: "image/png",
     name: "brunch-final.png",
   })
-  await expect(operatorPage.getByText("Processed assets (1)")).toBeVisible()
+  await expect(operatorPage.getByText("처리된 소재 (1)")).toBeVisible()
 
   await operatorPage.getByTestId("final-copy").fill(finalCopy)
   await operatorPage.getByTestId("save-final-copy").click()
@@ -115,7 +113,7 @@ test("owner submits a campaign, an operator produces it, and the owner approves"
 
   await operatorPage.getByTestId("submit-for-review").click()
   await expect(operatorPage.getByTestId("queue-status")).toHaveText(
-    "ready_for_review"
+    "사장님 확인 대기"
   )
 
   // Task 8: handing the material over leaves an open nudge on the queue, because
@@ -173,12 +171,12 @@ test("owner submits a campaign, an operator produces it, and the owner approves"
   ).toBeChecked()
 
   await operatorPage.getByTestId("publish-selected").click()
-  await expect(operatorPage.getByTestId("queue-status")).toHaveText("published")
+  await expect(operatorPage.getByTestId("queue-status")).toHaveText("게시됨")
   await expect(operatorPage.getByTestId("publish-status-gbp")).toHaveText(
-    "published"
+    "게시됨"
   )
   await expect(operatorPage.getByTestId("publish-status-instagram")).toHaveText(
-    "published"
+    "게시됨"
   )
 
   // Each settled channel offers a way to open what actually went live. Without
@@ -245,12 +243,12 @@ test("owner requests changes and the note reaches the operator queue", async ({
     mimeType: "image/png",
     name: "dinner-final.png",
   })
-  await expect(operatorPage.getByText("Processed assets (1)")).toBeVisible()
+  await expect(operatorPage.getByText("처리된 소재 (1)")).toBeVisible()
   await operatorPage.getByTestId("final-copy").fill("저녁 코스 메뉴 안내")
   await operatorPage.getByTestId("save-final-copy").click()
   await operatorPage.getByTestId("submit-for-review").click()
   await expect(operatorPage.getByTestId("queue-status")).toHaveText(
-    "ready_for_review"
+    "사장님 확인 대기"
   )
 
   await refreshOwnerCampaignList(ownerPage)

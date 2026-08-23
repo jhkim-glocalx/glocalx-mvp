@@ -51,8 +51,8 @@ export type OrgCredentialState =
 export const orgCredentialExpiryGraceSeconds = 60
 
 const providerLabels: Readonly<Record<OrgCredentialProvider, string>> = {
-  google_org: "Google organization",
-  meta_app: "Meta app",
+  google_org: "Google 조직",
+  meta_app: "Meta 앱",
 }
 
 export function orgCredentialProviderLabel(
@@ -89,7 +89,7 @@ export function evaluateOrgCredentialState(
       kind: "blocked",
       code: "ORG_CREDENTIAL_MISSING",
       message:
-        "No organization publishing credential is configured for this channel. Add one in Settings.",
+        "이 채널에 설정된 조직 게시 자격 증명이 없습니다. 설정에서 추가해 주세요.",
     }
   }
 
@@ -98,7 +98,7 @@ export function evaluateOrgCredentialState(
       kind: "blocked",
       code: "ORG_CREDENTIAL_UNREADABLE",
       message:
-        "The stored organization credential could not be read. The encryption key may have rotated — re-save the credential in Settings.",
+        "저장된 조직 자격 증명을 읽을 수 없습니다. 암호화 키가 변경되었을 수 있습니다 — 설정에서 자격 증명을 다시 저장해 주세요.",
     }
   }
 
@@ -107,7 +107,7 @@ export function evaluateOrgCredentialState(
       kind: "blocked",
       code: "ORG_CREDENTIAL_EXPIRED",
       message:
-        "The organization publishing credential has expired. Re-link it in Settings before publishing.",
+        "조직 게시 자격 증명이 만료되었습니다. 게시 전 설정에서 다시 연결해 주세요.",
     }
   }
 

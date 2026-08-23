@@ -32,7 +32,7 @@ export async function fetchOrgLocations(): Promise<OrgLocationsResult> {
   try {
     payload = await (await fetch(orgLocationsUrl)).json()
   } catch {
-    return { kind: "error", message: "Could not load the org listings." }
+    return { kind: "error", message: "조직 리스팅을 불러오지 못했습니다." }
   }
 
   if (
@@ -47,7 +47,7 @@ export async function fetchOrgLocations(): Promise<OrgLocationsResult> {
       "message" in payload &&
       typeof payload.message === "string"
         ? payload.message
-        : "Could not load the org listings."
+        : "조직 리스팅을 불러오지 못했습니다."
     return { kind: "error", message }
   }
 
@@ -78,7 +78,7 @@ async function readRequestResult(
   } catch {
     return {
       kind: "error",
-      message: "The server returned an unreadable response.",
+      message: "서버가 해석할 수 없는 응답을 반환했습니다.",
     }
   }
 
@@ -104,8 +104,8 @@ async function readRequestResult(
       ? (payload as { currentState: string }).currentState
       : undefined
   const message = conflictState
-    ? `This store moved to "${conflictState}" — reload before acting.`
-    : "That action could not be completed."
+    ? `이 매장은 "${stateLabels[conflictState as GbpAccessState] ?? conflictState}" 상태로 변경되었습니다 — 새로고침 후 다시 시도해 주세요.`
+    : "해당 작업을 완료할 수 없습니다."
   return { kind: "error", message }
 }
 
@@ -144,19 +144,19 @@ export async function saveStoreNote(
 export const naturalActionsByState: Readonly<
   Record<GbpAccessState, readonly { label: string; action: GbpAccessAction }[]>
 > = {
-  not_requested: [{ label: "Send invite", action: { type: "SEND_INVITE" } }],
+  not_requested: [{ label: "초대 보내기", action: { type: "SEND_INVITE" } }],
   // Confirm is one click; reject is not, because its reason is sent to the owner
   // verbatim. The console renders reject separately with a required reason input
   // rather than listing it here as a bare button.
   adoption_review: [
-    { label: "Confirm adoption", action: { type: "CONFIRM_ADOPTION" } },
+    { label: "연결 확정", action: { type: "CONFIRM_ADOPTION" } },
   ],
   invited: [
-    { label: "Mark pending", action: { type: "MARK_PENDING" } },
-    { label: "Grant", action: { type: "GRANT" } },
+    { label: "대기 중으로 표시", action: { type: "MARK_PENDING" } },
+    { label: "권한 부여", action: { type: "GRANT" } },
   ],
-  pending: [{ label: "Grant", action: { type: "GRANT" } }],
-  granted: [{ label: "Revoke", action: { type: "REVOKE" } }],
+  pending: [{ label: "권한 부여", action: { type: "GRANT" } }],
+  granted: [{ label: "권한 철회", action: { type: "REVOKE" } }],
   revoked: [],
   // A blocked request resumes the flow without an override. Confirm adoption is
   // offered here because a rejected claim lands in blocked and is resolved in
@@ -164,9 +164,9 @@ export const naturalActionsByState: Readonly<
   // *with* the listing attached. Overriding to granted would skip that write and
   // leave the owner connected to nothing.
   blocked: [
-    { label: "Send invite", action: { type: "SEND_INVITE" } },
-    { label: "Confirm adoption", action: { type: "CONFIRM_ADOPTION" } },
-    { label: "Grant", action: { type: "GRANT" } },
+    { label: "초대 보내기", action: { type: "SEND_INVITE" } },
+    { label: "연결 확정", action: { type: "CONFIRM_ADOPTION" } },
+    { label: "권한 부여", action: { type: "GRANT" } },
   ],
 }
 
@@ -183,13 +183,13 @@ export const canBlock: Readonly<Record<GbpAccessState, boolean>> = {
 }
 
 export const stateLabels: Readonly<Record<GbpAccessState, string>> = {
-  not_requested: "Not requested",
-  adoption_review: "Owner claims existing listing",
-  invited: "Invited",
-  pending: "Pending",
-  granted: "Granted",
-  revoked: "Revoked",
-  blocked: "Blocked",
+  not_requested: "요청 없음",
+  adoption_review: "사장님이 기존 리스팅 연결 요청",
+  invited: "초대됨",
+  pending: "대기 중",
+  granted: "권한 부여됨",
+  revoked: "권한 철회됨",
+  blocked: "차단됨",
 }
 
 // Listing-verification labels for the read-only line on each store card.
@@ -198,9 +198,9 @@ export const stateLabels: Readonly<Record<GbpAccessState, string>> = {
 export const verificationStateLabels: Readonly<
   Record<GbpVerificationState, string>
 > = {
-  VERIFIED: "Verified",
-  PENDING_REVIEW: "Pending review",
-  NEEDS_VERIFICATION: "Needs verification",
-  NEEDS_CONCIERGE: "Needs concierge",
-  UNKNOWN: "Unknown",
+  VERIFIED: "인증됨",
+  PENDING_REVIEW: "검토 대기 중",
+  NEEDS_VERIFICATION: "인증 필요",
+  NEEDS_CONCIERGE: "컨시어지 필요",
+  UNKNOWN: "알 수 없음",
 }

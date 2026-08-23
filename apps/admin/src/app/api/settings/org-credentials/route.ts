@@ -20,7 +20,7 @@ function encryptionUnavailableResponse(missing: readonly string[]): Response {
       status: "ENCRYPTION_UNAVAILABLE",
       // The env var *names*, never their values — the established shape for
       // blocked_by_credentials elsewhere in the codebase.
-      message: `Token encryption is not configured (${missing.join(", ")}). Set it before saving a credential.`,
+      message: `토큰 암호화가 설정되지 않았습니다 (${missing.join(", ")}). 자격 증명을 저장하기 전에 설정해 주세요.`,
     },
     { status: 503 }
   )

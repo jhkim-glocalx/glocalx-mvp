@@ -99,7 +99,7 @@ test("a stale detail poll cannot roll back the operator's draft edit", async ({
 
   const draftCard = operatorPage.getByTestId("ai-draft")
   await expect(draftCard).toBeVisible({ timeout: 15_000 })
-  const draftEditor = draftCard.getByRole("textbox", { name: "AI draft" })
+  const draftEditor = draftCard.getByRole("textbox", { name: "AI 초안" })
   await expect(draftEditor).not.toHaveValue("")
   await draftEditor.fill(editedDraftReply)
 
@@ -111,7 +111,7 @@ test("a stale detail poll cannot roll back the operator's draft edit", async ({
   await expect(aiDraftButton).toHaveAttribute("aria-pressed", "true")
 
   // And the owner must receive the edited text, not the AI's original body.
-  await draftCard.getByRole("button", { name: "Send draft" }).click()
+  await draftCard.getByRole("button", { name: "초안 전송" }).click()
   await expect(
     ownerPage.locator(".gx-chat-bubble-assistant", {
       hasText: editedDraftReply,

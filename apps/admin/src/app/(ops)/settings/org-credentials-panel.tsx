@@ -31,9 +31,9 @@ function statusFor(
 }
 
 const statusLabels: Readonly<Record<CredentialStatus, string>> = {
-  linked: "Linked",
-  expired: "Expired",
-  missing: "Not configured",
+  linked: "연결됨",
+  expired: "만료됨",
+  missing: "설정되지 않음",
 }
 
 function formatTimestamp(value: string | null): string {
@@ -83,17 +83,16 @@ export function OrgCredentialsPanel({
     setToken("")
     setRefreshToken("")
     setCredentials(result.credentials)
-    setSaved(`${orgCredentialProviderLabel(provider)} credential saved.`)
+    setSaved(
+      `${orgCredentialProviderLabel(provider)} 자격 증명이 저장되었습니다.`
+    )
   }
 
   const now = new Date()
 
   return (
-    <section
-      className="ops-credentials"
-      aria-label="Org publishing credentials"
-    >
-      <h2 className="ops-section-title">Organization publishing credentials</h2>
+    <section className="ops-credentials" aria-label="조직 게시 자격 증명">
+      <h2 className="ops-section-title">조직 게시 자격 증명</h2>
 
       <ul className="ops-credential-list">
         {orgCredentialProviders.map((candidate) => {
@@ -118,8 +117,8 @@ export function OrgCredentialsPanel({
               </span>
               <span className="ops-credential-meta">
                 {summary === undefined
-                  ? "No credential stored"
-                  : `expires ${formatTimestamp(summary.expiresAt)} · updated ${formatTimestamp(summary.updatedAt)}${summary.hasRefreshToken ? " · refresh token stored" : ""}`}
+                  ? "저장된 자격 증명 없음"
+                  : `만료 ${formatTimestamp(summary.expiresAt)} · 업데이트 ${formatTimestamp(summary.updatedAt)}${summary.hasRefreshToken ? " · 리프레시 토큰 저장됨" : ""}`}
               </span>
             </li>
           )
@@ -128,7 +127,7 @@ export function OrgCredentialsPanel({
 
       <form className="ops-credential-form" onSubmit={handleSubmit}>
         <label className="ops-field">
-          <span>Provider</span>
+          <span>제공자</span>
           <select
             value={provider}
             data-testid="credential-provider"
@@ -145,7 +144,7 @@ export function OrgCredentialsPanel({
         </label>
 
         <label className="ops-field">
-          <span>Access token</span>
+          <span>액세스 토큰</span>
           <input
             type="password"
             value={token}
@@ -157,7 +156,7 @@ export function OrgCredentialsPanel({
         </label>
 
         <label className="ops-field">
-          <span>Refresh token (optional)</span>
+          <span>리프레시 토큰 (선택)</span>
           <input
             type="password"
             value={refreshToken}
@@ -168,7 +167,7 @@ export function OrgCredentialsPanel({
         </label>
 
         <label className="ops-field">
-          <span>Expires at (UTC, optional)</span>
+          <span>만료 시각 (UTC, 선택)</span>
           <input
             type="datetime-local"
             value={expiresAt}
@@ -178,7 +177,7 @@ export function OrgCredentialsPanel({
         </label>
 
         <label className="ops-field">
-          <span>Scopes (optional)</span>
+          <span>범위 (선택)</span>
           <input
             type="text"
             value={scopes}
@@ -193,7 +192,7 @@ export function OrgCredentialsPanel({
           disabled={saving || token.trim() === ""}
           data-testid="credential-save"
         >
-          {saving ? "Saving…" : "Save credential"}
+          {saving ? "저장 중…" : "자격 증명 저장"}
         </button>
 
         {error === null ? null : (

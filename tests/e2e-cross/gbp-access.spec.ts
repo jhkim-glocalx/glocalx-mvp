@@ -49,17 +49,17 @@ test("an operator drives GBP org access to granted and the owner sees each phase
 
   const stateBadge = operatorPage.getByTestId("store-state-demo-store")
   await expect(stateBadge).toBeVisible({ timeout: 10_000 })
-  await expect(stateBadge).toHaveText("Not requested")
+  await expect(stateBadge).toHaveText("요청 없음")
 
   // Drive the guided flow hop by hop; each state renders on the operator side.
   await operatorPage.getByTestId("store-action-SEND_INVITE-demo-store").click()
-  await expect(stateBadge).toHaveText("Invited")
+  await expect(stateBadge).toHaveText("초대됨")
 
   await operatorPage.getByTestId("store-action-MARK_PENDING-demo-store").click()
-  await expect(stateBadge).toHaveText("Pending")
+  await expect(stateBadge).toHaveText("대기 중")
 
   await operatorPage.getByTestId("store-action-GRANT-demo-store").click()
-  await expect(stateBadge).toHaveText("Granted")
+  await expect(stateBadge).toHaveText("권한 부여됨")
 
   // Owner: re-entering the section shows the grant landed.
   await refreshOwnerAccess(ownerPage)

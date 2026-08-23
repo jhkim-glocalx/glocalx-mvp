@@ -8,6 +8,7 @@ import type {
   QueueRequestView,
 } from "@/server/queue-view"
 import {
+  captionLabels,
   gbpPostLinkActionTypes,
   type GbpPostCallToAction,
   type GbpPostLinkActionType,
@@ -38,6 +39,33 @@ const channelLabels: Readonly<Record<string, string>> = {
   instagram: "Instagram",
 }
 
+// Raw status/job-status enum values shown directly to operators; translated
+// here rather than at the source so the domain keeps its English identifiers.
+const statusLabels: Readonly<Record<string, string>> = {
+  submitted: "제출됨",
+  in_production: "제작 중",
+  ready_for_review: "사장님 확인 대기",
+  changes_requested: "수정 요청됨",
+  approved: "승인됨",
+  queued: "대기열에 있음",
+  publishing: "게시 중",
+  partially_published: "부분 게시됨",
+  failed: "실패",
+  published: "게시됨",
+  rejected: "거절됨",
+  not_attempted: "시도하지 않음",
+}
+
+function statusLabel(status: string): string {
+  return statusLabels[status] ?? status
+}
+
+const reviewDecisionLabels: Readonly<Record<string, string>> = {
+  go: "승인",
+  no_go: "거절",
+  changes_requested: "수정 요청",
+}
+
 /**
  * The published post's address, or undefined when there is nothing safe to open.
  *
@@ -60,15 +88,11 @@ function publishedPostHref(
 // the two settled-but-incomplete outcomes a retry can resume from.
 const publishableStatuses = ["approved", "partially_published", "failed"]
 
-// Operator-facing English, unlike the Korean caption labels in the domain: this
-// picker is read by our own staff, the caption is read by the owner's customers.
-const linkActionLabels: Readonly<Record<GbpPostLinkActionType, string>> = {
-  BOOK: "Book",
-  ORDER: "Order",
-  SHOP: "Shop",
-  LEARN_MORE: "Learn more",
-  SIGN_UP: "Sign up",
-}
+// Reuses the domain's own Korean wording (captionLabels) rather than a
+// second translation — this picker is read by our staff, but the same words
+// become the Instagram caption the owner's customers see, and a drifted
+// second translation would let an operator misjudge what a customer sees.
+const linkActionLabels = captionLabels
 
 // "none" is the selection, not a stored value — the request holds null. Kept
 // distinct so the picker has something to sit on while still round-tripping the
@@ -94,26 +118,26 @@ function isOpenableUrl(value: string): boolean {
 // has to touch again. "Publishing" holds every status a publish run can still
 // act on, including the two partial outcomes a retry resumes from.
 const columns = [
-  { key: "submitted", label: "Submitted", statuses: ["submitted"] },
-  { key: "in_production", label: "In production", statuses: ["in_production"] },
+  { key: "submitted", label: "제출됨", statuses: ["submitted"] },
+  { key: "in_production", label: "제작 중", statuses: ["in_production"] },
   {
     key: "ready_for_review",
-    label: "Awaiting owner",
+    label: "사장님 확인 대기",
     statuses: ["ready_for_review"],
   },
   {
     key: "changes_requested",
-    label: "Changes requested",
+    label: "수정 요청됨",
     statuses: ["changes_requested"],
   },
   {
     key: "publishing",
-    label: "Publishing",
+    label: "게시 중",
     statuses: ["approved", "publishing", "partially_published", "failed"],
   },
   {
     key: "settled",
-    label: "Settled",
+    label: "완료됨",
     statuses: ["published", "rejected"],
   },
 ] as const
@@ -240,7 +264,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
     try {
       applyResult(await action(requestId))
     } catch {
-      setError("That action could not be completed. Try again.")
+      setError("해당 작업을 완료할 수 없습니다. 다시 시도해 주세요.")
     } finally {
       setBusy(false)
     }
@@ -263,7 +287,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
         fileInputRef.current.value = ""
       }
     } catch {
-      setError("The upload could not be completed. Try again.")
+      setError("업로드를 완료할 수 없습니다. 다시 시도해 주세요.")
     } finally {
       setBusy(false)
     }
@@ -305,7 +329,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
 
   return (
     <div className="ops-queue">
-      <div className="ops-queue-board" aria-label="Campaign requests">
+      <div className="ops-queue-board" aria-label="캠페인 요청">
         {columns.map((column) => {
           const cards = entries.filter((entry) =>
             (column.statuses as readonly string[]).includes(entry.status)
@@ -321,7 +345,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                 <span className="ops-queue-count">{cards.length}</span>
               </header>
               {cards.length === 0 ? (
-                <p className="ops-queue-empty">Nothing here.</p>
+                <p className="ops-queue-empty">항목이 없습니다.</p>
               ) : (
                 cards.map((entry) => (
                   <button
@@ -336,10 +360,9 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                     <span className="ops-queue-store">{entry.storeName}</span>
                     <span className="ops-queue-brief">{entry.brief}</span>
                     <span className="ops-queue-meta">
-                      {entry.originalCount} original
-                      {entry.originalCount === 1 ? "" : "s"}
+                      원본 {entry.originalCount}개
                       {entry.processedCount > 0
-                        ? ` · ${entry.processedCount} processed`
+                        ? ` · 처리됨 ${entry.processedCount}개`
                         : ""}
                     </span>
                     {awaitsNudge(entry) ? (
@@ -347,7 +370,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                         className="ops-queue-nudge-pending"
                         data-testid={`nudge-pending-${entry.id}`}
                       >
-                        Owner not notified yet
+                        사장님께 아직 알리지 않음
                       </span>
                     ) : null}
                   </button>
@@ -360,7 +383,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
 
       {selected === null ? (
         <section className="ops-queue-detail ops-queue-detail-empty">
-          <p>Select a request to view its brief, originals, and controls.</p>
+          <p>요청을 선택하면 브리프, 원본, 조작 도구를 볼 수 있습니다.</p>
         </section>
       ) : (
         <section className="ops-queue-detail" data-testid="queue-detail">
@@ -368,7 +391,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
             <div>
               <strong>{selected.storeName}</strong>
               <span className="ops-queue-status" data-testid="queue-status">
-                {selected.status}
+                {statusLabel(selected.status)}
               </span>
             </div>
             {claimable ? (
@@ -379,7 +402,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                 disabled={busy}
                 onClick={() => void runAction(startProduction)}
               >
-                Start production
+                제작 시작
               </button>
             ) : null}
           </header>
@@ -392,13 +415,13 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
 
           {selected.status === "ready_for_review" ? (
             <div className="ops-queue-section" data-testid="nudge-panel">
-              <h2>Owner nudge</h2>
+              <h2>사장님 알림</h2>
               {selected.nudgedAt === null ? (
                 <>
                   <p className="ops-queue-nudge-copy">
-                    The app told the owner their material is ready, but nothing
-                    pushes that to their phone. Message them on the channel you
-                    already use, then mark it here.
+                    앱에서 사장님께 자료가 준비되었다고 안내했지만, 휴대폰으로
+                    푸시되지는 않습니다. 평소 쓰던 채널로 메시지를 보낸 뒤
+                    여기서 표시해 주세요.
                   </p>
                   <div className="ops-queue-actions">
                     <button
@@ -408,33 +431,34 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                       disabled={busy}
                       onClick={() => void runAction(markOwnerNudged)}
                     >
-                      Mark owner notified
+                      사장님 알림 완료 표시
                     </button>
                   </div>
                 </>
               ) : (
                 <p className="ops-queue-nudge-done" data-testid="nudge-done">
-                  Owner notified {new Date(selected.nudgedAt).toLocaleString()}
+                  사장님 알림 완료{" "}
+                  {new Date(selected.nudgedAt).toLocaleString("ko-KR")}
                 </p>
               )}
             </div>
           ) : null}
 
           <div className="ops-queue-section">
-            <h2>Brief</h2>
+            <h2>브리프</h2>
             <p className="ops-queue-brief-body">{selected.brief}</p>
           </div>
 
           <div className="ops-queue-section">
-            <h2>Originals ({originalAssets.length})</h2>
+            <h2>원본 ({originalAssets.length})</h2>
             <div className="ops-queue-assets">
               {originalAssets.length === 0 ? (
-                <p className="ops-queue-empty">No originals uploaded.</p>
+                <p className="ops-queue-empty">업로드된 원본이 없습니다.</p>
               ) : (
                 originalAssets.map((asset) =>
                   asset.signedUrl === null ? (
                     <span key={asset.id} className="ops-queue-asset-missing">
-                      {asset.contentType} (unavailable)
+                      {asset.contentType} (사용 불가)
                     </span>
                   ) : (
                     /* eslint-disable-next-line @next/next/no-img-element --
@@ -442,7 +466,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                        serve dead links. */
                     <img
                       key={asset.id}
-                      alt="Owner-supplied original"
+                      alt="사장님이 제공한 원본"
                       className="ops-queue-asset"
                       src={asset.signedUrl}
                     />
@@ -454,14 +478,16 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
 
           {selected.reviewEvents.length > 0 ? (
             <div className="ops-queue-section">
-              <h2>Owner decisions</h2>
+              <h2>사장님 결정</h2>
               <ul
                 className="ops-queue-events"
                 data-testid="queue-review-events"
               >
                 {selected.reviewEvents.map((event) => (
                   <li key={event.id}>
-                    <strong>{event.decision}</strong>
+                    <strong>
+                      {reviewDecisionLabels[event.decision] ?? event.decision}
+                    </strong>
                     {event.note === null ? null : <span> — {event.note}</span>}
                   </li>
                 ))}
@@ -471,7 +497,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
 
           {showPublishPanel ? (
             <div className="ops-queue-section" data-testid="publish-panel">
-              <h2>Publish</h2>
+              <h2>게시</h2>
               <ul className="ops-publish-channels">
                 {selected.channelEligibility.map((eligibility) => {
                   const channel = eligibility.channel
@@ -504,13 +530,13 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                           className="ops-queue-status"
                           data-testid={`publish-status-${channel}`}
                         >
-                          {job?.status ?? "not attempted"}
+                          {statusLabel(job?.status ?? "not_attempted")}
                         </span>
                       </label>
                       <p className="ops-publish-channel-meta">
                         {job === undefined
                           ? null
-                          : `Attempt ${job.attemptCount} of ${maxPublishAttempts}`}
+                          : `시도 ${job.attemptCount}/${maxPublishAttempts}`}
                         {job?.externalRef === undefined ||
                         job.externalRef === null
                           ? null
@@ -547,8 +573,8 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                           className="ops-publish-channel-blocked"
                           data-testid={`publish-exhausted-${channel}`}
                         >
-                          All {maxPublishAttempts} attempts used. Publish this
-                          channel by hand and record the result.
+                          {maxPublishAttempts}회 시도를 모두 사용했습니다. 이
+                          채널은 직접 게시한 뒤 결과를 기록해 주세요.
                         </p>
                       ) : null}
                     </li>
@@ -568,7 +594,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                       )
                     }
                   >
-                    Publish selected
+                    선택 항목 게시
                   </button>
                 </div>
               ) : null}
@@ -578,12 +604,12 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
           {inProduction ? (
             <>
               <div className="ops-queue-section">
-                <h2>Processed assets ({processedAssets.length})</h2>
+                <h2>처리된 소재 ({processedAssets.length})</h2>
                 <div className="ops-queue-assets">
                   {processedAssets.map((asset) =>
                     asset.signedUrl === null ? (
                       <span key={asset.id} className="ops-queue-asset-missing">
-                        {asset.contentType} (unavailable)
+                        {asset.contentType} (사용 불가)
                       </span>
                     ) : (
                       /* eslint-disable-next-line @next/next/no-img-element --
@@ -591,7 +617,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                          serve dead links. */
                       <img
                         key={asset.id}
-                        alt="Processed material"
+                        alt="처리된 소재"
                         className="ops-queue-asset"
                         src={asset.signedUrl}
                       />
@@ -608,7 +634,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                     onChange={(event) => void handleFiles(event.target.files)}
                     type="file"
                   />
-                  <span>Upload processed asset</span>
+                  <span>처리된 소재 업로드</span>
                 </label>
               </div>
 
@@ -617,15 +643,15 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                   button the moment the request leaves in_production — so the
                   operator passes it on the way to sending, not after. */}
               <div className="ops-queue-section" data-testid="cta-panel">
-                <h2>Call to action</h2>
+                <h2>액션 버튼</h2>
                 <p className="ops-queue-nudge-copy">
-                  Google renders this as a button on the post. Instagram has no
-                  buttons, so it becomes a labelled link at the end of the
-                  caption. Set it only after the owner has agreed to it.
+                  Google에서는 게시물에 버튼으로 표시됩니다. Instagram은 버튼이
+                  없어 캡션 끝에 텍스트 링크로 표시됩니다. 사장님이 동의한
+                  후에만 설정하세요.
                 </p>
                 <div className="ops-queue-cta">
                   <label className="ops-queue-cta-field">
-                    <span>Button</span>
+                    <span>버튼</span>
                     <select
                       data-testid="cta-action"
                       disabled={busy}
@@ -636,8 +662,8 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                       }
                       value={ctaSelection}
                     >
-                      <option value="none">No button</option>
-                      <option value="CALL">Call (listing phone number)</option>
+                      <option value="none">버튼 없음</option>
+                      <option value="CALL">전화하기 (리스팅 전화번호)</option>
                       {/* Driven off the domain's own list, so a new action type
                           cannot ship without an entry here. */}
                       {gbpPostLinkActionTypes.map((actionType) => (
@@ -649,7 +675,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                   </label>
                   {ctaNeedsUrl ? (
                     <input
-                      aria-label="Call to action link"
+                      aria-label="액션 버튼 링크"
                       className="ops-queue-cta-url"
                       data-testid="cta-url"
                       disabled={busy}
@@ -665,8 +691,8 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                     className="ops-publish-channel-blocked"
                     data-testid="cta-url-invalid"
                   >
-                    Enter a full http(s) link — that is the only kind Google and
-                    Instagram can open.
+                    완전한 http(s) 링크를 입력해 주세요 — Google과 Instagram이
+                    열 수 있는 유일한 형식입니다.
                   </p>
                 ) : null}
                 <div className="ops-queue-actions">
@@ -681,15 +707,15 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                       )
                     }
                   >
-                    Save button
+                    버튼 저장
                   </button>
                 </div>
               </div>
 
               <div className="ops-queue-section">
-                <h2>Final copy</h2>
+                <h2>최종 문구</h2>
                 <textarea
-                  aria-label="Final copy"
+                  aria-label="최종 문구"
                   className="ops-inbox-input"
                   data-testid="final-copy"
                   rows={4}
@@ -708,7 +734,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                       )
                     }
                   >
-                    Save copy
+                    문구 저장
                   </button>
                   <button
                     type="button"
@@ -717,7 +743,7 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
                     disabled={busy}
                     onClick={() => void runAction(submitForReview)}
                   >
-                    Send to owner
+                    사장님에게 전송
                   </button>
                 </div>
               </div>

@@ -65,14 +65,14 @@ type WithAdminRouteOptions = {
 
 export function adminAuthRequiredResponse(): Response {
   return Response.json(
-    { status: "AUTH_REQUIRED", message: "Operator session required." },
+    { status: "AUTH_REQUIRED", message: "운영자 세션이 필요합니다." },
     { status: 401 }
   )
 }
 
 export function invalidOriginResponse(): Response {
   return Response.json(
-    { status: "INVALID_ORIGIN", message: "Cross-origin request rejected." },
+    { status: "INVALID_ORIGIN", message: "교차 출처 요청이 거부되었습니다." },
     { status: 403 }
   )
 }
@@ -83,7 +83,10 @@ export function notFoundResponse(): Response {
 
 export function malformedJsonResponse(): Response {
   return Response.json(
-    { status: "VALIDATION_ERROR", message: "Request body was not valid JSON." },
+    {
+      status: "VALIDATION_ERROR",
+      message: "요청 본문이 올바른 JSON이 아닙니다.",
+    },
     { status: 400 }
   )
 }

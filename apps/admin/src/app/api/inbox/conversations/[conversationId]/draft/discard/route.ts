@@ -15,7 +15,7 @@ function draftNotPendingResponse(): Response {
   return Response.json(
     {
       status: "DRAFT_NOT_PENDING",
-      message: "The draft was already sent or discarded.",
+      message: "이미 전송되었거나 삭제된 초안입니다.",
     },
     { status: 409 }
   )

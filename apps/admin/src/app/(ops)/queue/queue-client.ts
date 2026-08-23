@@ -28,7 +28,7 @@ async function readRequestResult(
   } catch {
     return {
       kind: "error",
-      message: "The server returned an unreadable response.",
+      message: "서버가 해석할 수 없는 응답을 반환했습니다.",
     }
   }
 
@@ -50,7 +50,7 @@ async function readRequestResult(
     "message" in payload &&
     typeof (payload as { message: unknown }).message === "string"
       ? (payload as { message: string }).message
-      : "That action could not be completed."
+      : "해당 작업을 완료할 수 없습니다."
   return { kind: "error", message }
 }
 
