@@ -89,6 +89,24 @@ async function auditActions(): Promise<readonly string[]> {
   })
 }
 
+// A store whose owner claimed an already-org-managed listing in onboarding: the
+// seam the operator verdict starts from.
+async function seedAdoptionReview(
+  gbpLocationRef = "locations/org-owned"
+): Promise<string> {
+  return withDatabase(async (queryable) => {
+    const result = await createDatabaseGbpAccessStore(
+      queryable
+    ).openAdoptionReview({
+      id: randomUUID(),
+      storeId,
+      gbpLocationRef,
+      now: new Date(),
+    })
+    return result.request.id
+  })
+}
+
 async function adminSessionCookie(): Promise<string> {
   return withDatabase(async (queryable) => {
     const sessionId =
@@ -123,6 +141,91 @@ function params(requestId: string): {
 
 beforeEach(async () => {
   await useTempDatabase()
+})
+
+describe("adoption verdict", () => {
+  it("attaches the org listing to the store when an operator confirms", async () => {
+    const requestId = await seedAdoptionReview("locations/hand-built")
+    // The seeded demo store already carries a listing; clear it so the attach
+    // under test is the only thing that could have written one.
+    await withDatabase(async (queryable) => {
+      await queryable.execute("DELETE FROM gbp_locations WHERE store_id = ?", [
+        storeId,
+      ])
+    })
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "CONFIRM_ADOPTION" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    expect(response.status).toBe(200)
+    expect(await currentState(requestId)).toBe("granted")
+    // Without these rows the owner reads as connected but has nothing to
+    // publish to, which is the failure this write exists to prevent.
+    const locations = await withDatabase(async (queryable) =>
+      queryable.query(
+        "SELECT google_location_id AS id, status FROM gbp_locations WHERE store_id = ?",
+        [storeId]
+      )
+    )
+    expect(locations).toEqual([
+      { id: "locations/hand-built", status: "VERIFIED" },
+    ])
+    expect(await auditActions()).toContain("gbp_access_confirm_adoption")
+  })
+
+  it("sends the operator's reason to the owner's chat when a claim is rejected", async () => {
+    const requestId = await seedAdoptionReview()
+    const reason =
+      "저희 계정에서 찾지 못했어요. 지도에 등록된 상호를 알려주시겠어요?"
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "REJECT_ADOPTION", reason },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    expect(response.status).toBe(200)
+    expect(await currentState(requestId)).toBe("blocked")
+
+    // The owner must find something answerable in their thread, not a bare
+    // "확인이 필요합니다" they cannot act on.
+    const messages = await withDatabase(async (queryable) =>
+      queryable.query(
+        "SELECT body, sender, author_kind AS authorKind FROM cs_messages ORDER BY created_at DESC"
+      )
+    )
+    expect(messages[0]).toEqual({
+      body: reason,
+      sender: "assistant",
+      authorKind: "admin",
+    })
+    expect(await auditActions()).toContain("gbp_access_reject_adoption")
+  })
+
+  it("refuses a rejection with no reason before touching the request", async () => {
+    const requestId = await seedAdoptionReview()
+
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "REJECT_ADOPTION", reason: "   " },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    expect(response.status).toBe(400)
+    expect(await currentState(requestId)).toBe("adoption_review")
+  })
 })
 
 describe("gbp access transition route", () => {

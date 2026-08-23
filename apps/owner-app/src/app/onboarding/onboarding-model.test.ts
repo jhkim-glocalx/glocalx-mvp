@@ -43,6 +43,31 @@ describe("onboarding response model parsing", () => {
     })
   })
 
+  it("separates an attached listing from a claim still under review", () => {
+    // Both arrive as ALREADY_LINKED; only the attached one carries a location
+    // id, and only it may finish onboarding.
+    const attached = toSetupState({
+      status: "ALREADY_LINKED",
+      googleLocationId: "locations/org-owned",
+      message: "이미 연결된 Google 비즈니스 프로필이 있습니다.",
+    })
+    const underReview = toSetupState({
+      status: "ALREADY_LINKED",
+      message: "이미 등록된 프로필인지 확인하고 있습니다.",
+    })
+
+    expect(attached).toEqual({
+      connected: true,
+      kind: "alreadyLinked",
+      message: "이미 연결된 Google 비즈니스 프로필이 있습니다.",
+    })
+    expect(underReview).toEqual({
+      connected: false,
+      kind: "alreadyLinked",
+      message: "이미 등록된 프로필인지 확인하고 있습니다.",
+    })
+  })
+
   it("reports blocked credentials as setup errors", () => {
     const state = toSetupState({
       status: "BLOCKED_BY_CREDENTIALS",

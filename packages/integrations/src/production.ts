@@ -17,6 +17,7 @@ import type {
   HttpMethod,
   HttpRequestSpec,
   RequestAdminRightsInput,
+  ListOrgLocationsInput,
   SearchGoogleLocationsInput,
   VerifyLocationInput,
   ExternalFetch,
@@ -92,6 +93,30 @@ function buildGoogleRequestSpec(options: {
   }
 }
 
+// readMask is required by accounts.locations.list and is deliberately minimal:
+// the adoption matcher compares name/address/phone and nothing else, so asking
+// for more would pull unrelated business data into a response an operator reads.
+const orgLocationsReadMask = "name,title,storefrontAddress,phoneNumbers"
+
+export function buildGoogleOrgLocationsListRequest(
+  input: ListOrgLocationsInput
+): HttpRequestSpec {
+  const url = new URL(
+    `${googleBusinessInformationBaseUrl}/${input.accountName}/locations`
+  )
+  url.searchParams.set("readMask", orgLocationsReadMask)
+  url.searchParams.set("pageSize", String(input.pageSize))
+  if (input.pageToken !== undefined) {
+    url.searchParams.set("pageToken", input.pageToken)
+  }
+
+  return buildGoogleRequestSpec({
+    accessToken: input.accessToken,
+    method: "GET",
+    url: url.toString(),
+  })
+}
+
 export function buildGoogleLocationSearchRequest(
   input: SearchGoogleLocationsInput
 ): HttpRequestSpec {
@@ -153,6 +178,17 @@ export function createProductionBusinessInformation(
 ): GbpBusinessInformationAdapter {
   return {
     // These methods translate workflow decisions into GBP request specs; a separate boundary performs the side effect with the owner's access token.
+    async listOrgLocations(input) {
+      const blocked = googleBlockedResult(env)
+      if (blocked.kind === "blocked_by_credentials") {
+        return blocked
+      }
+
+      return {
+        kind: "ok",
+        value: buildGoogleOrgLocationsListRequest(input),
+      }
+    },
     async searchLocations(input) {
       const blocked = googleBlockedResult(env)
       if (blocked.kind === "blocked_by_credentials") {

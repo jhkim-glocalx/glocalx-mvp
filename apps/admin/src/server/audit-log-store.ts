@@ -27,6 +27,12 @@ export type AdminAuditAction =
   // it". gbp_access_note is a chase-note edit with no state change.
   | "gbp_access_send_invite"
   | "gbp_access_mark_pending"
+  // The operator's verdict on an owner's "this listing is already mine" claim.
+  // Confirming attaches an org-owned listing to a store on an operator's word
+  // alone — no Google approval stands behind it — so it is the one access action
+  // whose audit trail is the only record of who authorized the attachment.
+  | "gbp_access_confirm_adoption"
+  | "gbp_access_reject_adoption"
   | "gbp_access_grant"
   | "gbp_access_revoke"
   | "gbp_access_block"

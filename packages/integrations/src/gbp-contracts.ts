@@ -26,6 +26,33 @@ export type SearchGoogleLocationsResult = {
   readonly matches: readonly GoogleLocationMatch[]
 }
 
+// Listing what the *org account already manages*, which is a different question
+// from googleLocations:search (that one finds listings anywhere on Google, and
+// returns a requestAdminRightsUri only for ones someone else owns). A listing we
+// already manage appears in neither of those buckets, so the adoption flow needs
+// its own read.
+export type ListOrgLocationsInput = {
+  readonly accessToken: string
+  readonly accountName: string
+  readonly pageSize: number
+  readonly pageToken?: string
+}
+
+export type OrgLocation = {
+  // Google's "locations/{id}" resource name.
+  readonly name: string
+  readonly title: string
+  // Flattened from storefrontAddress.addressLines so matching compares one
+  // string against the store's single-line confirmed address.
+  readonly addressLine: string
+  readonly phone?: string
+}
+
+export type ListOrgLocationsResult = {
+  readonly locations: readonly OrgLocation[]
+  readonly nextPageToken?: string
+}
+
 export type RequestAdminRightsInput = {
   readonly accessToken: string
   readonly googleLocationId: string
@@ -106,6 +133,9 @@ export type GbpPerformanceApiResponse = {
 }
 
 export interface GbpBusinessInformationAdapter {
+  listOrgLocations(
+    input: ListOrgLocationsInput
+  ): Promise<AdapterResult<ListOrgLocationsResult | HttpRequestSpec>>
   searchLocations(
     input: SearchGoogleLocationsInput
   ): Promise<AdapterResult<SearchGoogleLocationsResult | HttpRequestSpec>>

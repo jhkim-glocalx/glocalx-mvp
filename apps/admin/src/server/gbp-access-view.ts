@@ -86,7 +86,13 @@ export async function applyGbpAccessAction(
     nextState,
     // A BLOCK carries its reason into the chase note so the Stores list explains
     // why a request stalled without a second operator action.
-    note: action.type === "BLOCK" ? action.reason : undefined,
+    // A rejected adoption stalls the request for the same reason a BLOCK does,
+    // so its reason lands in the same chase note — the Stores list explains the
+    // stall without a second operator action.
+    note:
+      action.type === "BLOCK" || action.type === "REJECT_ADOPTION"
+        ? action.reason
+        : undefined,
     now,
   })
   if (updated === undefined) {

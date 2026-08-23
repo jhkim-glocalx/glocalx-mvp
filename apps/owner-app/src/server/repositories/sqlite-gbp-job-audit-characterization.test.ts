@@ -132,6 +132,12 @@ describe("SQLite GBP, job, and audit characterization", () => {
     await withRepositoryTestContext(
       async ({ adapters, database, queryable }) => {
         const gbpStore = createDatabaseGbpStore(queryable)
+        // The demo seed hands the store a VERIFIED listing, which the duplicate
+        // guard refuses to provision over. Characterizing first-time setup means
+        // starting from a store with no listing yet.
+        database.exec(
+          `DELETE FROM gbp_locations WHERE store_id = '${demoStoreId}'`
+        )
         const firstSetup = await setupGoogleBusinessProfile({
           adapters,
           database,
@@ -159,7 +165,13 @@ describe("SQLite GBP, job, and audit characterization", () => {
           oauthConnectionId: "setup-oauth-google",
           status: "VERIFICATION_PENDING",
         })
-        expect(secondSetup).toEqual(firstSetup)
+        // Re-running now stops at the duplicate guard rather than re-upserting;
+        // the row counts below still characterize the no-second-listing outcome.
+        expect(secondSetup).toEqual({
+          status: "ALREADY_LINKED",
+          googleLocationId: "locations/stub-created",
+          message: "이미 연결된 Google 비즈니스 프로필이 있습니다.",
+        })
         expect(setupRows).toEqual({
           auditLogs: 1,
           followUpJobs: 1,
@@ -172,6 +184,14 @@ describe("SQLite GBP, job, and audit characterization", () => {
           accessToken: "demo-access-token",
           kind: "ready",
         })
+        // Ambiguity here means "this store has more than one location row", which
+        // is what the seeded demo listing used to supply alongside the one setup
+        // creates. The duplicate guard means setup can no longer produce that
+        // second row itself, so the condition under test is restored directly.
+        database.exec(
+          `INSERT INTO gbp_locations (id, store_id, gbp_account_id, google_location_id, status, request_admin_rights_url, created_at, updated_at)
+           VALUES ('second-location', '${demoStoreId}', 'demo-gbp-account', 'locations/demo', 'VERIFIED', NULL, '2026-06-04T00:00:00.000Z', '2026-06-04T00:00:00.000Z')`
+        )
         await expect(
           gbpStore.readPerformanceLocation(demoStoreId)
         ).resolves.toMatchObject({ kind: "ambiguous_gbp_location" })

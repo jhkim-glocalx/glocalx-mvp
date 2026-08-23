@@ -98,6 +98,12 @@ export const naturalActionsByState: Readonly<
   Record<GbpAccessState, readonly { label: string; action: GbpAccessAction }[]>
 > = {
   not_requested: [{ label: "Send invite", action: { type: "SEND_INVITE" } }],
+  // Confirm is one click; reject is not, because its reason is sent to the owner
+  // verbatim. The console renders reject separately with a required reason input
+  // rather than listing it here as a bare button.
+  adoption_review: [
+    { label: "Confirm adoption", action: { type: "CONFIRM_ADOPTION" } },
+  ],
   invited: [
     { label: "Mark pending", action: { type: "MARK_PENDING" } },
     { label: "Grant", action: { type: "GRANT" } },
@@ -105,9 +111,14 @@ export const naturalActionsByState: Readonly<
   pending: [{ label: "Grant", action: { type: "GRANT" } }],
   granted: [{ label: "Revoke", action: { type: "REVOKE" } }],
   revoked: [],
-  // A blocked request resumes the flow without an override.
+  // A blocked request resumes the flow without an override. Confirm adoption is
+  // offered here because a rejected claim lands in blocked and is resolved in
+  // chat: once the owner clarifies, this is the operator's way back to granted
+  // *with* the listing attached. Overriding to granted would skip that write and
+  // leave the owner connected to nothing.
   blocked: [
     { label: "Send invite", action: { type: "SEND_INVITE" } },
+    { label: "Confirm adoption", action: { type: "CONFIRM_ADOPTION" } },
     { label: "Grant", action: { type: "GRANT" } },
   ],
 }
@@ -116,6 +127,7 @@ export const naturalActionsByState: Readonly<
 // listed above; the console renders it alongside the natural actions.
 export const canBlock: Readonly<Record<GbpAccessState, boolean>> = {
   not_requested: true,
+  adoption_review: true,
   invited: true,
   pending: true,
   granted: false,
@@ -125,6 +137,7 @@ export const canBlock: Readonly<Record<GbpAccessState, boolean>> = {
 
 export const stateLabels: Readonly<Record<GbpAccessState, string>> = {
   not_requested: "Not requested",
+  adoption_review: "Owner claims existing listing",
   invited: "Invited",
   pending: "Pending",
   granted: "Granted",

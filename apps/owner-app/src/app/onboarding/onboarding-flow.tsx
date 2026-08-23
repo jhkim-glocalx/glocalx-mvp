@@ -63,6 +63,8 @@ export function OnboardingFlow() {
           slotState={state.slotState}
         />
         <GbpHandoffPanel
+          adoption={state.adoption}
+          onClaimExisting={actions.claimExisting}
           confirmation={state.confirmation}
           onSetup={actions.checkSetup}
           setup={state.setup}

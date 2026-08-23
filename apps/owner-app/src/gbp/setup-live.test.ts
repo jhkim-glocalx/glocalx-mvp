@@ -400,6 +400,10 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
     const database = openDatabase(join(tempPath, "gbp.db"))
     applyMigrations(database)
     seedDemoData(database)
+    // The demo seed hands demo-store a VERIFIED listing, which the duplicate
+    // guard refuses to provision over. These tests are about the *first*
+    // provisioning, so start them from a store with no listing yet.
+    database.exec("DELETE FROM gbp_locations WHERE store_id = 'demo-store'")
     // The live path builds a locations.create body from an owner-picked gcid, so
     // the demo store needs one selected before it can reach credentials/creation.
     database

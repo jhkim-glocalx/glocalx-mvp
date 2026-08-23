@@ -15,6 +15,7 @@ import type {
   NaverSearchResult,
   TranslationAdapter,
 } from "./contracts"
+import type { OrgLocation } from "./gbp-contracts"
 import { createStubMarketingDraft } from "./stub-marketing-generation"
 import type { GeocodingAdapter } from "./geocoding-contracts"
 import type { AdapterBusinessProfileCandidate } from "@glocalx/domain"
@@ -153,8 +154,36 @@ export function createStubGoogleOAuth(): GoogleOAuthAdapter {
   }
 }
 
+// Deterministic org-managed listings for the adoption flow. The first entry is a
+// deliberate near-match for the demo store (same business, address written the
+// way an operator would have typed it by hand) so the matcher is exercised on
+// the case it actually exists for; the second is an unrelated listing that must
+// never match.
+export const stubOrgLocations: readonly OrgLocation[] = [
+  {
+    name: "locations/stub-org-owned",
+    // Mirrors the seeded demo store, but with the address written the long way
+    // ("서울특별시" rather than "서울") — the hand-entry variation the matcher
+    // has to see through for this flow to be demoable at all.
+    title: "브런치모먼트 홍대점",
+    addressLine: "서울특별시 마포구 와우산로 123",
+    phone: "02-123-4567",
+  },
+  {
+    name: "locations/stub-org-other",
+    title: "글로컬엑스 서면점",
+    addressLine: "부산 서면로 39",
+  },
+]
+
 export function createStubBusinessInformation(): GbpBusinessInformationAdapter {
   return {
+    async listOrgLocations() {
+      return {
+        kind: "ok",
+        value: { locations: stubOrgLocations },
+      }
+    },
     async searchLocations() {
       return {
         kind: "ok",
