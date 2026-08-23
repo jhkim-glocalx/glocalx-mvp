@@ -60,6 +60,9 @@ export function InboxConsole({
   const draftIdRef = useRef<string | null>(null)
   const detailTicketRef = useRef(0)
   const appliedDetailTicketRef = useRef(0)
+  const listTicketRef = useRef(0)
+  const appliedListTicketRef = useRef(0)
+  const detailConfirmedRef = useRef(false)
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -90,14 +93,25 @@ export function InboxConsole({
     return true
   }, [])
 
+  // Same arrival-order hazard as the detail poll, with milder stakes: the list
+  // is replaced wholesale and holds no operator input, so a stale one only
+  // shows outdated previews and unread badges until the next tick. Ordered for
+  // the same reason regardless — an unread badge that flickers back after being
+  // cleared reads as a real new message.
   const pollList = useCallback(async () => {
     const url = "/api/inbox/conversations"
+    listTicketRef.current += 1
+    const ticket = listTicketRef.current
     try {
       const response = await fetch(url)
       if (!response.ok) {
         return
       }
       const data = (await response.json()) as ConversationListResponse
+      if (ticket <= appliedListTicketRef.current) {
+        return
+      }
+      appliedListTicketRef.current = ticket
       setConversations(data.conversations)
     } catch {
       // Best-effort; the next tick reconciles.
@@ -130,6 +144,7 @@ export function InboxConsole({
       ) {
         return
       }
+      detailConfirmedRef.current = true
       setConversation(data.conversation)
       // Seed the editable draft only when a *new* draft id appears, so a poll
       // mid-edit never clobbers the operator's in-progress text.
@@ -178,6 +193,10 @@ export function InboxConsole({
 
   function selectConversation(next: InboxConversationView): void {
     commitDetailTicket(claimDetailTicket())
+    // Seeded from the list row so the panel renders at once, but the list is up
+    // to one poll interval old. Until the detail read lands, its `mode` is a
+    // guess and must not be trusted to short-circuit a mode change.
+    detailConfirmedRef.current = false
     cursorRef.current = null
     draftIdRef.current = null
     setMessages([])
@@ -217,7 +236,9 @@ export function InboxConsole({
 
   async function setMode(mode: string): Promise<void> {
     const conversationId = selectedId
-    if (conversationId === null || busy || conversation?.mode === mode) {
+    const alreadyInMode =
+      detailConfirmedRef.current && conversation?.mode === mode
+    if (conversationId === null || busy || alreadyInMode) {
       return
     }
     setBusy(true)
@@ -241,6 +262,7 @@ export function InboxConsole({
         // owner sent to another.
         if (selectedRef.current === conversationId) {
           commitDetailTicket(claimDetailTicket())
+          detailConfirmedRef.current = true
           setConversation(data.conversation)
         }
         await pollList()
@@ -343,6 +365,7 @@ export function InboxConsole({
           return
         }
         commitDetailTicket(claimDetailTicket())
+        detailConfirmedRef.current = true
         setConversation(data.conversation)
         if (action === "resolve") {
           setSelectedId(null)
