@@ -28,7 +28,7 @@ Related: 2026-07-17-main-design-v2-concierge-split.md (같은 콘시어지 테�
 
 ## Constraints
 
-- **6시간 뒤 데모** (2026-08-24) — 데모 스코프는 Approach A로 고정.
+- **6시간 뒤 데모** (2026-08-24) — 데모 스코프는 Approach A로 고정. **[변경 2026-08-24 02시경]** 시연자는 CEO이고 환경은 **프로덕션(Vercel)** — 로컬 스텁 시연이 아니라 `glocalx-admin.vercel.app` + 실제 owner 앱으로 진행. 상세는 "프로덕션 데모 준비 체크리스트" 참조.
 - 출시 버전(B)은 데모 직후 착수, 주 단위 내 완결 목표.
 - Meta App Review(#41)는 외부 의존 — 출시 웨지에서 제외.
 - 프로덕션은 이미 live 통합(GBP/Naver/OpenAI) — 스텁 아님. 실수하면 실고객 데이터에 닿는다.
@@ -84,10 +84,36 @@ A + Inbox "GBP 설정 시작" 액션 카드 + `POST /api/admin/stores/:storeId/g
 3. Meta App Review(#41) 신청 시점 — B와 병행 가능한 외부 트랙, 언제 넣을지.
 4. DB 통일 버전의 구체 범위: 로컬 dev만 Postgres로 갈지, SQLite 경로(e2e 속도 이점)를 완전히 제거할지.
 
+## 실행 상태 (2026-08-24 02시경 갱신)
+
+- **A-1~A-3 완료**: PR #69 (`c11969a`) main 머지 — org-locations 어댑터 + 콘솔 adoption + IG 글로벌 토큰 fallback 차단 모두 포함. owner 프로덕션 자동 배포됨.
+- **어드민 프로덕션 배포됨**: `glocalx-admin.vercel.app`이 git-main 자동배포로 #69 포함 빌드 서빙 중 (dpl_H6rPWXr26..., 01:46 KST).
+- **남은 갭 (프로덕션 데모 블로커)**: glocalx-admin 프로젝트 Production env에 `GOOGLE_ORG_REFRESH_TOKEN`·`GOOGLE_BUSINESS_ACCOUNT_ID`가 없음 (owner 프로젝트에는 둘 다 존재, Sensitive라 CLI 복사 불가 — 값 보유자가 직접 입력). 이 상태로 production 모드에서 picker를 열면 `BLOCKED_BY_CREDENTIALS`(503)로 결손 env 이름이 콘솔에 표시된다. `APP_INTEGRATION_MODE`는 Sensitive라 현재값 검증 불가 → 체크리스트에서 명시적으로 `production` 재설정.
+
+## 리허설 결과 (2026-08-24 새벽, 프로덕션 실측)
+
+P-4 리허설을 프로덕션에서 완료. 통과: 운영자 로그인 → override→`adoption_review` 전이 → **picker에 실제 org 리스팅 5건 로드**(글로컬엑스 서울/노티스/우빈떡볶이/고기그릴/Acabar — env·모드·어댑터 전 구간 검증) → location 보유 가게 재입양 시 서버 409 거부(location 덮어쓰기 방어 성공) → override로 원상복구(undo 경로 검증). 리허설이 잡아낸 결함 3건:
+
+1. **[해결] 마이그레이션 0020 프로드 미적용** — `adoption_review` 상태가 CHECK 제약에 거부돼 전이가 500. 런북 4번(수동 migrate) 스텝이 PR #69 머지에서 누락된 것. `db:pg:migrate`+verify로 적용 완료.
+2. **[해결] admin `APP_INTEGRATION_MODE` 삭제 상태** — env에 변수 부재 → 어댑터 stub 기본값 → picker가 canned 리스팅 표시. `production`으로 재추가 + 재배포 완료.
+3. **[해결: fix/adoption-guard-order 브랜치, #70] CONFIRM_ADOPTION 거부(409)가 상태 전이를 롤백하지 않음** — 가드가 `applyGbpAccessAction` 뒤에 실행돼, 거부돼도 granted로 남음. location 없는 가게에서 `LOCATION_ALREADY_ADOPTED` 거부가 나면 "granted인데 발행 타깃 없음" 상태 가능. **데모 영향: 운영자가 올바른(미입양) 리스팅을 고르는 정상 경로에서는 발현 안 함** — 시연 스크립트가 지정 리스팅만 고르면 안전. 수정은 가드를 전이 앞으로 이동(+회귀 테스트).
+
+부수 수정(미커밋): `packages/db/src/postgres/connection.ts` connect_timeout 5→30s — Neon TLS 핸드셰이크 ~6s인 네트워크에서 원격 migrate가 항상 타임아웃하던 문제.
+
+미리허설 잔여: **happy path(location 없는 가게에 실제 부착)** — 프로드에 location 없는 가게가 없어 실측 불가. 데모 전에 신규 테스트 가게(창업자 Google 계정, owner 온보딩에서 "이미 등록했어요" 진입)를 만들어 1회 통주 권장.
+
+## 프로덕션 데모 준비 체크리스트 (P-단계, CEO 시연용)
+
+1. **[P-1] 어드민 env 주입** (값 보유자=CTO/창업자가 직접, `apps/admin` 디렉토리에서): `vercel env add GOOGLE_ORG_REFRESH_TOKEN production --sensitive`, `vercel env add GOOGLE_BUSINESS_ACCOUNT_ID production --sensitive`, 그리고 `APP_INTEGRATION_MODE`를 rm 후 `production`으로 재추가(현재값 미상이므로 덮어써서 확정). 주의: 모드가 stub이었다면 이 변경으로 어드민 큐 발행도 라이브가 됨 — owner가 이미 production이므로 정합.
+2. **[P-2] 어드민 재배포**: env 변경은 재배포로만 반영 — `vercel redeploy <latest-prod-url>` 또는 빈 커밋 push.
+3. **[P-3] 데모 대상 지정**: 안전 리스팅 = 조직 계정의 테스트 리스팅("글로컬엑스/부산 서면로 39"). 실고객 가게/리스팅은 시연에 사용 금지. 시연용 owner 계정 = 창업자 Google 계정(기존 온보딩 실증 계정).
+4. **[P-4] 리허설 (CEO 시연 전 CTO 1회 통주)**: owner 프로덕션에서 테스트 계정으로 "이미 등록했어요" 경로 진입 → 어드민 stores 콘솔에서 picker로 조직 리스팅 확인 → 테스트 가게에 CONFIRM_ADOPTION → 콘솔/owner 양쪽 상태 확인 → override 셀렉터로 되돌리기(undo 경로도 리허설). 실패 시 콘솔에 표시되는 결손 env·사유 확인.
+5. **[P-5] 폴백**: P-1의 토큰 값을 데모 전에 확보 못 하면 로컬 스텁 데모(`APP_INTEGRATION_MODE=stub` + 시드 데이터, 기존 데모 바)로 전환 — 흐름은 동일, 데이터만 canned.
+
 ## Success Criteria
 
-- **데모 바(오늘, 6h)**: **로컬 스텁 환경**(`APP_INTEGRATION_MODE=stub` + 시드 데모 데이터 — 라이브 프로덕션 GBP 데이터를 건드리지 않음)에서, 어드민 stores 콘솔로 조직 리스팅 목록을 열고 → 사장님 가게에 연결 → 연결된 상태가 어드민 콘솔에 반영되는 흐름을 라이브 시연. 사장님 앱 쪽 표시는 회수한 작업의 `onboarding-gbp-panels.tsx` 변경이 커버하는 범위까지만 — 데모 필수 아님.
-- **머지 바(데모와 분리)**: CI 게이트(lint/typecheck/test/e2e/e2e:postgres) 그린. 데모는 머지 바에 블로킹되지 않는다.
+- **데모 바(오늘, 6h, 프로덕션)**: CEO가 `glocalx-admin.vercel.app`(운영자 로그인) + owner 프로덕션에서 — 조직 계정의 **실제** 리스팅 목록을 picker로 열고 → 지정된 테스트 가게에 연결 → 연결 상태가 콘솔과 owner 앱에 반영되는 것을 라이브 시연. 실고객 데이터 접촉 0건(P-3의 안전 리스팅만 사용).
+- **머지 바**: 충족됨 — PR #69 CI 그린 후 머지.
 - **출시 버전**: 운영자가 신규 고객 1명을 사장님 로그인 이후 **사장님 화면을 만지지 않고** 채팅+콘솔만으로 GBP 연결 완료까지 데려간다. 모든 운영자 액션이 audit_logs에 남는다.
 - **안전**: per-store 토큰 없는 가게에서 IG 발행 시도 → BLOCKED 응답 (글로벌 토큰 발행 0건).
 
