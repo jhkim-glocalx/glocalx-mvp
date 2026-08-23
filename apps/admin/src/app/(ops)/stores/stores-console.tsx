@@ -25,17 +25,17 @@ import {
 function formatAge(updatedAt: string): string {
   const elapsedMs = Date.now() - Date.parse(updatedAt)
   if (Number.isNaN(elapsedMs) || elapsedMs < 60_000) {
-    return "just now"
+    return "방금 상태 변경"
   }
   const minutes = Math.floor(elapsedMs / 60_000)
   if (minutes < 60) {
-    return `${minutes}m`
+    return `이 상태 ${minutes}분째`
   }
   const hours = Math.floor(minutes / 60)
   if (hours < 24) {
-    return `${hours}h`
+    return `이 상태 ${hours}시간째`
   }
-  return `${Math.floor(hours / 24)}d`
+  return `이 상태 ${Math.floor(hours / 24)}일째`
 }
 
 function upsert(
@@ -130,12 +130,12 @@ export function StoresConsole({
   if (stores.length === 0) {
     return (
       <>
-        <h1 className="ops-page-title">Stores</h1>
+        <h1 className="ops-page-title">매장</h1>
         <div className="ops-empty">
-          <strong>No stores yet</strong>
+          <strong>아직 매장이 없습니다</strong>
           <p>
-            Stores appear here once an owner completes GBP connect. Drive the
-            org manager-access grant from each card.
+            사장님이 GBP 연결을 완료하면 여기에 매장이 표시됩니다. 각 카드에서
+            조직 관리자 권한 부여를 진행하세요.
           </p>
         </div>
       </>
@@ -144,15 +144,14 @@ export function StoresConsole({
 
   return (
     <>
-      <h1 className="ops-page-title">Stores</h1>
+      <h1 className="ops-page-title">매장</h1>
       {conciergeCount === 0 ? null : (
         <p
           className="ops-stores-concierge"
           data-testid="stores-concierge-count"
         >
-          {conciergeCount} store{conciergeCount === 1 ? " needs" : "s need"}{" "}
-          concierge verification — call the owner and walk them through
-          Google&rsquo;s video verification.
+          매장 {conciergeCount}곳이 컨시어지 인증이 필요합니다 — 사장님께 전화해
+          Google 동영상 인증을 안내해 주세요.
         </p>
       )}
       {error === null ? null : (
@@ -225,23 +224,23 @@ function StoreCard({
           {stateLabels[store.state]}
         </span>
         <span className="ops-store-age" suppressHydrationWarning>
-          {formatAge(store.updatedAt)} in state
+          {formatAge(store.updatedAt)}
         </span>
       </div>
 
       {store.gbpLocationRef === null ? null : (
-        <p className="ops-store-meta">Location: {store.gbpLocationRef}</p>
+        <p className="ops-store-meta">위치: {store.gbpLocationRef}</p>
       )}
       {verification === null ? null : (
         <p
           className={`ops-store-verification ops-store-verification-${verification.state}`}
           data-testid={`store-verification-${store.storeId}`}
         >
-          Listing: {verificationStateLabels[verification.state]}
+          리스팅: {verificationStateLabels[verification.state]}
         </p>
       )}
       {store.note === null ? null : (
-        <p className="ops-store-note">Note: {store.note}</p>
+        <p className="ops-store-note">메모: {store.note}</p>
       )}
 
       <div className="ops-store-actions">
@@ -265,14 +264,14 @@ function StoreCard({
                 the only place the decision is made — and the matcher only ever
                 guesses. An operator who recognizes the store picks it here. */}
             <label className="ops-store-adopt-label">
-              Connect to which listing in our org account?
+              조직 계정의 어떤 리스팅에 연결할까요?
               <select
                 data-testid={`store-adopt-location-${store.storeId}`}
                 disabled={busy || orgLocations.length === 0}
                 onChange={(event) => setLocationChoice(event.target.value)}
                 value={locationChoice}
               >
-                <option value="">Select a listing…</option>
+                <option value="">리스팅 선택…</option>
                 {orgLocations.map((location) => (
                   <option key={location.name} value={location.name}>
                     {location.title} — {location.addressLine}
@@ -282,10 +281,10 @@ function StoreCard({
             </label>
             {orgLocationsError !== null ? (
               <p className="ops-store-meta" role="alert">
-                Org listings unavailable — {orgLocationsError}
+                조직 리스팅을 사용할 수 없음 — {orgLocationsError}
               </p>
             ) : orgLocations.length === 0 ? (
-              <p className="ops-store-meta">No org listings found.</p>
+              <p className="ops-store-meta">조직 리스팅을 찾을 수 없습니다.</p>
             ) : null}
             <button
               className="ops-store-btn"
@@ -301,7 +300,7 @@ function StoreCard({
               }
               type="button"
             >
-              Confirm adoption
+              연결 확정
             </button>
           </div>
         ) : null}
@@ -310,7 +309,7 @@ function StoreCard({
             {/* The reason is sent to the owner word for word, so it is written
                 here as a message to them — not as an internal status code. */}
             <label className="ops-store-reject-label">
-              Reject — what should the owner be told?
+              거절 — 사장님께 어떻게 안내할까요?
               <input
                 data-testid={`store-reject-reason-${store.storeId}`}
                 disabled={busy}
@@ -334,7 +333,7 @@ function StoreCard({
               }
               type="button"
             >
-              Reject adoption
+              연결 거절
             </button>
           </div>
         ) : null}
@@ -350,14 +349,14 @@ function StoreCard({
             }
             type="button"
           >
-            Block
+            차단
           </button>
         ) : null}
       </div>
 
       <div className="ops-store-override">
         <label className="ops-store-override-label">
-          Override
+          수동 변경
           <select
             data-testid={`store-override-${store.storeId}`}
             disabled={busy}
@@ -366,7 +365,7 @@ function StoreCard({
             }
             value={overrideTarget}
           >
-            <option value="">Select state…</option>
+            <option value="">상태 선택…</option>
             {overrideOptions.map((state) => (
               <option key={state} value={state}>
                 {stateLabels[state]}
@@ -393,7 +392,7 @@ function StoreCard({
           }}
           type="button"
         >
-          Apply override
+          수동 변경 적용
         </button>
       </div>
 
@@ -403,7 +402,7 @@ function StoreCard({
           data-testid={`store-note-${store.storeId}`}
           disabled={busy}
           onChange={(event) => setNoteDraft(event.target.value)}
-          placeholder="Chase note"
+          placeholder="후속 조치 메모"
           value={noteDraft}
         />
         <button
@@ -415,7 +414,7 @@ function StoreCard({
           }
           type="button"
         >
-          Save note
+          메모 저장
         </button>
       </div>
     </li>
