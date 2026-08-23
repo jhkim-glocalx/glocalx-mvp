@@ -22,41 +22,6 @@ function tabLabel(preview: PlatformPostPreview): string {
   return "GBP"
 }
 
-function statusMessageForPreview(options: {
-  readonly activePreview: PlatformPostPreview | undefined
-  readonly publish: ReferenceFlowScreensProps["publish"]
-}): string | null {
-  if (options.activePreview === undefined) {
-    return null
-  }
-  if (
-    options.publish.kind !== "idle" &&
-    options.publish.targetChannel !== options.activePreview.platform
-  ) {
-    return null
-  }
-  if (options.publish.kind === "loading") {
-    return `${tabLabel(options.activePreview)} 게시 상태를 확인하는 중`
-  }
-  if (options.publish.kind === "blocked") {
-    return options.publish.message
-  }
-  if (options.publish.kind === "published") {
-    return "게시 요청이 완료됐습니다."
-  }
-  return `${tabLabel(options.activePreview)} 게시물이 준비됐습니다.`
-}
-
-function previewActionLabel(preview: PlatformPostPreview | undefined): string {
-  if (preview === undefined) {
-    return "게시물 발행"
-  }
-  if (preview.platform === "INSTAGRAM") {
-    return "Instagram에 게시하기"
-  }
-  return "GBP에 게시하기"
-}
-
 function translationForLocale(
   translations: readonly MarketingCaptionTranslation[],
   locale: MarketingTranslationLocale | null
@@ -72,16 +37,10 @@ export function PostingScreen({
   draft,
   imageAssets,
   onPreviewChange,
-  onPublish,
-  publish,
+  onSelect,
 }: Pick<
   ReferenceFlowScreensProps,
-  | "activePreviewKey"
-  | "draft"
-  | "imageAssets"
-  | "onPreviewChange"
-  | "onPublish"
-  | "publish"
+  "activePreviewKey" | "draft" | "imageAssets" | "onPreviewChange" | "onSelect"
 >) {
   const [activeTranslationLocale, setActiveTranslationLocale] =
     useState<MarketingTranslationLocale | null>("en")
@@ -108,11 +67,6 @@ export function PostingScreen({
     selectedPreview === undefined
       ? activePreviewKey
       : platformPreviewKey(selectedPreview)
-  const publishLocked =
-    selectedPreview !== undefined &&
-    (publish.kind === "loading" ||
-      (publish.kind === "published" &&
-        publish.targetChannel === selectedPreview.platform))
   const selectedImage =
     selectedPreview === undefined
       ? undefined
@@ -124,10 +78,6 @@ export function PostingScreen({
       ? undefined
       : imageAssets.find((asset) => asset.id === selectedPreview.imageAssetId)
   const imageSrc = selectedImage?.editedDataUrl ?? selectedAsset?.dataUrl
-  const publishStatusMessage = statusMessageForPreview({
-    activePreview: selectedPreview,
-    publish,
-  })
   const selectedTranslation = translationForLocale(
     selectedPreview?.translations ?? [],
     activeTranslationLocale
@@ -253,19 +203,13 @@ export function PostingScreen({
         </div>
       </FlowCard>
       <div className="gx-actions-row gx-publish-actions">
-        {publishStatusMessage === null ? null : (
-          <p aria-live="polite" className="gx-publish-status" role="status">
-            {publishStatusMessage}
-          </p>
-        )}
-        {selectedPreview === undefined ? null : (
-          <ChoiceButton
-            disabled={publishLocked}
-            onClick={() => onPublish(selectedPreview.platform)}
-          >
-            {previewActionLabel(selectedPreview)}
-          </ChoiceButton>
-        )}
+        <p aria-live="polite" className="gx-publish-status" role="status">
+          지금은 담당 운영팀이 사진과 문구를 검토한 뒤 게시합니다. 이 미리보기
+          그대로 게시를 요청하려면 마케팅 소재 요청으로 보내주세요.
+        </p>
+        <ChoiceButton onClick={() => onSelect("campaigns")}>
+          마케팅 소재 요청으로 보내기
+        </ChoiceButton>
       </div>
     </>
   )

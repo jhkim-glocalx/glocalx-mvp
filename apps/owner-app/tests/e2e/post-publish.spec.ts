@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import {
-  resetE2eDatabase,
-  resetE2eDatabaseWithoutGbpLocation,
-} from "./db-harness"
+import { resetE2eDatabase } from "./db-harness"
 
 test.describe.configure({ mode: "serial" })
 
@@ -14,7 +11,7 @@ test.beforeEach(async () => {
 const demoCookieHeader =
   "glocalx_demo_session=demo-owner; glocalx_demo_store=demo-store"
 
-test("Stub post draft and publish returns deterministic GBP history", async ({
+test("Stub post draft creation still works while direct publish is admin-only", async ({
   request,
 }) => {
   const draftResponse = await request.post("/api/posts/drafts", {
@@ -45,57 +42,12 @@ test("Stub post draft and publish returns deterministic GBP history", async ({
     }
   )
 
-  expect(publishResponse.status()).toBe(200)
-  const publishBody = await publishResponse.json()
-  expect(publishBody).toMatchObject({
-    status: "PUBLISHED",
-    externalPostId: "stub-gbp-post",
-    platform: "GBP",
-    publicUrl: "https://business.google.com/local-post/stub-gbp-post",
-    history: [
-      {
-        attemptNumber: 1,
-        status: "SUCCEEDED",
-      },
-    ],
-  })
-})
-
-test("Publish is blocked for an unverified GBP location", async ({
-  request,
-}) => {
-  // The seeded listing is VERIFIED and setup will not replace it, so this test
-  // has to start from a store with none — otherwise it publishes against the
-  // seeded listing and never reaches the unverified guard it exists to check.
-  await resetE2eDatabaseWithoutGbpLocation()
-
-  await request.post("/api/gbp/setup", {
-    data: { mode: "stub" },
-    headers: { Cookie: demoCookieHeader },
-  })
-  const draftResponse = await request.post("/api/posts/drafts", {
-    data: {
-      storeId: "demo-store",
-      ownerIntent: "주말 브런치 신메뉴 홍보",
-      targetChannel: "GBP",
-    },
-    headers: { Cookie: demoCookieHeader },
-  })
-  const draftBody = await draftResponse.json()
-
-  const publishResponse = await request.post(
-    `/api/posts/${draftBody.draftId}/publish`,
-    {
-      data: { storeId: "demo-store" },
-      headers: { Cookie: demoCookieHeader },
-    }
-  )
-
+  // Owner self-serve direct publish is paused — the admin Campaigns queue is
+  // the only publish path for now, regardless of draft/location state.
   expect(publishResponse.status()).toBe(409)
   const publishBody = await publishResponse.json()
   expect(publishBody).toMatchObject({
-    code: "LOCATION_NOT_VERIFIED",
-    message:
-      "Google 비즈니스 프로필 인증이 완료되어야 게시글과 리뷰 답글을 라이브로 진행할 수 있습니다.",
+    status: "BLOCKED",
+    code: "ADMIN_PUBLISH_ONLY",
   })
 })

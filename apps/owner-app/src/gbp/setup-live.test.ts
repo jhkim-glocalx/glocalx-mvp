@@ -124,7 +124,6 @@ describe("buildLiveGoogleLocationBody", () => {
       location: {
         languageCode: "ko",
         title: "라멘하우스 합정점",
-        storeCode: "demo-store",
         storefrontAddress: {
           regionCode: "KR",
           languageCode: "ko",
@@ -132,7 +131,8 @@ describe("buildLiveGoogleLocationBody", () => {
           locality: "마포구",
           sublocality: "서교동",
           postalCode: "04039",
-          addressLines: ["서울 마포구 양화로 19"],
+          // The 시/구 prefix is dropped because the fields above already carry it.
+          addressLines: ["양화로 19"],
         },
         latlng: { latitude: 37.5563, longitude: 126.9236 },
         phoneNumbers: { primaryPhone: "02-987-6543" },
@@ -260,7 +260,7 @@ describe("runLiveGbpProvisioning", () => {
     accessToken: "org-access-token",
     accountName: "accounts/117964535166689865393",
   }
-  const location = { title: "테스트 매장", storeCode: "store-1" }
+  const location = { title: "테스트 매장" }
 
   it("creates a location and returns the Google-issued id", async () => {
     const calls: string[] = []

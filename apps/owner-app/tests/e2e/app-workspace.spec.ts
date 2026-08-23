@@ -106,26 +106,39 @@ test("app posting preview matches the reference flow", async ({ page }) => {
     page.getByText("今週末はブランチモーメント弘大店の新メニュー")
   ).toBeVisible()
   await expect(page.getByText("#홍대브런치")).toBeVisible()
-  await page.getByRole("button", { name: "Instagram에 게시하기" }).click()
-  await expect(page.getByText("게시 요청이 완료됐습니다.")).toBeVisible()
+  // Owner self-serve publish is paused, so the preview ends at the operator
+  // handoff rather than a per-channel publish button. Switching tabs must not
+  // resurrect one.
   await expect(
-    page.getByRole("button", { name: "Instagram에 게시하기" })
-  ).toBeDisabled()
+    page.getByText("지금은 담당 운영팀이 사진과 문구를 검토한 뒤 게시합니다")
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "마케팅 소재 요청으로 보내기" })
+  ).toBeEnabled()
   await page.getByRole("tab", { name: "Google 비즈니스 프로필" }).click()
   await expect(
-    page.getByRole("button", { name: "GBP에 게시하기" })
+    page.getByRole("button", { name: "마케팅 소재 요청으로 보내기" })
   ).toBeEnabled()
+  await expect(page.getByRole("button", { name: /에 게시하기$/ })).toHaveCount(
+    0
+  )
   await page.getByRole("tab", { name: "Instagram 피드" }).click()
-  await expect(
-    page.getByRole("button", { name: "Instagram에 게시하기" })
-  ).toBeDisabled()
   await captureCompletePostingFlow(
     page,
     evidencePath("social-posts-instagram-desktop.png")
   )
 })
 
-test("app publish blocked when location unverified", async ({ page }) => {
+// Replaces an earlier test that drove the GBP publish button to reach the
+// "인증이 완료되어야" gate. That gate still exists, but the owner can no longer
+// reach it: direct publish is paused, so /api/posts/*/publish answers
+// ADMIN_PUBLISH_ONLY before any location check. The gate itself stays covered by
+// post-flow-publishing.test.ts and publish-eligibility.test.ts, and the 409 by
+// post-publish.spec.ts. What is left to prove here is the owner-facing half —
+// that the screen offers the operator handoff instead of a dead end.
+test("app posting screen hands publishing to the operator queue", async ({
+  page,
+}) => {
   await completeOnboarding(page)
 
   await expect(page.getByTestId("app-stage")).toBeVisible()
@@ -136,16 +149,24 @@ test("app publish blocked when location unverified", async ({ page }) => {
   await page.getByRole("button", { name: "홍보 콘텐츠 넣기" }).click()
   await uploadMarketingImageAndGenerateDraft(page)
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
-  await page.getByRole("button", { name: "GBP에 게시하기" }).click()
 
   await expect(
-    page.getByText("Google 비즈니스 프로필 인증이 완료되어야")
+    page.getByText("지금은 담당 운영팀이 사진과 문구를 검토한 뒤 게시합니다")
   ).toBeVisible()
-  await expect(page.getByText("게시 완료")).toHaveCount(0)
+  await expect(page.getByRole("button", { name: /에 게시하기$/ })).toHaveCount(
+    0
+  )
   await captureCompletePostingFlow(
     page,
-    evidencePath("social-posts-gbp-blocked-desktop.png")
+    evidencePath("social-posts-operator-review-desktop.png")
   )
+
+  await page
+    .getByRole("button", { name: "마케팅 소재 요청으로 보내기" })
+    .click()
+  await expect(
+    page.getByRole("button", { name: "마케팅 소재 요청" })
+  ).toHaveAttribute("aria-current", "page")
 })
 
 test("mobile Instagram publishing keeps the selected channel state", async ({
@@ -157,12 +178,16 @@ test("mobile Instagram publishing keeps the selected channel state", async ({
   await uploadMarketingImageAndGenerateDraft(page)
   await page.getByRole("button", { name: "제안 없이 진행" }).click()
   await page.getByRole("tab", { name: "Instagram 피드" }).click()
-  await page.getByRole("button", { name: "Instagram에 게시하기" }).click()
 
-  await expect(page.getByText("게시 요청이 완료됐습니다.")).toBeVisible()
   await expect(
-    page.getByText("Google 비즈니스 프로필 인증이 완료되어야")
-  ).toHaveCount(0)
+    page.getByRole("tab", { name: "Instagram 피드" })
+  ).toHaveAttribute("aria-selected", "true")
+  await expect(
+    page.getByText("지금은 담당 운영팀이 사진과 문구를 검토한 뒤 게시합니다")
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "마케팅 소재 요청으로 보내기" })
+  ).toBeEnabled()
   await captureCompletePostingFlow(
     page,
     evidencePath("social-posts-instagram-mobile.png")
