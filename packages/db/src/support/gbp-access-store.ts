@@ -38,10 +38,12 @@ export type EnsureGbpAccessRequestInput = {
 export type OpenAdoptionReviewInput = {
   readonly id: string
   readonly storeId: string
-  // The org listing the owner's claim resolved to. Unlike ensureGbpAccessRequest
-  // this is required: an adoption review with no candidate gives the operator
-  // nothing to rule on.
-  readonly gbpLocationRef: string
+  // The org listing the owner's claim resolved to, or null when the matcher
+  // found none. Null is deliberately allowed: the matcher is a hint, and the
+  // operator who built these listings by hand knows which one belongs to whom
+  // better than a name/address comparison does. Dropping unmatched claims would
+  // hide exactly those owners from the console.
+  readonly gbpLocationRef: string | null
   readonly now: Date
 }
 
@@ -85,6 +87,14 @@ export interface GbpAccessStore {
   openAdoptionReview(
     input: OpenAdoptionReviewInput
   ): Promise<OpenAdoptionReviewResult>
+  // Records the listing an operator picked for a claim, overriding whatever the
+  // matcher guessed. Separate from the state transition so a wrong guess is
+  // correctable without forcing the operator to reject and start over.
+  setGbpLocationRef(input: {
+    readonly requestId: string
+    readonly gbpLocationRef: string
+    readonly now: Date
+  }): Promise<GbpAccessRequest | undefined>
   getGbpAccessRequestForStore(
     storeId: string
   ): Promise<GbpAccessRequest | undefined>
@@ -207,6 +217,16 @@ export function createDatabaseGbpAccessStore(
       return inserted.changes > 0
         ? { kind: "opened", request }
         : { kind: "already_tracked", request }
+    },
+
+    async setGbpLocationRef(input) {
+      await queryable.execute(
+        `UPDATE gbp_access_requests
+         SET gbp_location_ref = ?, updated_at = ?
+         WHERE id = ?`,
+        [input.gbpLocationRef, input.now.toISOString(), input.requestId]
+      )
+      return readById(queryable, input.requestId)
     },
 
     async getGbpAccessRequestForStore(storeId) {

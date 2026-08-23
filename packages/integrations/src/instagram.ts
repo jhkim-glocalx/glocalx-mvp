@@ -1,22 +1,20 @@
 import { z } from "zod"
 
-import { blockedByCredentials, missingEnvVars } from "./credentials"
+import { blockedByCredentials } from "./credentials"
 import type {
   AdapterEnvironment,
   ExternalFetch,
   InstagramPostsAdapter,
 } from "./contracts"
 
-const instagramEnvVars = [
-  "INSTAGRAM_ACCESS_TOKEN",
-  "INSTAGRAM_USER_ID",
-] as const
 // The Instagram API with Instagram Login publishes on graph.instagram.com — not
 // the Facebook-login graph.facebook.com path. The request shape is identical
 // (/{ig-user-id}/media -> /media_publish), but the token is an Instagram user
 // access token (from Instagram business login, instagram_business_content_publish
-// permission) and the account id/token come from INSTAGRAM_ACCESS_TOKEN /
-// INSTAGRAM_USER_ID or the per-store account, not a Facebook Page token.
+// permission) and the account id/token come from the store's own linked
+// account — never a shared environment credential. Publishing under the org's
+// own test account instead of the store's would be silent and would read to
+// the owner as their post having gone out correctly.
 const graphApiVersion = "v24.0"
 const graphBaseUrl = `https://graph.instagram.com/${graphApiVersion}`
 const idResponseSchema = z.object({ id: z.string().min(1) }).passthrough()
@@ -162,17 +160,16 @@ export function createStubInstagramPosts(): InstagramPostsAdapter {
 }
 
 export function createProductionInstagramPosts(
-  env: AdapterEnvironment,
+  // Kept for signature parity with the other createProduction* adapters even
+  // though this one has no environment credential of its own — see the account
+  // comment above.
+  _env: AdapterEnvironment,
   fetchImpl: ExternalFetch
 ): InstagramPostsAdapter {
   return {
     async createPost(input) {
-      // A per-store account carries its own token, so the global env pair is
-      // only required when the caller didn't supply one.
-      const missing =
-        input.account === undefined ? missingEnvVars(env, instagramEnvVars) : []
-      if (missing.length > 0) {
-        return blockedByCredentials(missing)
+      if (input.account === undefined) {
+        return blockedByCredentials(["store's linked Instagram account"])
       }
       if (input.mediaUrls.length === 0 || input.mediaUrls.length > 10) {
         throw new Error(
@@ -180,10 +177,8 @@ export function createProductionInstagramPosts(
         )
       }
 
-      const accessToken =
-        input.account?.accessToken ?? env["INSTAGRAM_ACCESS_TOKEN"] ?? ""
-      const igUserId =
-        input.account?.accountRef ?? env["INSTAGRAM_USER_ID"] ?? ""
+      const accessToken = input.account.accessToken
+      const igUserId = input.account.accountRef
       let creationId: string
       if (input.mediaUrls.length === 1) {
         const imageUrl = input.mediaUrls[0]

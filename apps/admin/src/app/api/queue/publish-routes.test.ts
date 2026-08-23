@@ -364,14 +364,21 @@ describe("campaign publish", () => {
     })
   })
 
-  it("falls back to the environment account when the link has no token yet", async () => {
+  it("passes no account when the link has no token yet — the production adapter refuses to publish without one", async () => {
     const requestId = await seedApprovedRequest()
+    // The demo seed now gives demo-store a real Instagram token (publishing
+    // requires one); clear it to put the store back in the unlinked state this
+    // test is about.
+    await setStoreInstagramToken(null)
 
     await publishCampaign(
       publishRequest(requestId, { cookie: await adminSessionCookie() }),
       queueParams(requestId)
     )
 
+    // The stub adapter used here ignores account and always succeeds, so this
+    // only proves campaign-publish never invents one — instagram.ts's own tests
+    // cover the production adapter refusing an undefined account.
     expect(instagramCalls.at(-1)?.account).toBeUndefined()
   })
 

@@ -65,7 +65,7 @@ export function ExistingListingPrompt({
   if (adoption.kind === "loading") {
     return <TypingIndicator label="등록된 프로필을 확인하는 중" />
   }
-  if (adoption.kind === "reviewing" || adoption.kind === "noMatch") {
+  if (adoption.kind === "reviewing") {
     return (
       <div className="grid gap-3">
         <ChatMessage message={adoption.message} speaker="assistant" />

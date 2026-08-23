@@ -1,6 +1,7 @@
 import type {
   CurrentLocation,
   GbpPublishingCredentials,
+  InstagramPublishingCredentials,
   PostPreview,
   PublishAttemptReservation,
   PublishHistoryItem,
@@ -13,6 +14,7 @@ import type { Queryable } from "@glocalx/db"
 import {
   readPostCurrentLocation,
   readGbpPublishingCredentials,
+  readInstagramPublishingCredentials,
   readPostStoreProfile,
   readStoredPostDraft,
   readStoredPostDraftMedia,
@@ -33,6 +35,9 @@ export interface PostStore {
   readGbpPublishingCredentials(
     storeId: string
   ): Promise<GbpPublishingCredentials | undefined>
+  readInstagramPublishingCredentials(
+    storeId: string
+  ): Promise<InstagramPublishingCredentials | undefined>
   readDraft(
     draftId: string,
     storeId: string
@@ -94,6 +99,10 @@ export function createDatabasePostStore(queryable: Queryable): PostStore {
 
     readGbpPublishingCredentials(storeId) {
       return readGbpPublishingCredentials(queryable, storeId)
+    },
+
+    readInstagramPublishingCredentials(storeId) {
+      return readInstagramPublishingCredentials(queryable, storeId)
     },
 
     readDraft(draftId, storeId) {

@@ -62,7 +62,14 @@ export function gbpAccessOwnerPhase(
 export type GbpAccessAction =
   | { readonly type: "SEND_INVITE" }
   | { readonly type: "MARK_PENDING" }
-  | { readonly type: "CONFIRM_ADOPTION" }
+  // gbpLocationRef is the listing the operator picked. Optional because the
+  // matcher's guess stands when the operator does not override it, and required
+  // in effect when the matcher found nothing — the transition refuses to confirm
+  // a claim that would attach no listing.
+  | {
+      readonly type: "CONFIRM_ADOPTION"
+      readonly gbpLocationRef?: string | undefined
+    }
   // reason is what the owner is actually told: it becomes the assistant message
   // in their chat thread. A rejection with no reason leaves them staring at
   // "확인이 필요합니다" with nothing to answer, so the console requires one.
@@ -81,7 +88,12 @@ export type GbpAccessAction =
 export const gbpAccessActionRequestSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("SEND_INVITE") }).strict(),
   z.object({ type: z.literal("MARK_PENDING") }).strict(),
-  z.object({ type: z.literal("CONFIRM_ADOPTION") }).strict(),
+  z
+    .object({
+      type: z.literal("CONFIRM_ADOPTION"),
+      gbpLocationRef: z.string().trim().min(1).max(300).optional(),
+    })
+    .strict(),
   z
     .object({
       type: z.literal("REJECT_ADOPTION"),

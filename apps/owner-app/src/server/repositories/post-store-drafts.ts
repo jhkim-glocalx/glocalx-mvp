@@ -32,7 +32,10 @@ const locationRowSchema = z.object({
 // The query moved to @glocalx/db/support/publish-target-store when the operator
 // publish panel needed the same credentials from the admin app — one read, so
 // the two publish paths can't drift on which location or token they pick.
-export { readGbpPublishingCredentials } from "@glocalx/db/support/publish-target-store"
+export {
+  readGbpPublishingCredentials,
+  readInstagramPublishingCredentials,
+} from "@glocalx/db/support/publish-target-store"
 
 const postPreviewSchema = z
   .object({

@@ -280,6 +280,9 @@ export function createGbpAccessStore(): {
     async openAdoptionReview() {
       return unexpectedCall("gbpAccessStore.openAdoptionReview")
     },
+    async setGbpLocationRef() {
+      return unexpectedCall("gbpAccessStore.setGbpLocationRef")
+    },
     // Returns undefined so the duplicate guard sees no in-flight adoption claim
     // and the route boundary under test still reaches provisioning.
     async getGbpAccessRequestForStore() {

@@ -136,7 +136,35 @@ function createInstagramFetch(options?: {
   return { calls, fetchImpl }
 }
 
+// No adapter still resolves this from the environment — every call below
+// supplies its own store account, matching how post-flow.ts and
+// campaign-publish.ts always call the production adapter now.
+const storeAccount = {
+  accessToken: "store-instagram-token",
+  accountRef: "17890000000000000",
+} as const
+
 describe("production Instagram publishing", () => {
+  it("refuses to publish without a store account, even with environment credentials configured", async () => {
+    const { fetchImpl } = createInstagramFetch()
+    const adapters = createIntegrationAdapters({
+      env: productionEnv,
+      fetchImpl,
+    })
+
+    // productionEnv carries INSTAGRAM_ACCESS_TOKEN/INSTAGRAM_USER_ID, which
+    // used to be a silent fallback — publishing every unlinked store under the
+    // org's own test account. There is no fallback left: an unlinked store is
+    // blocked, not published on someone else's behalf.
+    const result = await adapters.instagramPosts.createPost({
+      caption: "계정 연결이 안 된 매장의 글",
+      mediaUrls: ["https://app.example.com/media/unlinked.jpg"],
+    } as never)
+
+    expect(result).toMatchObject({ kind: "blocked_by_credentials" })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it("publishes one Instagram image and resolves its permalink", async () => {
     const { calls, fetchImpl } = createInstagramFetch()
     const adapters = createIntegrationAdapters({
@@ -145,6 +173,7 @@ describe("production Instagram publishing", () => {
     })
 
     const result = await adapters.instagramPosts.createPost({
+      account: storeAccount,
       caption: "불판에서 바로 즐기는 고기",
       mediaUrls: ["https://app.example.com/media/grill.jpg"],
     } as never)
@@ -178,6 +207,7 @@ describe("production Instagram publishing", () => {
       })
 
       const pending = adapters.instagramPosts.createPost({
+        account: storeAccount,
         caption: "아직 처리 중인 사진",
         mediaUrls: ["https://app.example.com/media/slow.jpg"],
       } as never)
@@ -206,6 +236,7 @@ describe("production Instagram publishing", () => {
 
     await expect(
       adapters.instagramPosts.createPost({
+        account: storeAccount,
         caption: "받을 수 없는 사진",
         mediaUrls: ["https://app.example.com/media/broken.jpg"],
       } as never)
@@ -222,6 +253,7 @@ describe("production Instagram publishing", () => {
     })
 
     const result = await adapters.instagramPosts.createPost({
+      account: storeAccount,
       caption: "두 장의 메뉴 사진",
       mediaUrls: [
         "https://app.example.com/media/one.jpg",

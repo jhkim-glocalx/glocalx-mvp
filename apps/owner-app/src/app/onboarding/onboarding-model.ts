@@ -91,7 +91,6 @@ export type AdoptionState =
   | { readonly kind: "idle" }
   | { readonly kind: "loading" }
   | { readonly kind: "reviewing"; readonly message: string }
-  | { readonly kind: "noMatch"; readonly message: string }
   | { readonly kind: "error"; readonly message: string }
 
 export type OnboardingChatTurn = {
@@ -288,12 +287,6 @@ export function toAdoptionState(payload: unknown): AdoptionState {
     return {
       kind: "reviewing",
       message: message ?? "담당자 확인 후 연결해드릴게요.",
-    }
-  }
-  if (status === "NO_MATCH") {
-    return {
-      kind: "noMatch",
-      message: message ?? "등록된 프로필을 찾지 못했어요. 채팅으로 알려주세요.",
     }
   }
   return {
