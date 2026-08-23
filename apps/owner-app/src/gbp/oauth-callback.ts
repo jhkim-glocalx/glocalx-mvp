@@ -27,6 +27,8 @@ export type GoogleOAuthCallbackOptions = {
   readonly code: string
   readonly database: SqliteDatabase
   readonly expectedState: string
+  // Callers pin this only to keep stored timestamps deterministic in tests.
+  readonly now?: Date
   readonly state: string
   readonly storeId: string
 }
@@ -66,7 +68,7 @@ export function handleGoogleOAuthCallback(
       null,
       JSON.stringify(googleOAuthScopes),
       null,
-      new Date("2026-06-04T00:00:00.000Z").toISOString()
+      (options.now ?? new Date()).toISOString()
     )
 
   return {
