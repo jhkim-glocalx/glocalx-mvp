@@ -8,7 +8,7 @@ import { z } from "zod"
 import { createIntegrationAdapters } from "@glocalx/integrations"
 import { openDatabaseContext } from "@glocalx/db"
 import { applyMigrations, seedDemoData } from "@glocalx/db/sqlite"
-import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
+import { createDatabaseStoreProfileRepository } from "@glocalx/db/support/store-profile"
 
 import { confirmStoreProfile } from "./store-profile"
 

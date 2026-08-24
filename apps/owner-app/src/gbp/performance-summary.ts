@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 
-import type { GbpPerformanceSummaryData } from "./performance-repository"
+import type { GbpPerformanceSummaryData } from "@glocalx/db/support/gbp-performance-repository"
 import { resolveGbpStore, type GbpStoreSource } from "./performance-store"
 
 export type GbpPerformanceMetric = {

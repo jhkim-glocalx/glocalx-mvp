@@ -18,13 +18,13 @@ import {
 } from "@glocalx/integrations/production"
 import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
 
-import { setupGoogleBusinessProfile } from "./setup"
+import { setupGoogleBusinessProfile } from "./gbp-setup"
 import {
   buildLiveGoogleLocationBody,
   resolveLiveGbpCredentials,
   runLiveGbpProvisioning,
-} from "./setup-live"
-import type { ConfirmedGbpStoreProfile } from "./store-profile"
+} from "./gbp-setup-live"
+import type { ConfirmedGbpStoreProfile } from "./gbp-store-profile"
 
 const orgAppEnv = {
   GOOGLE_CLIENT_ID: "client-id",

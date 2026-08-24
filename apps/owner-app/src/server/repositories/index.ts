@@ -3,7 +3,7 @@ export type {
   ConversationSessionLookup,
   ConversationStore,
 } from "./conversation-store"
-export type { GbpStore } from "./gbp-store"
+export type { GbpStore } from "@glocalx/db/support/gbp-store"
 export type { EmailCredentialsRepository } from "./email-credentials"
 export type {
   JobRunRecord,
@@ -15,7 +15,7 @@ export type { OnboardingExtractionRepository } from "./onboarding-extraction"
 export type { OAuthIdentityRepository } from "./oauth-identity"
 export type { PostStore } from "./post-store"
 export type { SessionStore } from "./session-store"
-export type { StoreProfileRepository } from "./store-profile"
+export type { StoreProfileRepository } from "@glocalx/db/support/store-profile"
 
 export const repositoryContractNames = [
   "session-store",

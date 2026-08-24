@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto"
 import type { NextRequest } from "next/server"
 
 import { gbpSetupRequestSchema } from "@glocalx/domain"
-import { setupGoogleBusinessProfile } from "@/gbp/setup"
+import { setupGoogleBusinessProfile } from "@glocalx/db/support/gbp-setup"
 import {
   parseJsonRoutePayload,
   readDatabaseSession,

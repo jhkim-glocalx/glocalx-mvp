@@ -40,7 +40,7 @@ import { createDatabaseGbpCategoryStore } from "@/server/repositories/gbp-catego
 import type { GbpCategoryStore } from "@/server/repositories/gbp-category-store"
 import { createDatabaseStoreChannelLinkStore } from "@/server/repositories/store-channel-link-store"
 import type { StoreChannelLinkStore } from "@/server/repositories/store-channel-link-store"
-import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
+import { createDatabaseGbpStore } from "@glocalx/db/support/gbp-store"
 import { createDatabaseOAuthIdentityRepository } from "@/server/repositories/oauth-identity"
 import { createDatabaseOnboardingExtractionRepository } from "@/server/repositories/onboarding-extraction"
 import { createDatabasePostStore } from "@/server/repositories/post-store"
@@ -49,7 +49,7 @@ import type {
   AuthenticatedSession,
   SessionStore,
 } from "@/server/repositories/session-store"
-import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
+import { createDatabaseStoreProfileRepository } from "@glocalx/db/support/store-profile"
 
 type JsonPayloadResult =
   | {

@@ -14,8 +14,8 @@ import type {
 import {
   resolveLiveGbpCredentials,
   type ResolveLiveGbpCredentialsResult,
-} from "./setup-live"
-import { readGbpVerificationSnapshot } from "./verification"
+} from "@glocalx/db/support/gbp-setup-live"
+import { readGbpVerificationSnapshot } from "@glocalx/db/support/gbp-setup-verification"
 
 // The owner's view of their own listing's verification progress, plus the on-view
 // refresh that keeps it honest. The refresh is deliberately READ-ONLY — it never

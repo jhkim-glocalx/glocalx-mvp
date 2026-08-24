@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
 import { createSqliteQueryable } from "@glocalx/db/sqlite-client"
-import type { GbpStore } from "@/server/repositories/gbp-store"
-import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
+import type { GbpStore } from "@glocalx/db/support/gbp-store"
+import { createDatabaseGbpStore } from "@glocalx/db/support/gbp-store"
 
 export type GbpStoreSource = {
   readonly database?: SqliteDatabase

@@ -9,7 +9,10 @@ import { createIntegrationAdapters } from "@glocalx/integrations"
 import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import { applyMigrations, openDatabase, seedDemoData } from "@glocalx/db/sqlite"
 
-import { buildClaimRequiredResult, setupGoogleBusinessProfile } from "./setup"
+import {
+  buildClaimRequiredResult,
+  setupGoogleBusinessProfile,
+} from "./gbp-setup"
 
 const setupRowsSchema = z.object({
   oauthConnections: z.number(),

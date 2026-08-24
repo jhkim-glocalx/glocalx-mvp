@@ -3,16 +3,16 @@ import type {
   GbpPerformanceConnection,
   GbpPerformanceLocation,
   GbpPerformanceSummaryData,
-} from "@/gbp/performance-repository"
+} from "./gbp-performance-repository"
 import {
   loadGbpPerformanceConnection,
   loadGbpPerformanceLocation,
   loadGbpPerformanceSummaryData,
-} from "@/gbp/performance-repository"
+} from "./gbp-performance-repository"
 import type {
   BuildClaimRequiredResultOptions,
   GbpSetupResult,
-} from "@/gbp/setup"
+} from "./gbp-setup"
 import type { Queryable } from "@glocalx/db"
 import {
   persistClaimRequiredGbpRecords,
