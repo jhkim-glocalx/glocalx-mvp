@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
       }
 
       const result = await setupGoogleBusinessProfile({
+        actorUserId: session.userId,
         adapters,
         env: process.env,
         gbpAccessStore,

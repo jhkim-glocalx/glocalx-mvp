@@ -80,6 +80,7 @@ export function persistSetupRecords(
   subjectId: string
 ): Promise<GbpSetupResult> {
   return resolveGbpStore(options).persistSetupRecords({
+    actorUserId: options.actorUserId,
     now: options.adapters.clock.now(),
     status,
     storeId: options.storeId,
@@ -95,6 +96,7 @@ export function persistLiveSetupRecords(
 ): Promise<GbpSetupResult> {
   return resolveGbpStore(options).persistLiveSetupRecords({
     accountName,
+    actorUserId: options.actorUserId,
     googleLocationId,
     now: options.adapters.clock.now(),
     status,

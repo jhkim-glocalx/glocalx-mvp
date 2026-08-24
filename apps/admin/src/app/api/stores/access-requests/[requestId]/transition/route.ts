@@ -17,6 +17,7 @@ import {
 } from "@/server/campaign-chat-notice"
 import {
   attachOrgLocationToStore,
+  detachOrgLocationFromStore,
   findStoreAdoptedByGoogleLocation,
   storeHasAttachedGbpLocation,
 } from "@glocalx/db/support/gbp-location-attach"
@@ -177,6 +178,19 @@ export async function POST(request: NextRequest, routeContext: RouteContext) {
           storeId: outcome.request.storeId,
           now: new Date(),
         })
+      }
+
+      // OVERRIDE is the only escape hatch from a wrong adoption, but it only
+      // ever rewound gbp_access_requests.state — the attached gbp_locations
+      // row stayed behind, so the listing stayed permanently claimed by the
+      // wrong store even after the operator "undid" it. Unconditional and
+      // idempotent: a store with no adoption-attached row has nothing to
+      // delete.
+      if (action.type === "OVERRIDE") {
+        await detachOrgLocationFromStore(
+          context.queryable,
+          outcome.request.storeId
+        )
       }
 
       if (action.type === "REJECT_ADOPTION") {

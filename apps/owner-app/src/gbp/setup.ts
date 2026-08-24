@@ -100,6 +100,7 @@ export type GbpSetupResult =
     }
 
 export type SetupGoogleBusinessProfileOptions = {
+  readonly actorUserId: string
   readonly adapters: IntegrationAdapters
   readonly database?: SqliteDatabase
   // Live setup reads the org GBP credentials from here (the route passes

@@ -48,12 +48,14 @@ describe("SQLite GBP, job, and audit characterization", () => {
 
       // When
       const firstSetup = await gbpStore.persistSetupRecords({
+        actorUserId: "demo-owner",
         now,
         status: "VERIFICATION_PENDING",
         storeId: demoStoreId,
         subjectId: "repository-google-subject",
       })
       const secondSetup = await gbpStore.persistSetupRecords({
+        actorUserId: "demo-owner",
         now,
         status: "VERIFIED",
         storeId: demoStoreId,
@@ -61,7 +63,7 @@ describe("SQLite GBP, job, and audit characterization", () => {
       })
       const updatedJob = await jobStore.updateJobRunStatus({
         attempts: 1,
-        id: "setup-gbp-follow-up",
+        id: "setup-gbp-follow-up-demo-store",
         status: "RUNNING",
         updatedAt: "2026-06-04T00:05:00.000Z",
       })
@@ -77,7 +79,7 @@ describe("SQLite GBP, job, and audit characterization", () => {
 
       // Then
       expect(firstSetup).toMatchObject({
-        followUpJobId: "setup-gbp-follow-up",
+        followUpJobId: "setup-gbp-follow-up-demo-store",
         status: "VERIFICATION_PENDING",
       })
       expect(secondSetup).toMatchObject({
@@ -92,11 +94,11 @@ describe("SQLite GBP, job, and audit characterization", () => {
             `SELECT google_location_id AS "googleLocationId", status
               FROM gbp_locations
               WHERE id = ?`,
-            ["setup-gbp-location"]
+            ["setup-gbp-location-demo-store"]
           )
         )
       ).toEqual({
-        googleLocationId: "locations/stub-created",
+        googleLocationId: "locations/stub-created-demo-store",
         status: "VERIFIED",
       })
       await expect(
@@ -104,13 +106,15 @@ describe("SQLite GBP, job, and audit characterization", () => {
       ).resolves.toMatchObject({ kind: "ambiguous_gbp_location" })
       expect(updatedJob).toMatchObject({
         attempts: 1,
-        id: "setup-gbp-follow-up",
+        id: "setup-gbp-follow-up-demo-store",
         status: "RUNNING",
       })
       expect(
-        await jobStore.readJobRunByIdempotencyKey("setup-gbp-follow-up-key")
+        await jobStore.readJobRunByIdempotencyKey(
+          "setup-gbp-follow-up-key-demo-store"
+        )
       ).toMatchObject({
-        id: "setup-gbp-follow-up",
+        id: "setup-gbp-follow-up-demo-store",
         status: "RUNNING",
       })
       expect(await auditLogStore.readAuditLog("repository-gbp-audit")).toEqual({
@@ -139,12 +143,14 @@ describe("SQLite GBP, job, and audit characterization", () => {
           `DELETE FROM gbp_locations WHERE store_id = '${demoStoreId}'`
         )
         const firstSetup = await setupGoogleBusinessProfile({
+          actorUserId: "demo-owner",
           adapters,
           database,
           mode: "stub",
           storeId: demoStoreId,
         })
         const secondSetup = await setupGoogleBusinessProfile({
+          actorUserId: "demo-owner",
           adapters,
           database,
           mode: "stub",
@@ -153,23 +159,23 @@ describe("SQLite GBP, job, and audit characterization", () => {
         const setupRows = setupRowsSchema.parse(
           database
             .prepare(
-              "SELECT (SELECT COUNT(*) FROM oauth_connections WHERE id = 'setup-oauth-google') AS oauthConnections, (SELECT COUNT(*) FROM gbp_locations WHERE id = 'setup-gbp-location') AS gbpLocations, (SELECT COUNT(*) FROM job_runs WHERE id = 'setup-gbp-follow-up') AS followUpJobs, (SELECT COUNT(*) FROM audit_logs WHERE id = 'setup-gbp-audit') AS auditLogs"
+              "SELECT (SELECT COUNT(*) FROM oauth_connections WHERE id = 'setup-oauth-google-demo-store') AS oauthConnections, (SELECT COUNT(*) FROM gbp_locations WHERE id = 'setup-gbp-location-demo-store') AS gbpLocations, (SELECT COUNT(*) FROM job_runs WHERE id = 'setup-gbp-follow-up-demo-store') AS followUpJobs, (SELECT COUNT(*) FROM audit_logs WHERE id = 'setup-gbp-audit-demo-store') AS auditLogs"
             )
             .get()
         )
 
         expect(firstSetup).toMatchObject({
-          auditLogId: "setup-gbp-audit",
-          followUpJobId: "setup-gbp-follow-up",
-          gbpLocationId: "setup-gbp-location",
-          oauthConnectionId: "setup-oauth-google",
+          auditLogId: "setup-gbp-audit-demo-store",
+          followUpJobId: "setup-gbp-follow-up-demo-store",
+          gbpLocationId: "setup-gbp-location-demo-store",
+          oauthConnectionId: "setup-oauth-google-demo-store",
           status: "VERIFICATION_PENDING",
         })
         // Re-running now stops at the duplicate guard rather than re-upserting;
         // the row counts below still characterize the no-second-listing outcome.
         expect(secondSetup).toEqual({
           status: "ALREADY_LINKED",
-          googleLocationId: "locations/stub-created",
+          googleLocationId: "locations/stub-created-demo-store",
           message: "이미 연결된 Google 비즈니스 프로필이 있습니다.",
         })
         expect(setupRows).toEqual({
@@ -200,20 +206,25 @@ describe("SQLite GBP, job, and audit characterization", () => {
           .prepare(
             "UPDATE job_runs SET status = ?, attempts = ?, updated_at = ? WHERE id = ?"
           )
-          .run("RUNNING", 1, "2026-06-04T00:05:00.000Z", "setup-gbp-follow-up")
+          .run(
+            "RUNNING",
+            1,
+            "2026-06-04T00:05:00.000Z",
+            "setup-gbp-follow-up-demo-store"
+          )
         const jobRow = jobRunRowSchema.parse(
           database
             .prepare(
               "SELECT status, attempts, run_after AS runAfter FROM job_runs WHERE id = ?"
             )
-            .get("setup-gbp-follow-up")
+            .get("setup-gbp-follow-up-demo-store")
         )
         const auditRow = auditLogRowSchema.parse(
           database
             .prepare(
               "SELECT action, redacted_payload_json AS redactedPayloadJson FROM audit_logs WHERE id = ?"
             )
-            .get("setup-gbp-audit")
+            .get("setup-gbp-audit-demo-store")
         )
         const auditPayload: unknown = JSON.parse(auditRow.redactedPayloadJson)
 

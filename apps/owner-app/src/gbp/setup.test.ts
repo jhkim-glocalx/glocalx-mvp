@@ -91,6 +91,7 @@ describe("setupGoogleBusinessProfile", () => {
 
     // When
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters,
       database,
       mode: "stub",
@@ -118,6 +119,7 @@ describe("setupGoogleBusinessProfile", () => {
 
     // When the owner retries setup
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters,
       database,
       mode: "stub",
@@ -147,6 +149,7 @@ describe("setupGoogleBusinessProfile", () => {
 
     // When the store has an adoption claim awaiting an operator verdict
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters,
       database,
       gbpAccessStore: {
@@ -190,6 +193,7 @@ describe("setupGoogleBusinessProfile", () => {
 
     // When
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters,
       database,
       mode: "stub",
@@ -199,11 +203,11 @@ describe("setupGoogleBusinessProfile", () => {
     // Then
     expect(result).toEqual({
       status: "VERIFICATION_PENDING",
-      googleLocationId: "locations/stub-created",
-      oauthConnectionId: "setup-oauth-google",
-      gbpLocationId: "setup-gbp-location",
-      followUpJobId: "setup-gbp-follow-up",
-      auditLogId: "setup-gbp-audit",
+      googleLocationId: "locations/stub-created-demo-store",
+      oauthConnectionId: "setup-oauth-google-demo-store",
+      gbpLocationId: "setup-gbp-location-demo-store",
+      followUpJobId: "setup-gbp-follow-up-demo-store",
+      auditLogId: "setup-gbp-audit-demo-store",
       message:
         "Google 비즈니스 프로필 생성 요청이 접수되었습니다. 인증 완료까지 기다려주세요.",
     })
@@ -211,7 +215,7 @@ describe("setupGoogleBusinessProfile", () => {
     const rows = setupRowsSchema.parse(
       database
         .prepare(
-          "SELECT (SELECT COUNT(*) FROM oauth_connections WHERE id = 'setup-oauth-google') AS oauthConnections, (SELECT COUNT(*) FROM gbp_locations WHERE id = 'setup-gbp-location' AND status = 'VERIFICATION_PENDING') AS gbpLocations, (SELECT COUNT(*) FROM job_runs WHERE id = 'setup-gbp-follow-up' AND run_after = '2026-06-11T00:00:00.000Z') AS followUpJobs, (SELECT COUNT(*) FROM audit_logs WHERE id = 'setup-gbp-audit') AS auditLogs"
+          "SELECT (SELECT COUNT(*) FROM oauth_connections WHERE id = 'setup-oauth-google-demo-store') AS oauthConnections, (SELECT COUNT(*) FROM gbp_locations WHERE id = 'setup-gbp-location-demo-store' AND status = 'VERIFICATION_PENDING') AS gbpLocations, (SELECT COUNT(*) FROM job_runs WHERE id = 'setup-gbp-follow-up-demo-store' AND run_after = '2026-06-11T00:00:00.000Z') AS followUpJobs, (SELECT COUNT(*) FROM audit_logs WHERE id = 'setup-gbp-audit-demo-store') AS auditLogs"
         )
         .get()
     )
@@ -231,7 +235,7 @@ describe("setupGoogleBusinessProfile", () => {
       .get()
     expect(verification).toEqual({
       state: "NEEDS_CONCIERGE",
-      googleLocationId: "locations/stub-created",
+      googleLocationId: "locations/stub-created-demo-store",
     })
     database.close()
   })
@@ -246,6 +250,7 @@ describe("setupGoogleBusinessProfile", () => {
 
     // When
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters,
       database,
       mode: "stub",
@@ -286,6 +291,7 @@ describe("setupGoogleBusinessProfile", () => {
 
     // When
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters,
       database,
       mode: "stub",
@@ -314,6 +320,7 @@ describe("setupGoogleBusinessProfile", () => {
     // the difference is that the block happens before Google, not after a
     // dedup-by-requestId that only holds for calls this app made itself.
     const secondResult = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters,
       database,
       mode: "stub",
@@ -324,7 +331,7 @@ describe("setupGoogleBusinessProfile", () => {
     const rows = setupRowsSchema.parse(
       database
         .prepare(
-          "SELECT (SELECT COUNT(*) FROM oauth_connections WHERE id = 'setup-oauth-google') AS oauthConnections, (SELECT COUNT(*) FROM gbp_locations WHERE id = 'setup-gbp-location') AS gbpLocations, (SELECT COUNT(*) FROM job_runs WHERE id = 'setup-gbp-follow-up') AS followUpJobs, (SELECT COUNT(*) FROM audit_logs WHERE id = 'setup-gbp-audit') AS auditLogs"
+          "SELECT (SELECT COUNT(*) FROM oauth_connections WHERE id = 'setup-oauth-google-demo-store') AS oauthConnections, (SELECT COUNT(*) FROM gbp_locations WHERE id = 'setup-gbp-location-demo-store') AS gbpLocations, (SELECT COUNT(*) FROM job_runs WHERE id = 'setup-gbp-follow-up-demo-store') AS followUpJobs, (SELECT COUNT(*) FROM audit_logs WHERE id = 'setup-gbp-audit-demo-store') AS auditLogs"
         )
         .get()
     )
@@ -365,6 +372,7 @@ describe("setupGoogleBusinessProfile", () => {
 
     // When
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters,
       database,
       mode: "stub",
@@ -386,7 +394,7 @@ describe("setupGoogleBusinessProfile", () => {
         .prepare(
           "SELECT status, request_admin_rights_url FROM gbp_locations WHERE id = ?"
         )
-        .get("setup-gbp-location")
+        .get("setup-gbp-location-demo-store")
     )
     expect(row).toEqual({
       request_admin_rights_url: requestAdminRightsUrl,

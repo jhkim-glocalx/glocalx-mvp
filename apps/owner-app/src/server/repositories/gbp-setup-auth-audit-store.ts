@@ -37,7 +37,7 @@ export async function persistStubOAuthConnection(
       expires_at = excluded.expires_at,
       created_at = excluded.created_at`,
     [
-      setupOAuthConnectionId,
+      setupOAuthConnectionId(options.storeId),
       options.storeId,
       "GOOGLE",
       options.subjectId,
@@ -51,6 +51,7 @@ export async function persistStubOAuthConnection(
 }
 
 export async function appendStubSetupAuditLog(options: {
+  readonly actorUserId: string
   readonly createdAt: string
   readonly queryable: Queryable
   readonly status: LocationStatus
@@ -77,11 +78,11 @@ export async function appendStubSetupAuditLog(options: {
       redacted_payload_json = excluded.redacted_payload_json,
       created_at = excluded.created_at`,
     [
-      setupAuditLogId,
+      setupAuditLogId(options.storeId),
       options.storeId,
-      "demo-owner",
+      options.actorUserId,
       options.action ?? "gbp.setup.stub",
-      "setup-gbp-audit-key",
+      `setup-gbp-audit-key-${options.storeId}`,
       JSON.stringify({
         accessToken: "[REDACTED]",
         status: setupResultStatus(options.status),

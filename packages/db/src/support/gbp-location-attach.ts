@@ -50,6 +50,26 @@ export async function storeHasAttachedGbpLocation(
   return row !== undefined
 }
 
+// Undoes attachOrgLocationToStore. OVERRIDE only ever rewound
+// gbp_access_requests.state — the gbp_locations/gbp_accounts rows an adoption
+// wrote stayed behind, so a wrongly-adopted listing stayed permanently
+// attached even after an operator reverted the access state. Scoped to the
+// deterministic adoption ids (`adopted-account-${storeId}` /
+// `adopted-location-${storeId}`) so it can never touch a live-setup location.
+export async function detachOrgLocationFromStore(
+  queryable: Queryable,
+  storeId: string
+): Promise<void> {
+  await queryable.execute(
+    `DELETE FROM gbp_locations WHERE id = ? AND store_id = ?`,
+    [`adopted-location-${storeId}`, storeId]
+  )
+  await queryable.execute(
+    `DELETE FROM gbp_accounts WHERE id = ? AND store_id = ?`,
+    [`adopted-account-${storeId}`, storeId]
+  )
+}
+
 export async function attachOrgLocationToStore(
   queryable: Queryable,
   input: AttachOrgLocationInput

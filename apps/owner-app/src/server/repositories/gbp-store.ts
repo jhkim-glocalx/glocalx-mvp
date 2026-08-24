@@ -30,6 +30,7 @@ export interface GbpStore {
     readonly storeId: string
   }): Promise<void>
   persistSetupRecords(options: {
+    readonly actorUserId: string
     readonly now: Date
     readonly status: LocationStatus
     readonly storeId: string
@@ -38,6 +39,7 @@ export interface GbpStore {
   // Live (production) setup persists the real org account + Google location id.
   persistLiveSetupRecords(options: {
     readonly accountName: string
+    readonly actorUserId: string
     readonly googleLocationId: string
     readonly now: Date
     readonly status: LocationStatus
@@ -74,6 +76,7 @@ export function createDatabaseGbpStore(queryable: Queryable): GbpStore {
 
     async persistSetupRecords(options) {
       return persistStubSetupGbpRecords({
+        actorUserId: options.actorUserId,
         now: options.now,
         queryable,
         status: options.status,
@@ -85,6 +88,7 @@ export function createDatabaseGbpStore(queryable: Queryable): GbpStore {
     async persistLiveSetupRecords(options) {
       return persistLiveSetupGbpRecords({
         accountName: options.accountName,
+        actorUserId: options.actorUserId,
         googleLocationId: options.googleLocationId,
         now: options.now,
         queryable,

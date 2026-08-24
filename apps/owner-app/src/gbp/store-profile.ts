@@ -1,4 +1,4 @@
-import { Buffer } from "node:buffer"
+import { createHash } from "node:crypto"
 
 import { z } from "zod"
 
@@ -98,11 +98,14 @@ export function buildGoogleLocationBody(
 export function stableGbpSetupRequestId(
   profile: ConfirmedGbpStoreProfile
 ): string {
-  // Identical confirmed profile data gets the same request id so Google validate/create retries stay idempotent.
-  const encoded = Buffer.from(
-    `${profile.storeId}:${profile.name}:${profile.address}:${profile.phone}`
-  )
-    .toString("base64url")
-    .slice(0, 24)
-  return `gbp-setup-${encoded}`
+  // Identical confirmed profile data gets the same request id so Google validate/create
+  // retries stay idempotent. Hashed rather than truncated-encoded: slicing raw base64url
+  // bytes drops everything past the first ~18 bytes (usually little more than storeId),
+  // so two different profiles sharing that prefix collided into the same requestId.
+  const digest = createHash("sha256")
+    .update(
+      `${profile.storeId}:${profile.name}:${profile.address}:${profile.phone}`
+    )
+    .digest("base64url")
+  return `gbp-setup-${digest}`
 }

@@ -13,6 +13,7 @@ export type PersistClaimRequiredGbpRecordsOptions = {
 }
 
 export type PersistStubSetupGbpRecordsOptions = {
+  readonly actorUserId: string
   readonly now: Date
   readonly queryable: Queryable
   readonly status: LocationStatus
@@ -20,12 +21,21 @@ export type PersistStubSetupGbpRecordsOptions = {
   readonly subjectId: string
 }
 
-export const setupAccountId = "setup-gbp-account"
-export const setupAuditLogId = "setup-gbp-audit"
-export const setupGbpLocationId = "setup-gbp-location"
-export const setupGoogleLocationId = "locations/stub-created"
-export const setupOAuthConnectionId = "setup-oauth-google"
-export const setupFollowUpJobId = "setup-gbp-follow-up"
+// Store-scoped, not global: an id shared across stores turns every upsert
+// below into a cross-store clobber (a second store's setup overwrites the
+// first store's account/location/audit/job row instead of creating its own).
+export const setupAccountId = (storeId: string): string =>
+  `setup-gbp-account-${storeId}`
+export const setupAuditLogId = (storeId: string): string =>
+  `setup-gbp-audit-${storeId}`
+export const setupGbpLocationId = (storeId: string): string =>
+  `setup-gbp-location-${storeId}`
+export const setupGoogleLocationId = (storeId: string): string =>
+  `locations/stub-created-${storeId}`
+export const setupOAuthConnectionId = (storeId: string): string =>
+  `setup-oauth-google-${storeId}`
+export const setupFollowUpJobId = (storeId: string): string =>
+  `setup-gbp-follow-up-${storeId}`
 
 export function addDays(date: Date, days: number): string {
   const nextDate = new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
