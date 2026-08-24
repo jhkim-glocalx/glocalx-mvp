@@ -2,7 +2,84 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-@AGENTS.md
+## This is NOT the Next.js you know
+
+Next is pinned to `16.3.0-canary.40` and has breaking changes vs. training
+data — read the relevant guide in `node_modules/next/dist/docs/` before
+writing any route handler, server page, or client component code. Heed
+deprecation notices.
+
+## Git workflow
+
+### Branch strategy (GitHub Flow / trunk-based)
+
+`main` is the only long-lived branch and is always deployable. There is
+deliberately no persistent `dev`/staging branch — that pattern let `dev`
+drift 17 commits ahead of `main` (including security fixes) before anyone
+noticed, which defeats the point of `main` being the source of truth.
+
+| Branch        | Purpose                                           | Deploys to                                                                                                                                                        |
+| ------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main`        | Production — always deployable                    | Vercel production (`glocalx-mvp-six.vercel.app` — **not** `glocalx-mvp.vercel.app`, which is the frozen v1 project; see `docs/deployment/vercel-two-projects.md`) |
+| `feat/<name>` | Short-lived feature branches, branched off `main` | Vercel preview (per-push URL)                                                                                                                                     |
+| `fix/<name>`  | Short-lived bug fix branches, branched off `main` | Vercel preview (per-push URL)                                                                                                                                     |
+
+### Rules
+
+- **Never commit directly to `main`.** All changes go through a PR.
+- Branch off `main` for every feature/fix. Each push gets its own Vercel
+  preview URL — that preview is the staging environment for the change,
+  there's no separate branch to keep in sync.
+- CI (lint, typecheck, test, e2e, build) must pass before merging.
+- Merge via PR once CI is green and the preview looks right. Merging to
+  `main` deploys to production immediately, so keep branches short-lived
+  (hours to a couple of days) to keep that low-risk.
+- Delete feature/fix branches after merging.
+
+### Commit conventions (Conventional Commits)
+
+```
+<type>(<scope>): <short description>
+```
+
+Types: `feat`, `fix`, `chore`, `refactor`, `test`, `docs`, `style`, `perf`
+
+Examples:
+
+- `feat(auth): add demo owner session flow`
+- `fix(onboarding): expose clear submit and next actions`
+- `chore(git): exclude AI tooling and business files from tracking`
+
+### What NOT to commit
+
+The following are gitignored and must never be committed:
+
+- `.claude/` — AI tooling config
+- `.omo/` — agent scratch space
+- `.gstack/` — gstack tooling
+- `01_documents/`, `02_assets/`, `workspace/` — business files, not app code
+- `.env` — secrets (use each app's `.env.example` for the template)
+
+### Stacked PRs (a PR branched off another open PR)
+
+When PR **B** is branched off PR **A**'s branch instead of `main`:
+
+- **Retarget B to `main` before merging A** — or merge A **without**
+  `--delete-branch`. Deleting A's branch while it is still B's base makes
+  GitHub **close** B (it does _not_ auto-retarget it), and a PR whose base
+  branch is gone cannot be reopened.
+- **Recovery if B was closed this way:** rebase B onto the updated `main`
+  and open a fresh PR. Because A was squash-merged, drop A's now-redundant
+  commits by replaying only B's own:
+
+  ```bash
+  git rebase --onto origin/main <A-branch-tip-sha> <B-branch>
+  git push --force-with-lease
+  gh pr create --base main --head <B-branch>
+  ```
+
+  Verify `git diff --stat origin/main...HEAD` shows only B's files before
+  pushing.
 
 ## Role and coding workflow
 
@@ -30,13 +107,11 @@ database:
   (design tokens) — consumed as TypeScript source; both apps must list
   them in `transpilePackages`.
 
-Further reading: `README.md`, `docs/v2/` (program plan + architecture),
-`docs/engineering-review-readiness.md` (reviewer-facing architecture
-map), and `DESIGN.md` (visual design system).
-
-Next is pinned to `16.3.0-canary.40` and has breaking changes vs. training
-data — read the relevant guide in `node_modules/next/dist/docs/` before
-writing any route handler, server page, or client component code.
+Further reading: `README.md`, `docs/v2/` (program plan, architecture,
+delivery plan, design decisions, ops runbook, Instagram-connect
+onboarding — Korean translations live alongside as `*.ko.md`),
+`docs/deployment/` (migration runbook, Postgres cutover/rollback, the
+two-Vercel-projects split), and `DESIGN.md` (visual design system).
 
 ## Commands
 
@@ -81,12 +156,14 @@ npm run db:migrate:sqlite-to-pg
 
 Keep `APP_INTEGRATION_MODE=stub` for local development and review — it
 returns deterministic Naver/GBP/OpenAI responses without live credentials.
-Copy `.env.example` to `.env.local`; never commit real credentials.
+Copy `apps/owner-app/.env.example` to `apps/owner-app/.env.local` and
+`apps/admin/.env.example` to `apps/admin/.env.local`; never commit real
+credentials.
 
-Pin Node 22 in verification shells
-(`export PATH=/Users/jaehun/.nvm/versions/node/v22.18.0/bin:$PATH`) — a
-login shell resolving Node 26 is incompatible with the native
-`better-sqlite3` module.
+Use Node 22 in verification shells — the native `better-sqlite3` module
+is incompatible with newer Node majors (e.g. 26). Check with `node -v`
+before running `db:*` or `test`/`e2e` scripts if a shell resolves an
+unexpected version.
 
 ## Architecture
 

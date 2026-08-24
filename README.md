@@ -36,7 +36,7 @@ npm run dev -- --hostname 127.0.0.1 --port 3000
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and keep real credentials out of git. Stub mode is the default until Naver Developers and Google Business Profile credentials are available.
+Copy `apps/owner-app/.env.example` to `apps/owner-app/.env.local` (and `apps/admin/.env.example` to `apps/admin/.env.local` for the admin app) and keep real credentials out of git. Stub mode is the default until Naver Developers and Google Business Profile credentials are available.
 
 For feature worktrees, use an isolated SQLite path and dev port in the ignored
 `.env.local` file, for example a worktree-specific path under `/tmp`. This keeps
