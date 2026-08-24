@@ -83,8 +83,40 @@ export async function verifyPostgresDatabase(
     )
   }
 
+  // Table presence alone missed the incident this check now catches: migration
+  // 0020 shipped in code but was never run against prod, so every table existed
+  // while a CHECK constraint was still the old one — a 500 at the first write
+  // that needed the new state, not at deploy or at this verify step.
+  const appliedRows = await sql<MigrationRow[]>`
+    SELECT version, checksum
+    FROM glocalx_schema_migrations
+  `
+  const appliedChecksums = new Map(
+    appliedRows.map((row) => [row.version, row.checksum])
+  )
+  const unappliedVersions: string[] = []
+  const mismatchedVersions: string[] = []
+  for (const migration of loadPostgresMigrations()) {
+    const appliedChecksum = appliedChecksums.get(migration.version)
+    if (appliedChecksum === undefined) {
+      unappliedVersions.push(migration.version)
+    } else if (appliedChecksum !== migration.checksum) {
+      mismatchedVersions.push(migration.version)
+    }
+  }
+  if (unappliedVersions.length > 0) {
+    throw new PostgresSchemaVerificationError(
+      `Postgres database is missing migrations: ${unappliedVersions.join(", ")}. Run db:pg:migrate.`
+    )
+  }
+  if (mismatchedVersions.length > 0) {
+    throw new PostgresSchemaVerificationError(
+      `Postgres database has migrations applied with a different checksum than the source: ${mismatchedVersions.join(", ")}`
+    )
+  }
+
   console.log(
-    `Verified Postgres schema with ${databaseTableNames.length} application tables`
+    `Verified Postgres schema with ${databaseTableNames.length} application tables and ${appliedRows.length} applied migrations`
   )
 }
 

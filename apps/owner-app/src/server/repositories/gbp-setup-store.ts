@@ -53,7 +53,7 @@ async function upsertSetupAccount(options: {
       account_name = excluded.account_name,
       created_at = excluded.created_at`,
     [
-      setupAccountId,
+      setupAccountId(options.storeId),
       options.storeId,
       options.googleAccountId ?? "accounts/stub",
       options.accountName ?? "Stub GBP Account",
@@ -95,18 +95,18 @@ async function scheduleFollowUpIfNeeded(options: {
       created_at = excluded.created_at,
       updated_at = excluded.updated_at`,
     [
-      setupFollowUpJobId,
+      setupFollowUpJobId(options.storeId),
       options.storeId,
       "GBP_FOLLOW_UP",
       "SCHEDULED",
-      "setup-gbp-follow-up-key",
+      `setup-gbp-follow-up-key-${options.storeId}`,
       addDays(options.now, 7),
       0,
       options.createdAt,
       options.createdAt,
     ]
   )
-  return setupFollowUpJobId
+  return setupFollowUpJobId(options.storeId)
 }
 
 async function upsertSetupLocation(options: {
@@ -137,9 +137,9 @@ async function upsertSetupLocation(options: {
       created_at = excluded.created_at,
       updated_at = excluded.updated_at`,
     [
-      setupGbpLocationId,
+      setupGbpLocationId(options.storeId),
       options.storeId,
-      setupAccountId,
+      setupAccountId(options.storeId),
       options.googleLocationId,
       options.status,
       options.requestAdminRightsUrl,
@@ -199,6 +199,7 @@ export async function persistClaimRequiredGbpRecords(
 
 export type PersistLiveSetupGbpRecordsOptions = {
   readonly accountName: string
+  readonly actorUserId: string
   readonly googleLocationId: string
   readonly now: Date
   readonly queryable: Queryable
@@ -243,6 +244,7 @@ export async function persistLiveSetupGbpRecords(
   })
   await appendStubSetupAuditLog({
     action: "gbp.setup.live",
+    actorUserId: options.actorUserId,
     createdAt,
     queryable: options.queryable,
     status: options.status,
@@ -253,8 +255,8 @@ export async function persistLiveSetupGbpRecords(
     status: setupResultStatus(options.status),
     googleLocationId: options.googleLocationId,
     oauthConnectionId: "org-managed",
-    gbpLocationId: setupGbpLocationId,
-    auditLogId: setupAuditLogId,
+    gbpLocationId: setupGbpLocationId(options.storeId),
+    auditLogId: setupAuditLogId(options.storeId),
     message: setupResultMessage(options.status),
   }
   return followUpJobId === undefined ? result : { ...result, followUpJobId }
@@ -300,7 +302,7 @@ export async function persistStubSetupGbpRecords(
   })
   await upsertSetupLocation({
     createdAt,
-    googleLocationId: setupGoogleLocationId,
+    googleLocationId: setupGoogleLocationId(options.storeId),
     queryable: options.queryable,
     requestAdminRightsUrl: null,
     status: options.status,
@@ -314,6 +316,7 @@ export async function persistStubSetupGbpRecords(
     storeId: options.storeId,
   })
   await appendStubSetupAuditLog({
+    actorUserId: options.actorUserId,
     createdAt,
     queryable: options.queryable,
     status: options.status,
@@ -322,10 +325,10 @@ export async function persistStubSetupGbpRecords(
 
   const result = {
     status: setupResultStatus(options.status),
-    googleLocationId: setupGoogleLocationId,
-    oauthConnectionId: setupOAuthConnectionId,
-    gbpLocationId: setupGbpLocationId,
-    auditLogId: setupAuditLogId,
+    googleLocationId: setupGoogleLocationId(options.storeId),
+    oauthConnectionId: setupOAuthConnectionId(options.storeId),
+    gbpLocationId: setupGbpLocationId(options.storeId),
+    auditLogId: setupAuditLogId(options.storeId),
     message: setupResultMessage(options.status),
   }
   return followUpJobId === undefined ? result : { ...result, followUpJobId }

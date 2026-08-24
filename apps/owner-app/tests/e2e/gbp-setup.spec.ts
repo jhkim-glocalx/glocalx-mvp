@@ -23,7 +23,7 @@ test("Stub GBP setup reaches verification pending and records an audit log", asy
   const body = await response.json()
   expect(body).toMatchObject({
     status: "VERIFICATION_PENDING",
-    auditLogId: "setup-gbp-audit",
-    followUpJobId: "setup-gbp-follow-up",
+    auditLogId: "setup-gbp-audit-demo-store",
+    followUpJobId: "setup-gbp-follow-up-demo-store",
   })
 })

@@ -133,3 +133,51 @@ P-4 리허설을 프로덕션에서 완료. 통과: 운영자 로그인 → over
 - "내가 창업자로서 실제 고객에게 찾아가서 GBP 셋업을 크롬으로 한 다음" — 워크플로우를 가설이 아니라 본인이 이미 하고 있는 행동으로 서술함. 프로세스가 검증된 뒤 도구를 요청하는 순서가 맞다.
 - D4에서 추천안(트립와이어)을 그대로 받지 않고 "6시간 뒤 데모가 있으니까 통일 없이 먼저 마무리해서 출시 버전 하나, 그 다음 통일해서 버전 또 하나" — 시간 제약을 근거로 로드맵을 스스로 재구성함. 반박이 아니라 더 구체적인 계획으로 응수한 것.
 - "자동화 혹은 쉬운 플로우로 만든 스텝들을 관리자가 메뉴얼로 다 할 수 있도록" — 자동화의 실패 모드를 전제하고 설계를 요구함. 초기 운영에서 가장 값싼 보험이 무엇인지 아는 판단.
+
+## GSTACK REVIEW REPORT
+
+| Review        | Trigger               | Why                             | Runs | Status       | Findings                                                                      |
+| ------------- | --------------------- | ------------------------------- | ---- | ------------ | ----------------------------------------------------------------------------- |
+| CEO Review    | `/plan-ceo-review`    | Scope & strategy                | 0    | —            | —                                                                             |
+| Codex Review  | `/codex review`       | Independent 2nd opinion         | 1    | ISSUES FOUND | 13 findings; 6 folded as new issues, 2 tensions resolved, 1 partly overstated |
+| Eng Review    | `/plan-eng-review`    | Architecture & tests (required) | 1    | CLEAR        | 21 issues, 0 critical gaps, 0 unresolved                                      |
+| Design Review | `/plan-design-review` | UI/UX gaps                      | 0    | —            | —                                                                             |
+| DX Review     | `/plan-devex-review`  | Developer experience gaps       | 0    | —            | —                                                                             |
+
+**스코프 결정:** 출시 버전 B를 "현장 근거가 있는 운영자 액션 1개(RUN_SETUP)를
+완성도 높게" 로 축소. 나머지 액션 카드 목록은 이 문서의 Assignment(현장 방문
+기록)가 결정한다는 자체 규칙을 그대로 지킨다.
+
+**이 리뷰가 정정한 이 문서의 사실 3건:**
+
+- Open Q1의 "owner-app `api/admin`에 호스팅, 선례 있음" — 사실 아님.
+  `api/admin/integrations`는 `ENABLE_ADMIN_DEBUG` + **owner 세션**으로 막힌
+  진단 엔드포인트이고 어드민 세션을 검증하지 않는다. 게다가 두 앱은 호스트가
+  달라 어드민 쿠키가 owner-app으로 전송되지 않는다. → B-0은 패키지 추출로 확정.
+- A-2의 "잘못된 입양 취소 → 기존 override 셀렉터가 탈출구" — 사실 아님.
+  OVERRIDE는 `gbp_access_requests.state`만 되감고 `gbp_locations` 행은 남는다.
+  프로덕션에 detach 경로가 전무해 잘못 붙은 가게는 영구 잠긴다.
+- 전제 3의 dual-db 트립와이어 — 미발동 판정. 대신 미적용 마이그레이션 감지를
+  추가한다(`glocalx_schema_migrations` 비교).
+
+**P0 (이 리뷰의 최대 발견):** `gbp-setup-record-values.ts`의 전역 상수 5개가
+PRIMARY KEY로 쓰이고 upsert가 `ON CONFLICT(id) DO UPDATE SET store_id = ...`
+이다. **라이브 경로가 이것을 쓴다.** 가게 2호점 셋업이 1호점 행을 강탈하고,
+GBP 셋업 감사 로그는 전 시스템에 1행뿐이다. 프로덕션 라이브 생성이 1건뿐이라
+증상이 없었고, B-1이 정확히 2호점을 이 경로로 데려온다.
+
+**CODEX:** 13건 중 4건을 코드로 재검증해 사실 확인(스텁 고정 location id,
+`CONFIRM_ADOPTION`의 granted 불법, 감사 actor 하드코딩, verify가 테이블만 검사).
+결정적 기여 2건 — (1) 유니크 인덱스가 스텁 모드를 깨뜨린다는 상호작용,
+(2) detach만으로는 잠김이 안 풀린다. 1건(크래시 복구 부재)은 과장으로 판정:
+`requestId`가 Google 멱등성 토큰으로 이미 전달된다. 다만 그 토큰이 원문
+18바이트만 반영한다는 더 심각한 결함이 확인됐다.
+
+**CROSS-MODEL:** 긴장 2건 모두 Codex 수용. (1) writer 통합의 공유 계층을
+워크플로가 아닌 저수준 attach 프리미티브로 낮춤. (2) 18개 항목을 단일 PR이
+아니라 하드닝 → 이동 → 기능 → 페이지네이션의 3+1 PR로 분할.
+
+**VERDICT:** ENG CLEARED — 구현 착수 가능. 순서는 PR1(하드닝, 배포 코드 결함
+9건)부터. PR1은 B를 만들지 않아도 단독으로 프로덕션 위험을 제거한다.
+
+NO UNRESOLVED DECISIONS

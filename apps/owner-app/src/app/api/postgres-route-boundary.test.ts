@@ -130,6 +130,7 @@ describe("Postgres route database boundary", () => {
     expect(storeProfileRepository.profileReads).toEqual([demoStoreId])
     expect(gbpStore.setupRecords).toEqual([
       {
+        actorUserId: demoUserId,
         now: new Date("2026-06-04T00:00:00.000Z"),
         status: "VERIFICATION_PENDING",
         storeId: demoStoreId,

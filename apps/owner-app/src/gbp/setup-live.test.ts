@@ -427,6 +427,7 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
   it("persists the real org account name and Google location id", async () => {
     const database = await createDatabase()
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters: productionAdapters(database),
       database,
       env: orgFullEnv,
@@ -443,7 +444,7 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
                   location.google_location_id AS google_location_id
              FROM gbp_locations AS location
              JOIN gbp_accounts AS account ON account.id = location.gbp_account_id
-            WHERE location.id = 'setup-gbp-location'`
+            WHERE location.id = 'setup-gbp-location-demo-store'`
         )
         .get()
     )
@@ -457,6 +458,7 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
   it("blocks when the org credentials are missing", async () => {
     const database = await createDatabase()
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters: productionAdapters(database),
       database,
       env: {},
@@ -475,6 +477,7 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
       .run("demo-store")
     let reachedGoogle = false
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters: productionAdapters(database),
       database,
       env: orgFullEnv,
@@ -496,6 +499,7 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
       .run("geocode-fail 123", "demo-store")
     let reachedGoogle = false
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters: productionAdapters(database),
       database,
       env: orgFullEnv,
@@ -537,6 +541,7 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
     }
 
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters: {
         ...productionAdapters(database),
         gbpVerifications: createProductionGbpVerifications(orgAppEnv),
@@ -581,6 +586,7 @@ describe("setupGoogleBusinessProfile (production dispatch)", () => {
     }
 
     const result = await setupGoogleBusinessProfile({
+      actorUserId: "demo-owner",
       adapters: {
         ...productionAdapters(database),
         gbpVerifications: createProductionGbpVerifications(orgAppEnv),

@@ -521,6 +521,45 @@ describe("gbp access transition route", () => {
     expect(await auditActions()).toContain("gbp_access_override")
   })
 
+  it("detaches a wrongly-adopted listing when an override reverts it", async () => {
+    const requestId = await seedAdoptionReview("locations/hand-built")
+    await withDatabase(async (queryable) => {
+      await queryable.execute("DELETE FROM gbp_locations WHERE store_id = ?", [
+        storeId,
+      ])
+    })
+    await transition(
+      transitionRequest(
+        requestId,
+        { type: "CONFIRM_ADOPTION" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+    expect(await currentState(requestId)).toBe("granted")
+
+    // Before the fix, OVERRIDE only rewound gbp_access_requests.state — the
+    // attached listing stayed behind and permanently locked the store out of
+    // re-adoption.
+    const response = await transition(
+      transitionRequest(
+        requestId,
+        { type: "OVERRIDE", targetState: "adoption_review" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(requestId)
+    )
+
+    expect(response.status).toBe(200)
+    expect(await currentState(requestId)).toBe("adoption_review")
+    const locations = await withDatabase(async (queryable) =>
+      queryable.query("SELECT id FROM gbp_locations WHERE store_id = ?", [
+        storeId,
+      ])
+    )
+    expect(locations).toEqual([])
+  })
+
   it("stores a BLOCK reason as the chase note", async () => {
     const requestId = await seedAccessRequest()
     await transition(
