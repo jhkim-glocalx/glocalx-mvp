@@ -63,3 +63,43 @@ cold. Added by /plan-eng-review on 2026-07-17 (v2 plan review).
 - **Context:** Upload flow specified in docs/v2/architecture.md §6
   (client-direct tokens, review decision D16).
 - **Depends on:** Phase 3 landed; pairs with item 1.
+
+## 5. GBP 리스팅 삭제 프로브 (Google API)
+
+- **What:** 조직 계정이 만든 GBP 리스팅을 Google API로 삭제할 수 있는지
+  실측한다(미인증 상태 / 인증된 상태 각각). 가능하면
+  `GbpBusinessInformationAdapter`에 삭제 메서드를 추가하고 어드민에
+  "Google에서 삭제" 버튼을 붙인다.
+- **Why:** 어드민 detach(연결 해제)는 우리 DB만 되돌린다. 잘못 만들어진
+  리스팅은 Google에 공개된 채 남아 실제 사업체 정보를 오염시킨다. 사장님이
+  "지워주세요"라고 연락했을 때 운영자가 앱 안에서 끝낼 수 없다.
+- **Pros:** 연결 해제가 진짜 원복이 된다. 운영자가 한 화면에서 마무리한다.
+- **Cons:** Google이 거부하면 프로브 시간만 쓰고 끝난다. 인증된 리스팅은
+  선(先) 인증 해제가 필요할 수 있다.
+- **Context:** 현재 어댑터는 list/search/requestAdminRights/validate/create만
+  갖는다 — 삭제 메서드가 아예 없다. 안전 테스트 리스팅(조직 계정의
+  "글로컬엑스/부산 서면로 39")이 이미 지정돼 있고, 이슈 #45의 인증 프로브와
+  같은 방식으로 돌리면 된다. `/plan-eng-review` 2026-08-25 이슈 4에서
+  명시적으로 미룬 항목.
+- **Depends on:** 프로덕션 org 토큰 보유자(창업자)가 직접 실행. detach가
+  먼저 있으면 프로브 결과를 바로 붙일 수 있다.
+
+## 6. 접근 상태 모델의 "방향 반대" 케이스
+
+- **What:** `gbp_access_requests`가 "사장님은 자기 리스팅에 권한이 없고 우리
+  조직만 관리한다"는 상황을 표현하게 만든다. 사장님을 자기 리스팅의
+  소유자/관리자로 초대하는 경로를 포함한다.
+- **Why:** org 계정이 생성한 리스팅을 `granted`로 두기로 했지만(리뷰 이슈 19),
+  `granted`의 원래 의미는 "우리가 사장님 리스팅에 매니저 권한을 받았다"이다.
+  org 생성은 방향이 반대다. 지금은 발행이 동작하니 증상이 없지만, 사장님이
+  해지하거나 직접 관리하고 싶을 때 넘겨줄 경로가 없다.
+- **Pros:** 이탈/소유권 이전 요구에 답할 수 있다. `granted`가 한 가지 의미만
+  갖게 되어 상태 해석이 명확해진다.
+- **Cons:** 상태 기계와 마이그레이션, 사장님 UI가 함께 바뀐다. 지금 요구하는
+  고객은 없다.
+- **Context:** 상태는 not_requested / adoption_review / granted / revoked /
+  blocked이고 `confirmAdoptionSourceStates = [adoption_review, blocked]`.
+  입양 경로도 같은 가정(사장님 리스팅에 우리가 들어간다)을 깔고 있어 두 경로
+  모두 해당된다. `/plan-eng-review` 2026-08-25 이슈 19에서 의도적으로 감수한
+  부정확성.
+- **Depends on:** 없음. 고객이 이탈이나 소유권 이전을 요구하기 시작할 때 재개.
