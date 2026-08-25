@@ -5,6 +5,7 @@ import {
   del,
   head,
   issueSignedToken,
+  list,
   presignUrl,
 } from "@vercel/blob"
 import { generateClientTokenFromReadWriteToken } from "@vercel/blob/client"
@@ -16,6 +17,7 @@ import type {
   CreateUploadTokenResult,
   MediaStore,
   MediaStoreAssetMetadata,
+  MediaStoreListedAsset,
 } from "./media-store"
 import {
   MediaStoreAssetNotFoundError,
@@ -139,6 +141,43 @@ export function createProductionMediaStore(
 
       await del(blobUrl, { token: env["BLOB_READ_WRITE_TOKEN"] ?? "" })
       return { kind: "ok", value: undefined }
+    },
+
+    async listAssets(
+      prefix = "stores/"
+    ): Promise<AdapterResult<readonly MediaStoreListedAsset[]>> {
+      const missing = missingEnvVars(env, blobEnvVars)
+      if (missing.length > 0) {
+        return blockedByCredentials(missing)
+      }
+
+      const token = env["BLOB_READ_WRITE_TOKEN"] ?? ""
+      const assets: MediaStoreListedAsset[] = []
+      let cursor: string | undefined
+      // Capped like listOrgLocations's page loop: a malformed/looping cursor
+      // can't hang the sweep forever, and 20k objects is far past this repo's
+      // 10-20 store scale.
+      for (let page = 0; page < 20; page += 1) {
+        const result = await list({
+          prefix,
+          token,
+          ...(cursor === undefined ? {} : { cursor }),
+        })
+        for (const blob of result.blobs) {
+          assets.push({
+            pathname: blob.pathname,
+            blobUrl: blob.url,
+            sizeBytes: blob.size,
+            uploadedAt: blob.uploadedAt.toISOString(),
+          })
+        }
+        if (!result.hasMore || result.cursor === undefined) {
+          break
+        }
+        cursor = result.cursor
+      }
+
+      return { kind: "ok", value: assets }
     },
   }
 }
