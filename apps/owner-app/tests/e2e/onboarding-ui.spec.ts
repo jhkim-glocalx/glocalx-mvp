@@ -57,8 +57,9 @@ test("successful onboarding extraction and gbp setup", async ({ page }) => {
   expect(slotCompletionBox.y).toBeLessThan(gbpSetupBox.y)
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
 
-  await expect(page.getByText("VERIFICATION_PENDING")).toBeVisible()
-  await expect(page.getByText("setup-gbp-audit")).toBeVisible()
+  await expect(
+    page.getByText("운영자 검토 대기", { exact: true })
+  ).toBeVisible()
   // GBP done, and the last onboarding step is the Instagram question — the exit
   // only appears once it is answered.
   await expect(

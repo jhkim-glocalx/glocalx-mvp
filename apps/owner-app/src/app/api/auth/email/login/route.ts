@@ -65,9 +65,18 @@ export async function POST(request: NextRequest) {
         })
       }
       await authRateLimitRepository.clear([accountRateLimitRule])
-      return redirectWithSession(
-        await sessionStore.createAuthenticatedSession(credential.session)
-      )
+      try {
+        return redirectWithSession(
+          await sessionStore.createAuthenticatedSession(credential.session)
+        )
+      } catch {
+        // Password matched, but the account was deactivated by an operator —
+        // deactivation removes the store row's eligibility, not the row itself.
+        return new NextResponse(null, {
+          headers: { Location: "/login?auth_error=account_deactivated" },
+          status: 303,
+        })
+      }
     }
   )
 }

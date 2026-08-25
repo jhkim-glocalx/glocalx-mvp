@@ -429,4 +429,7 @@ export function applyMigrations(database: SqliteDatabase): void {
   // Owner-claimed adoption of an org-owned listing (matches
   // postgres/migrations/0020_gbp_access_adoption_review.sql).
   ensureAdoptionReviewAccessState(database)
+  // Admin dashboard soft-delete (matches
+  // postgres/migrations/0021_user_deactivation.sql).
+  ensureColumn(database, "users", "deactivated_at", "TEXT")
 }

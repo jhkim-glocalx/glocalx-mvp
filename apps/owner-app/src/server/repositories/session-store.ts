@@ -115,7 +115,9 @@ export function createDatabaseSessionStore(queryable: Queryable): SessionStore {
         WHERE EXISTS (
           SELECT 1
           FROM stores
-          WHERE id = ? AND owner_user_id = ?
+          JOIN users ON users.id = stores.owner_user_id
+          WHERE stores.id = ? AND stores.owner_user_id = ?
+            AND users.deactivated_at IS NULL
         )`,
         [
           sessionId,
@@ -194,9 +196,11 @@ export function createDatabaseSessionStore(queryable: Queryable): SessionStore {
               stores.onboarding_status
             FROM user_sessions
             JOIN stores ON stores.id = user_sessions.store_id
+            JOIN users ON users.id = user_sessions.user_id
             WHERE user_sessions.id = ?
               AND user_sessions.expires_at > ?
-              AND stores.owner_user_id = user_sessions.user_id`,
+              AND stores.owner_user_id = user_sessions.user_id
+              AND users.deactivated_at IS NULL`,
             [authSessionId, new Date().toISOString()]
           )
         )
@@ -215,7 +219,11 @@ export function createDatabaseSessionStore(queryable: Queryable): SessionStore {
 
       const row = sessionRowSchema.safeParse(
         await queryable.queryOne(
-          "SELECT id AS store_id, owner_user_id AS user_id, onboarding_status FROM stores WHERE id = ? AND owner_user_id = ?",
+          `SELECT stores.id AS store_id, stores.owner_user_id AS user_id, stores.onboarding_status
+           FROM stores
+           JOIN users ON users.id = stores.owner_user_id
+           WHERE stores.id = ? AND stores.owner_user_id = ?
+             AND users.deactivated_at IS NULL`,
           [storeId, userId]
         )
       )

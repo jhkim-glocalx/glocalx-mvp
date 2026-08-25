@@ -1,7 +1,6 @@
 import {
   toConfirmationState,
   toConfirmedStoreProfilePayload,
-  toSetupState,
   type ConfirmationState,
   type SetupState,
   type StoreProfileDraft,
@@ -19,12 +18,12 @@ export async function requestStoreProfileConfirmation(
   return toConfirmationState(payload)
 }
 
+// Final GBP submission is an admin dashboard action now — see the matching
+// function in onboarding-requests.ts for why this no longer calls the server.
 export async function requestGbpSetupState(): Promise<SetupState> {
-  const response = await fetch("/api/gbp/setup", {
-    body: JSON.stringify({ mode: "stub" }),
-    headers: { "Content-Type": "application/json" },
-    method: "POST",
-  })
-  const payload: unknown = await response.json()
-  return toSetupState(payload)
+  return {
+    kind: "pendingReview",
+    message:
+      "매장 정보 확인이 완료되었습니다. 운영자가 확인 후 Google 비즈니스 프로필을 등록해드립니다.",
+  }
 }

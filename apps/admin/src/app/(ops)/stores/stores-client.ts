@@ -4,12 +4,46 @@ import type {
   GbpAccessState,
 } from "@glocalx/domain/gbp-access"
 import type { GbpVerificationState } from "@glocalx/domain/gbp-verification-state"
+import type { PendingGbpSetupStore } from "@glocalx/db/support/gbp-access-store"
 
 // Fetch helpers for the Stores console, kept out of the component so the
 // request/response shapes live in one place (mirrors queue-client.ts).
 
 const storesUrl = "/api/stores/access-requests"
 const orgLocationsUrl = "/api/stores/org-locations"
+const pendingSetupUrl = "/api/stores/pending-setup"
+
+export async function fetchPendingSetupStores(): Promise<
+  readonly PendingGbpSetupStore[]
+> {
+  const response = await fetch(pendingSetupUrl)
+  if (!response.ok) {
+    return []
+  }
+  const payload = (await response.json()) as {
+    readonly stores?: readonly PendingGbpSetupStore[]
+  }
+  return payload.stores ?? []
+}
+
+export type RunSetupResult =
+  | { readonly kind: "ok" }
+  | { readonly kind: "error"; readonly message: string }
+
+// Runs the same concierge RUN_SETUP action the Stores console already offers
+// per-store once a request exists — this is what lets a *pre*-request store
+// (confirmed, never submitted) reach Google for the first time.
+export async function runGbpSetup(storeId: string): Promise<RunSetupResult> {
+  const response = await fetch(`/api/stores/${storeId}/gbp/setup/actions`, {
+    body: JSON.stringify({ type: "RUN_SETUP" }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  })
+  if (!response.ok) {
+    return { kind: "error", message: "GBP 등록을 실행하지 못했습니다." }
+  }
+  return { kind: "ok" }
+}
 
 export type OrgLocationOption = {
   readonly name: string

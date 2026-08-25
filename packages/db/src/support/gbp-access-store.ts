@@ -74,6 +74,17 @@ export type SetGbpAccessNoteInput = {
   readonly now: Date
 }
 
+// A store the owner has confirmed but that has never run GBP setup — no row
+// in gbp_access_requests yet, since that row is only created once setup
+// reaches Google. Surfaces the Stores console's "제출 대기" section: setup is
+// now an admin-only action (RUN_SETUP), so without this a confirmed store
+// with no request row would never appear in the console at all.
+export type PendingGbpSetupStore = {
+  readonly storeId: string
+  readonly storeName: string
+  readonly confirmedAt: string
+}
+
 export interface GbpAccessStore {
   // Get-or-create in not_requested, called when the owner completes GBP connect.
   // Idempotent on store_id: reconnecting returns the existing row untouched, so
@@ -107,6 +118,7 @@ export interface GbpAccessStore {
     requestId: string
   ): Promise<GbpAccessRequestListEntry | undefined>
   listGbpAccessRequests(): Promise<readonly GbpAccessRequestListEntry[]>
+  listStoresPendingGbpSetup(): Promise<readonly PendingGbpSetupStore[]>
   // Returns undefined when the guard missed — the row is gone or its state
   // moved on. Callers surface that as a stale-view conflict, never a retry.
   updateGbpAccessState(
@@ -272,6 +284,33 @@ export function createDatabaseGbpAccessStore(
       return rows.map((row) => ({
         ...toGbpAccessRequest(row),
         storeName: z.string().parse(row["storeName"]),
+      }))
+    },
+
+    async listStoresPendingGbpSetup() {
+      // Same "confirmed profile" predicate setupGoogleBusinessProfile itself
+      // reads (readConfirmedGbpStoreProfile) — a store belongs in this list
+      // exactly when RUN_SETUP would find a profile to submit, not before.
+      const rows = await queryable.query(
+        `SELECT
+            stores.id AS "storeId",
+            stores.name AS "storeName",
+            business_profile_extractions.created_at AS "confirmedAt"
+           FROM stores
+           JOIN business_profile_extractions
+             ON business_profile_extractions.store_id = stores.id
+            AND business_profile_extractions.status = 'CONFIRMED'
+          WHERE stores.phone IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM gbp_access_requests
+               WHERE gbp_access_requests.store_id = stores.id
+            )
+          ORDER BY business_profile_extractions.created_at ASC`
+      )
+      return rows.map((row) => ({
+        storeId: z.string().parse(row["storeId"]),
+        storeName: z.string().parse(row["storeName"]),
+        confirmedAt: timestampSchema.parse(row["confirmedAt"]),
       }))
     },
 

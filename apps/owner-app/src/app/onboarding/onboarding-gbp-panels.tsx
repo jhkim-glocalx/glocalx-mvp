@@ -164,6 +164,18 @@ export function SetupPanel({
       {setup.kind === "loading" ? (
         <TypingIndicator label="GBP 세팅을 확인하는 중" />
       ) : null}
+      {setup.kind === "pendingReview" ? (
+        <div className="grid gap-3">
+          <ChatMessage message={setup.message} speaker="assistant" />
+          <div aria-label="GBP 세팅 상태" className="flex flex-wrap gap-2">
+            <StatusPill>운영자 검토 대기</StatusPill>
+          </div>
+          {/* Google submission now happens from the admin dashboard, not here —
+              but the Instagram question still owns "finish onboarding", so the
+              owner is not left stuck waiting on an operator to proceed. */}
+          <InstagramConnectPanel />
+        </div>
+      ) : null}
       {setup.kind === "categoryRequired" ? (
         <div className="grid gap-3">
           <div role="alert">

@@ -92,6 +92,26 @@ describe("onboarding GBP panels", () => {
     expect(html).not.toContain("대시보드로 이동")
   })
 
+  it("tells the owner GBP is under operator review, and still offers the Instagram step", () => {
+    // Given
+    const setup = {
+      kind: "pendingReview",
+      message: "운영자가 확인 후 Google 비즈니스 프로필을 등록해드립니다.",
+    } satisfies SetupState
+
+    // When
+    const html = renderToStaticMarkup(
+      <SetupPanel onRetry={() => undefined} setup={setup} />
+    )
+
+    // Then
+    expect(html).toContain(
+      "운영자가 확인 후 Google 비즈니스 프로필을 등록해드립니다."
+    )
+    expect(html).toContain("운영자 검토 대기")
+    expect(html).toContain("인스타그램 계정도 운영하고 계신가요?")
+  })
+
   it("offers an inline category picker and retry when the category is missing", () => {
     // Given
     const setup = {

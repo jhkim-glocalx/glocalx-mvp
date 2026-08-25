@@ -297,6 +297,9 @@ export function createGbpAccessStore(): {
     async listGbpAccessRequests() {
       return unexpectedCall("gbpAccessStore.listGbpAccessRequests")
     },
+    async listStoresPendingGbpSetup() {
+      return unexpectedCall("gbpAccessStore.listStoresPendingGbpSetup")
+    },
     async updateGbpAccessState() {
       return unexpectedCall("gbpAccessStore.updateGbpAccessState")
     },

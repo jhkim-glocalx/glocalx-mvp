@@ -50,6 +50,12 @@ export type ConfirmationState =
 export type SetupState =
   | { readonly kind: "idle" }
   | { readonly kind: "loading" }
+  // Google is no longer called from onboarding at all — final GBP submission
+  // is an admin dashboard action (the Stores console's "제출 대기" section).
+  // This is what "다음: GBP 세팅 확인" now resolves to: a static acknowledgement,
+  // not a Google create result, so it carries none of `ready`'s Google-derived
+  // fields.
+  | { readonly kind: "pendingReview"; readonly message: string }
   | {
       readonly apiStatus: string
       readonly auditLogId: string

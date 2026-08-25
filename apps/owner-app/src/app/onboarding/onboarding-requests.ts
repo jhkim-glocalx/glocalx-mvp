@@ -6,7 +6,6 @@ import {
   toConfirmedStoreProfilePayload,
   toExtractionState,
   toOnboardingSlotTurnState,
-  toSetupState,
   type AdoptionState,
   type ConfirmationState,
   type ExtractionState,
@@ -82,12 +81,15 @@ export async function requestGbpAdoptionState(): Promise<AdoptionState> {
   return toAdoptionState(payload)
 }
 
+// Final GBP submission is an admin dashboard action now (the Stores
+// console's "제출 대기" section runs the same setup service on the
+// operator's word) — this no longer calls Google, or even the server, at
+// all. The confirmed store profile from handleConfirmation already makes
+// the store visible there.
 export async function requestGbpSetupState(): Promise<SetupState> {
-  const response = await fetch("/api/gbp/setup", {
-    body: JSON.stringify({ mode: "stub" }),
-    headers: { "Content-Type": "application/json" },
-    method: "POST",
-  })
-  const payload: unknown = await response.json()
-  return toSetupState(payload)
+  return {
+    kind: "pendingReview",
+    message:
+      "매장 정보 확인이 완료되었습니다. 운영자가 확인 후 Google 비즈니스 프로필을 등록해드립니다.",
+  }
 }

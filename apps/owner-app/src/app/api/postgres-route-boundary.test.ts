@@ -90,7 +90,7 @@ describe("Postgres route database boundary", () => {
     expect(gbpStore.setupRecords).toEqual([])
   })
 
-  it("persists GBP setup through the injected provider-neutral stores", async () => {
+  it("acknowledges GBP setup without touching Google or any store — that is now an admin-only action", async () => {
     const sessionStore = createSessionStore(demoSession)
     const gbpStore = createGbpStore()
     const gbpAccess = createGbpAccessStore()
@@ -112,13 +112,8 @@ describe("Postgres route database boundary", () => {
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({
-      auditLogId: "route-boundary-audit",
-      followUpJobId: "route-boundary-follow-up",
-      gbpLocationId: "route-boundary-gbp-location",
-      googleLocationId: "route-boundary-google-location",
-      message: "GBP setup recorded through injected store.",
-      oauthConnectionId: "route-boundary-oauth",
-      status: "VERIFICATION_PENDING",
+      message: "운영자가 확인 후 Google 비즈니스 프로필을 등록해드립니다.",
+      status: "PENDING_ADMIN_REVIEW",
     })
     expect(sessionStore.reads).toEqual([
       {
@@ -127,24 +122,9 @@ describe("Postgres route database boundary", () => {
         userId: demoUserId,
       },
     ])
-    expect(storeProfileRepository.profileReads).toEqual([demoStoreId])
-    expect(gbpStore.setupRecords).toEqual([
-      {
-        actorUserId: demoUserId,
-        now: new Date("2026-06-04T00:00:00.000Z"),
-        status: "VERIFICATION_PENDING",
-        storeId: demoStoreId,
-        subjectId: "stub-google-owner",
-      },
-    ])
-    // A successful connect auto-starts org access tracking, seeded with the
-    // Google location id the setup returned.
-    expect(gbpAccess.ensureCalls).toEqual([
-      {
-        storeId: demoStoreId,
-        gbpLocationRef: "route-boundary-google-location",
-      },
-    ])
+    expect(storeProfileRepository.profileReads).toEqual([])
+    expect(gbpStore.setupRecords).toEqual([])
+    expect(gbpAccess.ensureCalls).toEqual([])
   })
 
   it("serves GBP performance fallback from the injected store without legacy SQLite", async () => {

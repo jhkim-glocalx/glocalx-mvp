@@ -93,7 +93,9 @@ test("Returning email login routes to the chat dashboard", async ({ page }) => {
     page.getByRole("button", { name: "다음: GBP 세팅 확인" })
   ).toBeVisible()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
-  await expect(page.getByText("인증 대기", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("운영자 검토 대기", { exact: true })
+  ).toBeVisible()
   // Onboarding ends on the Instagram question; decline it to reach the exit.
   await page.getByRole("button", { name: "아니요, 없어요" }).click()
   await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()

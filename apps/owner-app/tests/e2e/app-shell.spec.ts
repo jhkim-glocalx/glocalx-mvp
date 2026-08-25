@@ -30,7 +30,9 @@ async function completeOnboarding(page: Page): Promise<void> {
   )
   await page.getByRole("button", { name: "예, 맞아요" }).click()
   await page.getByRole("button", { name: "다음: GBP 세팅 확인" }).click()
-  await expect(page.getByText("인증 대기", { exact: true })).toBeVisible()
+  await expect(
+    page.getByText("운영자 검토 대기", { exact: true })
+  ).toBeVisible()
   // Onboarding ends on the Instagram question; decline it to reach the exit.
   await page.getByRole("button", { name: "아니요, 없어요" }).click()
   await page.getByRole("button", { name: "매장 홍보 처음 시키러 가기" }).click()
