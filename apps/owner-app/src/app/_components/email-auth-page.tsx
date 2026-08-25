@@ -9,6 +9,7 @@ const errorMessages: Readonly<
     invalid_request: "안전하지 않은 요청입니다. 다시 시도해주세요.",
     invalid_credentials: "이메일 또는 비밀번호가 올바르지 않습니다.",
     invalid_input: "이메일과 비밀번호를 다시 확인해주세요.",
+    account_deactivated: "비활성화된 계정입니다. 운영팀에 문의해주세요.",
   },
   register: {
     invalid_request: "안전하지 않은 요청입니다. 다시 시도해주세요.",

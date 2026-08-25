@@ -8,6 +8,7 @@ const sections = [
   { href: "/inbox", label: "인박스" },
   { href: "/queue", label: "대기열" },
   { href: "/posts", label: "게시물" },
+  { href: "/users", label: "사용자" },
   { href: "/settings", label: "설정" },
 ] as const
 

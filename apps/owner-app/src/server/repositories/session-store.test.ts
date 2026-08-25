@@ -30,6 +30,18 @@ async function createSessionFixture(
     "INSERT INTO stores (id, owner_user_id, onboarding_status) VALUES (?, ?, ?)",
     [demoStoreId, demoUserId, onboardingStatus]
   )
+  // The real `users` table (from migrations) — session reads join it to check
+  // deactivated_at, so an owner with no row there would never resolve a session.
+  await queryable.execute(
+    "INSERT INTO users (id, email, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)",
+    [
+      demoUserId,
+      "demo-owner@example.com",
+      "Demo Owner",
+      "OWNER",
+      "2026-06-04T00:00:00.000Z",
+    ]
+  )
 }
 
 afterEach(() => {
@@ -128,6 +140,51 @@ describe("database session store", () => {
           userId: demoUserId,
         })
       })
+    } finally {
+      await context.close()
+    }
+  })
+
+  it("refuses to create or resolve a session for a deactivated user", async () => {
+    // Given: an owner/store pair whose user row is deactivated (admin soft delete).
+    vi.stubEnv("DATABASE_PROVIDER", "sqlite")
+    vi.stubEnv("GLOCALX_DB_PATH", createTempDatabasePath())
+    const context = await openDatabaseContext()
+
+    try {
+      await context.queryable.execute(
+        "INSERT INTO users (id, email, display_name, role, created_at, deactivated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+          "owner-deactivated",
+          "deactivated@example.com",
+          "Deactivated Owner",
+          "OWNER",
+          "2026-06-04T00:00:00.000Z",
+          "2026-08-26T00:00:00.000Z",
+        ]
+      )
+      await context.queryable.execute(
+        "INSERT INTO stores (id, owner_user_id, name, address, category, onboarding_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+          "store-deactivated",
+          "owner-deactivated",
+          "Deactivated store",
+          "Address",
+          "Cafe",
+          "COMPLETED",
+          "2026-06-04T00:00:00.000Z",
+        ]
+      )
+      const sessionStore = createDatabaseSessionStore(context.queryable)
+
+      // When/Then: a fresh login attempt is refused outright.
+      await expect(
+        sessionStore.createAuthenticatedSession({
+          onboardingComplete: true,
+          storeId: "store-deactivated",
+          userId: "owner-deactivated",
+        })
+      ).rejects.toThrow()
     } finally {
       await context.close()
     }

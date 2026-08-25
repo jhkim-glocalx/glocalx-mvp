@@ -31,6 +31,8 @@ import { createDatabasePublishJobStore } from "@glocalx/db/support/publish-job-s
 import type { PublishJobStore } from "@glocalx/db/support/publish-job-store"
 import { createDatabasePublishTargetStore } from "@glocalx/db/support/publish-target-store"
 import type { PublishTargetStore } from "@glocalx/db/support/publish-target-store"
+import { createDatabaseUserDirectoryStore } from "@glocalx/db/support/user-directory-store"
+import type { UserDirectoryStore } from "@glocalx/db/support/user-directory-store"
 import { parseRoutePayload } from "@glocalx/domain"
 import type { ParsedValidationIssue } from "@glocalx/domain"
 import { createIntegrationAdapters } from "@glocalx/integrations"
@@ -55,6 +57,7 @@ export type AdminRouteContext = {
   readonly publishJobStore: PublishJobStore
   readonly publishTargetStore: PublishTargetStore
   readonly supportMetricsStore: SupportMetricsStore
+  readonly userDirectoryStore: UserDirectoryStore
 }
 
 type WithAdminRouteOptions = {
@@ -163,6 +166,7 @@ export async function withAdminRoute(
       publishJobStore: createDatabasePublishJobStore(queryable),
       publishTargetStore: createDatabasePublishTargetStore(queryable),
       supportMetricsStore: createDatabaseSupportMetricsStore(queryable),
+      userDirectoryStore: createDatabaseUserDirectoryStore(queryable),
     })
   } finally {
     await databaseContext.close()

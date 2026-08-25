@@ -24,8 +24,13 @@ export async function POST() {
       return new NextResponse(null, { status: 404 })
     }
 
-    const authenticatedSession =
-      await sessionStore.createAuthenticatedSession(session)
+    let authenticatedSession
+    try {
+      authenticatedSession =
+        await sessionStore.createAuthenticatedSession(session)
+    } catch {
+      return new NextResponse(null, { status: 404 })
+    }
     const response = new NextResponse(null, {
       headers: {
         Location: session.onboardingComplete ? "/app" : "/onboarding",

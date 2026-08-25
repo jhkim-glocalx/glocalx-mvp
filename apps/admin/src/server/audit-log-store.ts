@@ -42,6 +42,10 @@ export type AdminAuditAction =
   // behalf. Same actor_user_id-NULL pattern as the gbp_access_* actions —
   // the operator identity lives in the redacted payload.
   | "gbp_setup_run"
+  // Admin dashboard soft delete: sessions invalidated, login blocked. The
+  // deactivated user is the storeId-less subject here (audit_logs.store_id
+  // is nullable), so the target user id lives in detail.
+  | "user_deactivate"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction
