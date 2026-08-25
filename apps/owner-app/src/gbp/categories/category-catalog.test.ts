@@ -106,4 +106,23 @@ describe("bundled KR catalog", () => {
 
     expect(suggestions.length).toBeGreaterThan(0)
   })
+
+  it("resolves the '양식' homonym to Western food, not aquaculture", () => {
+    // Regression: /qa found "음식점>양식" (Western restaurant) surfacing
+    // aquaculture categories ("양식장", "새우 양식장") because "양식" only
+    // substring-matches fish-farming entries in the bundled catalog.
+    // Found by /qa on 2026-08-26
+    const suggestions = suggestGbpCategoriesFromNaver("음식점>양식")
+
+    expect(suggestions.length).toBeGreaterThan(0)
+    expect(
+      suggestions.some((category) => category.categoryId.includes("farm"))
+    ).toBe(false)
+    expect(
+      suggestions.some(
+        (category) =>
+          category.categoryId === "categories/gcid:western_restaurant"
+      )
+    ).toBe(true)
+  })
 })
