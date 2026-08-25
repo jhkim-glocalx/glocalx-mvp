@@ -112,6 +112,15 @@ export function deriveNaverCategorySeeds(
     .reverse()
 }
 
+// Naver leaf segments that are homonyms in Korean: substring search against
+// the GBP catalog resolves them to an unrelated business type. "양식" is
+// "Western-style (food)" in a Naver food-category context, but the only
+// catalog entries containing that substring are aquaculture ("양식장" and
+// friends) — so an unqualified search must not be trusted for these terms.
+const AMBIGUOUS_NAVER_SEED_OVERRIDES: Readonly<Record<string, string>> = {
+  양식: "서양음식",
+}
+
 // Pre-seed the owner's category picker from the Naver category: try each seed
 // term most-specific-first and return the first that yields matches.
 export function suggestGbpCategoriesFromNaver(
@@ -119,7 +128,8 @@ export function suggestGbpCategoriesFromNaver(
   limit = 20
 ): readonly GbpCategory[] {
   for (const seed of deriveNaverCategorySeeds(naverCategory)) {
-    const matches = searchGbpCategories(seed, limit)
+    const resolvedSeed = AMBIGUOUS_NAVER_SEED_OVERRIDES[seed] ?? seed
+    const matches = searchGbpCategories(resolvedSeed, limit)
     if (matches.length > 0) {
       return matches
     }
