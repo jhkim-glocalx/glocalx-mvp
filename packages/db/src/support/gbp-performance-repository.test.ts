@@ -6,7 +6,7 @@ import type {
   DatabaseStatementParameters,
   Queryable,
 } from "@glocalx/db"
-import { loadGbpPerformanceSummaryData } from "./performance-repository"
+import { loadGbpPerformanceSummaryData } from "./gbp-performance-repository"
 
 class PerformanceSummaryQueryable implements Queryable {
   constructor(private readonly draftCount: number | string) {}

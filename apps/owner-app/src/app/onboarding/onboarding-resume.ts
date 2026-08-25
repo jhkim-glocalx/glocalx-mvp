@@ -2,7 +2,7 @@ import { openDatabaseContext } from "@glocalx/db"
 import { createDatabaseGbpAccessStore } from "@glocalx/db/support/gbp-access-store"
 import type { Queryable } from "@glocalx/db/types"
 
-import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
+import { createDatabaseGbpStore } from "@glocalx/db/support/gbp-store"
 
 // Onboarding progress lives in React state, so a reload restarts the chat from
 // the top. That is survivable for every step the owner drives themselves — they

@@ -7,9 +7,9 @@ import {
   demoUserId,
   getLegacyStoredSessionFromCookieValues,
 } from "@/auth/session"
-import { getConfirmedGbpStoreProfile } from "@/gbp/store-profile"
+import { getConfirmedGbpStoreProfile } from "@glocalx/db/support/gbp-store-profile"
 import { confirmStoreProfile } from "@/onboarding/store-profile"
-import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
+import { createDatabaseStoreProfileRepository } from "@glocalx/db/support/store-profile"
 
 import { withRepositoryTestContext } from "./sqlite-characterization-support"
 

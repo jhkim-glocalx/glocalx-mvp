@@ -1,4 +1,4 @@
-import { encryptToken } from "@/auth/token-encryption"
+import { encryptToken } from "@glocalx/domain/token-encryption"
 import type { LocationStatus } from "@glocalx/domain/location-status"
 import { googleBusinessManageScope } from "@glocalx/integrations/credentials"
 import type { Queryable } from "@glocalx/db"

@@ -79,7 +79,7 @@ A + Inbox "GBP 설정 시작" 액션 카드 + `POST /api/admin/stores/:storeId/g
 
 ## Open Questions
 
-1. **어드민 권한 경계의 형태 + 셋업 서비스 호스팅(B-0)**: setup-actions가 owner 세션 없이 store를 조작하는 첫 경로. 별도 admin-scoped 서비스 래퍼로 갈지, 도메인 서비스에 actor(owner|operator) 개념을 넣을지, 코드를 패키지로 추출할지 owner-app `api/admin/`에 호스팅할지 — B 착수 전 `/plan-eng-review`에서 결정. B-1의 라우트 형태는 그 결정 전까지 스트로맨.
+1. ~~**어드민 권한 경계의 형태 + 셋업 서비스 호스팅(B-0)**~~ — **결정됨 (2026-08-25, `/plan-eng-review`)**: `gbp/setup.ts`를 `packages/*`로 추출한다. 이 문서가 애초에 "선례 있음"이라 적었던 owner-app `api/admin/integrations/route.ts` 호스팅안은 코드 확인 결과 owner-app 자체 내부 디버그 엔드포인트일 뿐 admin 앱이 호출하는 구조가 아니었다 — 잘못된 선례였다. 실제 선례는 admin이 이미 조직 GBP 상태 머신(`transitionGbpAccess`, `packages/domain/src/gbp-access.ts`)을 패키지에서 가져와 자기 자신의 API 라우트에서 공유 DB를 직접 쓰는 패턴(크로스앱 HTTP 호출 없음). `gbp/setup.ts`가 의존하는 3개 repository(`gbp-store.ts`/`gbp-setup-store.ts`/`store-profile.ts`, 총 861줄)는 owner-app 세션/HTTP 계층과 무관하게 순수 `Queryable` 기반이라 이동 비용도 낮다. owner-app 호스팅안은 admin_sessions/owner 세션 교차 해석 금지(CLAUDE.md) 제약 때문에 서비스-토-서비스 인증을 새로 설계해야 하는 숨은 작업을 만들어 기각. B-1은 이 결정 위에서 착수 가능.
 2. **입양된 리스팅의 verification 상태 처리**: 창업자가 만든 리스팅이 미인증(needs-verification)일 때 발행 차단 로직(#45)과의 상호작용 — 입양 시 운영자에게 어떤 상태로 보여줄지.
 3. Meta App Review(#41) 신청 시점 — B와 병행 가능한 외부 트랙, 언제 넣을지.
 4. DB 통일 버전의 구체 범위: 로컬 dev만 Postgres로 갈지, SQLite 경로(e2e 속도 이점)를 완전히 제거할지.

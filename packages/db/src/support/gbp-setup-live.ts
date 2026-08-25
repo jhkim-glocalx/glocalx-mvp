@@ -16,8 +16,8 @@ import {
   resolveGoogleOrgAccountName,
 } from "@glocalx/integrations/google-org-auth"
 
-import { buildStorefrontAddressLines } from "./address-lines"
-import type { ConfirmedGbpStoreProfile } from "./store-profile"
+import { buildStorefrontAddressLines } from "@glocalx/domain/address-lines"
+import type { ConfirmedGbpStoreProfile } from "./gbp-store-profile"
 
 // The live (org-account) GBP provisioning path. Unlike the stub path — which
 // reads canned results straight off the adapter — production adapters return

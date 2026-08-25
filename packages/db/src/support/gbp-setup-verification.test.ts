@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   readGbpVerificationSnapshot,
   runGbpVerificationAttempt,
-} from "./verification"
+} from "./gbp-setup-verification"
 
 const locationName = "locations/123"
 

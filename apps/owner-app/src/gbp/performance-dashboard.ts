@@ -1,7 +1,7 @@
 import type { IntegrationAdapters } from "@glocalx/integrations/contracts"
 import { gbpPerformanceDailyMetrics } from "@glocalx/integrations/contracts"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
-import type { GbpStore } from "@/server/repositories/gbp-store"
+import type { GbpStore } from "@glocalx/db/support/gbp-store"
 
 import {
   buildGbpPerformanceRanges,

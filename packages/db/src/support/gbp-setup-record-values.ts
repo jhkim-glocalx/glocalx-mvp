@@ -2,7 +2,7 @@ import type { LocationStatus } from "@glocalx/domain/location-status"
 import type {
   BuildClaimRequiredResultOptions,
   GbpSetupResult,
-} from "@/gbp/setup"
+} from "./gbp-setup"
 import type { Queryable } from "@glocalx/db"
 
 export type PersistClaimRequiredGbpRecordsOptions = {

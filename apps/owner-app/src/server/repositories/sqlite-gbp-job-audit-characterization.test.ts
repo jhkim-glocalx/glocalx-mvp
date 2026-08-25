@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
 import { demoStoreId } from "@/auth/session"
-import { setupGoogleBusinessProfile } from "@/gbp/setup"
+import { setupGoogleBusinessProfile } from "@glocalx/db/support/gbp-setup"
 
 import { createDatabaseAuditLogStore } from "./audit-log-store"
-import { createDatabaseGbpStore } from "./gbp-store"
+import { createDatabaseGbpStore } from "@glocalx/db/support/gbp-store"
 import { createDatabaseJobStore } from "./job-store"
 import { withRepositoryTestContext } from "./sqlite-characterization-support"
 

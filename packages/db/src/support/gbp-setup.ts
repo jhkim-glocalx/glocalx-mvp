@@ -10,9 +10,9 @@ import type {
   SearchGoogleLocationsResult,
 } from "@glocalx/integrations/contracts"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
-import type { GbpStore } from "@/server/repositories/gbp-store"
-import type { ExistingGbpLocation } from "@/server/repositories/gbp-setup-store"
-import type { StoreProfileRepository } from "@/server/repositories/store-profile"
+import type { GbpStore } from "./gbp-store"
+import type { ExistingGbpLocation } from "./gbp-setup-store"
+import type { StoreProfileRepository } from "./store-profile"
 
 import {
   persistClaimRequiredRecords,
@@ -20,21 +20,21 @@ import {
   persistLiveClaimRequiredRecords,
   persistLiveSetupRecords,
   persistSetupRecords,
-} from "./setup-records"
-import { runGbpVerificationAttempt } from "./verification"
+} from "./gbp-setup-records"
+import { runGbpVerificationAttempt } from "./gbp-setup-verification"
 import type { GbpVerificationStore } from "@glocalx/db/support/gbp-verification-store"
 import type { GbpAccessStore } from "@glocalx/db/support/gbp-access-store"
 import {
   buildLiveGoogleLocationBody,
   resolveLiveGbpCredentials,
   runLiveGbpProvisioning,
-} from "./setup-live"
+} from "./gbp-setup-live"
 import {
   buildGoogleLocationBody,
   getConfirmedGbpStoreProfile,
   stableGbpSetupRequestId,
-} from "./store-profile"
-import type { ConfirmedGbpStoreProfile } from "./store-profile"
+} from "./gbp-store-profile"
+import type { ConfirmedGbpStoreProfile } from "./gbp-store-profile"
 
 const locationSpecBodySchema = z
   .object({

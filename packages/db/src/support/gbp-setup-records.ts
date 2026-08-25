@@ -1,17 +1,17 @@
-import type { GbpStore } from "@/server/repositories/gbp-store"
-import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
+import type { GbpStore } from "./gbp-store"
+import { createDatabaseGbpStore } from "./gbp-store"
 import { createSqliteQueryable } from "@glocalx/db/sqlite-client"
 import {
   createDatabaseGbpVerificationStore,
   type GbpVerificationStore,
 } from "@glocalx/db/support/gbp-verification-store"
 
-import type { GbpVerificationAttempt } from "./verification"
+import type { GbpVerificationAttempt } from "./gbp-setup-verification"
 import type {
   BuildClaimRequiredResultOptions,
   GbpSetupResult,
   SetupGoogleBusinessProfileOptions,
-} from "./setup"
+} from "./gbp-setup"
 
 class GbpPersistenceConfigurationError extends Error {
   readonly name = "GbpPersistenceConfigurationError"

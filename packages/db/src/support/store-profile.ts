@@ -3,8 +3,8 @@ import type { MissingBusinessField } from "@glocalx/domain"
 import {
   confirmedExtractionId,
   type ConfirmStoreProfileResult,
-} from "@/onboarding/store-profile"
-import type { ConfirmedGbpStoreProfileResult } from "@/gbp/store-profile"
+} from "@glocalx/domain/store-profile-confirmation"
+import type { ConfirmedGbpStoreProfileResult } from "./gbp-store-profile"
 import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 

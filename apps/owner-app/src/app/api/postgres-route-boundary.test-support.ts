@@ -7,13 +7,13 @@ import type {
   GbpCategorySelectionState,
   GbpCategoryStore,
 } from "@/server/repositories/gbp-category-store"
-import type { GbpStore } from "@/server/repositories/gbp-store"
+import type { GbpStore } from "@glocalx/db/support/gbp-store"
 import type { SessionStore } from "@/server/repositories/session-store"
 import type {
   StoreChannelLinkStore,
   UpsertStoreChannelLinkInput,
 } from "@/server/repositories/store-channel-link-store"
-import type { StoreProfileRepository } from "@/server/repositories/store-profile"
+import type { StoreProfileRepository } from "@glocalx/db/support/store-profile"
 
 export type RouteBoundaryContext = {
   readonly adapters: ReturnType<typeof createIntegrationAdapters>
