@@ -1,5 +1,4 @@
-import type { GbpStore } from "@/server/repositories/gbp-store"
-import { createDatabaseGbpStore } from "@/server/repositories/gbp-store"
+import { createDatabaseGbpSetupStore } from "./repository/gbp-setup-store"
 import { createSqliteQueryable } from "@glocalx/db/sqlite-client"
 import {
   createDatabaseGbpVerificationStore,
@@ -10,6 +9,7 @@ import type { GbpVerificationAttempt } from "./verification"
 import type {
   BuildClaimRequiredResultOptions,
   GbpSetupResult,
+  GbpSetupStore,
   SetupGoogleBusinessProfileOptions,
 } from "./setup"
 
@@ -17,12 +17,14 @@ class GbpPersistenceConfigurationError extends Error {
   readonly name = "GbpPersistenceConfigurationError"
 }
 
-function resolveGbpStore(options: SetupGoogleBusinessProfileOptions): GbpStore {
+function resolveGbpStore(
+  options: SetupGoogleBusinessProfileOptions
+): GbpSetupStore {
   if (options.gbpStore !== undefined) {
     return options.gbpStore
   }
   if (options.database !== undefined) {
-    return createDatabaseGbpStore(createSqliteQueryable(options.database))
+    return createDatabaseGbpSetupStore(createSqliteQueryable(options.database))
   }
   throw new GbpPersistenceConfigurationError()
 }
@@ -76,7 +78,7 @@ export async function persistClaimRequiredRecords(
 
 export function persistSetupRecords(
   options: SetupGoogleBusinessProfileOptions,
-  status: Parameters<GbpStore["persistSetupRecords"]>[0]["status"],
+  status: Parameters<GbpSetupStore["persistSetupRecords"]>[0]["status"],
   subjectId: string
 ): Promise<GbpSetupResult> {
   return resolveGbpStore(options).persistSetupRecords({
@@ -90,7 +92,7 @@ export function persistSetupRecords(
 
 export function persistLiveSetupRecords(
   options: SetupGoogleBusinessProfileOptions,
-  status: Parameters<GbpStore["persistLiveSetupRecords"]>[0]["status"],
+  status: Parameters<GbpSetupStore["persistLiveSetupRecords"]>[0]["status"],
   accountName: string,
   googleLocationId: string
 ): Promise<GbpSetupResult> {

@@ -38,6 +38,9 @@ export type AdminAuditAction =
   | "gbp_access_block"
   | "gbp_access_override"
   | "gbp_access_note"
+  // An operator running GBP setup on an owner's behalf from the setup-actions
+  // endpoint — the concierge path's "RUN_SETUP" action.
+  | "gbp_setup_run"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction

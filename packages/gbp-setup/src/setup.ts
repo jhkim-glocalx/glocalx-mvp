@@ -10,9 +10,7 @@ import type {
   SearchGoogleLocationsResult,
 } from "@glocalx/integrations/contracts"
 import type { SqliteDatabase } from "@glocalx/db/sqlite"
-import type { GbpStore } from "@/server/repositories/gbp-store"
-import type { ExistingGbpLocation } from "@/server/repositories/gbp-setup-store"
-import type { StoreProfileRepository } from "@/server/repositories/store-profile"
+import type { ExistingGbpLocation } from "./repository/gbp-setup-store"
 
 import {
   persistClaimRequiredRecords,
@@ -34,7 +32,10 @@ import {
   getConfirmedGbpStoreProfile,
   stableGbpSetupRequestId,
 } from "./store-profile"
-import type { ConfirmedGbpStoreProfile } from "./store-profile"
+import type {
+  ConfirmedGbpStoreProfile,
+  ConfirmedGbpStoreProfileResult,
+} from "./store-profile"
 
 const locationSpecBodySchema = z
   .object({
@@ -99,6 +100,50 @@ export type GbpSetupResult =
       readonly message: string
     }
 
+// The narrow persistence contract this module depends on — defined at the
+// point of use (not imported from a caller's repository type) so any caller
+// (owner-app's fuller GbpStore, or admin's own construction) can satisfy it
+// structurally without this package depending on either app's source.
+export type GbpSetupStore = {
+  persistClaimRequiredRecords(options: {
+    readonly claim: BuildClaimRequiredResultOptions
+    readonly now: Date
+    readonly storeId: string
+  }): Promise<void>
+  persistSetupRecords(options: {
+    readonly actorUserId: string
+    readonly now: Date
+    readonly status: LocationStatus
+    readonly storeId: string
+    readonly subjectId: string
+  }): Promise<GbpSetupResult>
+  persistLiveSetupRecords(options: {
+    readonly accountName: string
+    readonly actorUserId: string
+    readonly googleLocationId: string
+    readonly now: Date
+    readonly status: LocationStatus
+    readonly storeId: string
+  }): Promise<GbpSetupResult>
+  persistLiveClaimRequiredRecords(options: {
+    readonly accountName: string
+    readonly claim: BuildClaimRequiredResultOptions
+    readonly now: Date
+    readonly storeId: string
+  }): Promise<void>
+  // Undefined when the store has no Google listing yet. Setup's duplicate guard
+  // reads this before provisioning.
+  readExistingGbpLocation(
+    storeId: string
+  ): Promise<ExistingGbpLocation | undefined>
+}
+
+export type GbpSetupStoreProfileReader = {
+  readConfirmedGbpProfile(
+    storeId: string
+  ): Promise<ConfirmedGbpStoreProfileResult>
+}
+
 export type SetupGoogleBusinessProfileOptions = {
   readonly actorUserId: string
   readonly adapters: IntegrationAdapters
@@ -107,7 +152,7 @@ export type SetupGoogleBusinessProfileOptions = {
   // process.env); fetchImpl defaults to global fetch and is injectable in tests.
   readonly env?: AdapterEnvironment
   readonly fetchImpl?: ExternalFetch
-  readonly gbpStore?: GbpStore
+  readonly gbpStore?: GbpSetupStore
   // Read by the duplicate guard: an in-flight adoption claim must hold off
   // provisioning until an operator rules on it. Optional so existing callers and
   // tests that predate the guard keep working — absent means "nothing claimed".
@@ -115,7 +160,7 @@ export type SetupGoogleBusinessProfileOptions = {
   // Injectable for tests; the live path falls back to a database-backed store.
   readonly gbpVerificationStore?: GbpVerificationStore
   readonly mode: GbpSetupMode
-  readonly storeProfileRepository?: StoreProfileRepository
+  readonly storeProfileRepository?: GbpSetupStoreProfileReader
   readonly storeId: string
 }
 

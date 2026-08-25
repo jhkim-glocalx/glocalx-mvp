@@ -21,6 +21,7 @@
   "dependencies": {
     "@glocalx/db": "*",
     "@glocalx/domain": "*",
+    "@glocalx/gbp-setup": "*",
     "@glocalx/integrations": "*",
     "@glocalx/ui": "*",
     "@types/better-sqlite3": "^7.6.13",

@@ -4,9 +4,9 @@ import {
   confirmedExtractionId,
   type ConfirmStoreProfileResult,
 } from "@/onboarding/store-profile"
-import type { ConfirmedGbpStoreProfileResult } from "@/gbp/store-profile"
+import type { ConfirmedGbpStoreProfileResult } from "@glocalx/gbp-setup/store-profile"
+import { createDatabaseGbpSetupStoreProfileReader } from "@glocalx/gbp-setup/repository/store-profile-store"
 import type { Queryable } from "@glocalx/db"
-import { z } from "zod"
 
 export interface StoreProfileRepository {
   confirmProfile(options: {
@@ -18,16 +18,6 @@ export interface StoreProfileRepository {
     storeId: string
   ): Promise<ConfirmedGbpStoreProfileResult>
 }
-
-const confirmedStoreRowSchema = z.object({
-  address: z.string(),
-  category: z.string(),
-  gbp_primary_category_id: z.string().nullable(),
-  hours: z.string().nullable(),
-  id: z.string(),
-  name: z.string(),
-  phone: z.string(),
-})
 
 function missingFieldsForProfile(
   profile: ConfirmedStoreProfile
@@ -82,6 +72,8 @@ async function upsertConfirmedExtraction(
 export function createDatabaseStoreProfileRepository(
   queryable: Queryable
 ): StoreProfileRepository {
+  const gbpProfileReader = createDatabaseGbpSetupStoreProfileReader(queryable)
+
   return {
     async confirmProfile(options) {
       const extractionId = confirmedExtractionId(options.storeId)
@@ -115,30 +107,8 @@ export function createDatabaseStoreProfileRepository(
       }
     },
 
-    async readConfirmedGbpProfile(storeId) {
-      const row = await queryable.queryOne(
-        "SELECT id, name, address, phone, category, hours, gbp_primary_category_id FROM stores WHERE id = ? AND phone IS NOT NULL AND EXISTS (SELECT 1 FROM business_profile_extractions WHERE store_id = stores.id AND status = 'CONFIRMED')",
-        [storeId]
-      )
-      const parsed = confirmedStoreRowSchema.safeParse(row)
-      if (!parsed.success) {
-        return { kind: "missing" }
-      }
-
-      return {
-        kind: "found",
-        profile: {
-          address: parsed.data.address,
-          category: parsed.data.category,
-          ...(parsed.data.hours === null ? {} : { hours: parsed.data.hours }),
-          ...(parsed.data.gbp_primary_category_id === null
-            ? {}
-            : { primaryCategoryId: parsed.data.gbp_primary_category_id }),
-          name: parsed.data.name,
-          phone: parsed.data.phone,
-          storeId: parsed.data.id,
-        },
-      }
+    readConfirmedGbpProfile(storeId) {
+      return gbpProfileReader.readConfirmedGbpProfile(storeId)
     },
   }
 }

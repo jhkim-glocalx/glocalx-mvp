@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { z } from "zod"
 
 import { demoStoreId } from "@/auth/session"
-import { setupGoogleBusinessProfile } from "@/gbp/setup"
+import { setupGoogleBusinessProfile } from "@glocalx/gbp-setup"
 
 import { createDatabaseAuditLogStore } from "./audit-log-store"
 import { createDatabaseGbpStore } from "./gbp-store"

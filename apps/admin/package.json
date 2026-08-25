@@ -13,6 +13,7 @@
   "dependencies": {
     "@glocalx/db": "*",
     "@glocalx/domain": "*",
+    "@glocalx/gbp-setup": "*",
     "@glocalx/integrations": "*",
     "@glocalx/ui": "*",
     "@vercel/blob": "^2.6.1",

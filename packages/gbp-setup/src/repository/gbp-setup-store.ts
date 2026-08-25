@@ -1,6 +1,6 @@
 import type { LocationStatus } from "@glocalx/domain/location-status"
-import type { GbpSetupResult } from "@/gbp/setup"
-import { shouldScheduleGbpFollowUp } from "@/gbp/state-machine"
+import type { BuildClaimRequiredResultOptions, GbpSetupResult } from "../setup"
+import { shouldScheduleGbpFollowUp } from "@glocalx/domain/gbp-eligibility"
 import type { Queryable } from "@glocalx/db"
 import { z } from "zod"
 
@@ -332,4 +332,90 @@ export async function persistStubSetupGbpRecords(
     message: setupResultMessage(options.status),
   }
   return followUpJobId === undefined ? result : { ...result, followUpJobId }
+}
+
+// The narrow persistence contract setupGoogleBusinessProfile depends on
+// (defined as GbpSetupStore in setup.ts, not here, so callers own the
+// abstraction their orchestration needs). Owner-app's fuller GbpStore adds
+// unrelated performance-dashboard reads on top of this and satisfies the type
+// structurally; admin composes this factory directly since it has no
+// performance surface to add.
+export function createDatabaseGbpSetupStore(queryable: Queryable): {
+  persistClaimRequiredRecords(options: {
+    readonly claim: BuildClaimRequiredResultOptions
+    readonly now: Date
+    readonly storeId: string
+  }): Promise<void>
+  persistSetupRecords(options: {
+    readonly actorUserId: string
+    readonly now: Date
+    readonly status: LocationStatus
+    readonly storeId: string
+    readonly subjectId: string
+  }): Promise<GbpSetupResult>
+  persistLiveSetupRecords(options: {
+    readonly accountName: string
+    readonly actorUserId: string
+    readonly googleLocationId: string
+    readonly now: Date
+    readonly status: LocationStatus
+    readonly storeId: string
+  }): Promise<GbpSetupResult>
+  persistLiveClaimRequiredRecords(options: {
+    readonly accountName: string
+    readonly claim: BuildClaimRequiredResultOptions
+    readonly now: Date
+    readonly storeId: string
+  }): Promise<void>
+  readExistingGbpLocation(
+    storeId: string
+  ): Promise<ExistingGbpLocation | undefined>
+} {
+  return {
+    async persistClaimRequiredRecords(options) {
+      await persistClaimRequiredGbpRecords({
+        claim: options.claim,
+        now: options.now,
+        queryable,
+        storeId: options.storeId,
+      })
+    },
+
+    async persistSetupRecords(options) {
+      return persistStubSetupGbpRecords({
+        actorUserId: options.actorUserId,
+        now: options.now,
+        queryable,
+        status: options.status,
+        storeId: options.storeId,
+        subjectId: options.subjectId,
+      })
+    },
+
+    async persistLiveSetupRecords(options) {
+      return persistLiveSetupGbpRecords({
+        accountName: options.accountName,
+        actorUserId: options.actorUserId,
+        googleLocationId: options.googleLocationId,
+        now: options.now,
+        queryable,
+        status: options.status,
+        storeId: options.storeId,
+      })
+    },
+
+    async persistLiveClaimRequiredRecords(options) {
+      await persistLiveClaimRequiredGbpRecords({
+        accountName: options.accountName,
+        claim: options.claim,
+        now: options.now,
+        queryable,
+        storeId: options.storeId,
+      })
+    },
+
+    readExistingGbpLocation(storeId) {
+      return readExistingGbpLocation(queryable, storeId)
+    },
+  }
 }

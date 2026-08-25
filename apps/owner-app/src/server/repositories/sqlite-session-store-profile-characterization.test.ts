@@ -7,7 +7,7 @@ import {
   demoUserId,
   getLegacyStoredSessionFromCookieValues,
 } from "@/auth/session"
-import { getConfirmedGbpStoreProfile } from "@/gbp/store-profile"
+import { getConfirmedGbpStoreProfile } from "@glocalx/gbp-setup/store-profile"
 import { confirmStoreProfile } from "@/onboarding/store-profile"
 import { createDatabaseStoreProfileRepository } from "@/server/repositories/store-profile"
 

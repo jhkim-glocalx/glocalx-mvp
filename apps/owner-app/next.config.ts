@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@glocalx/db",
     "@glocalx/domain",
+    "@glocalx/gbp-setup",
     "@glocalx/integrations",
   ],
   turbopack: {
