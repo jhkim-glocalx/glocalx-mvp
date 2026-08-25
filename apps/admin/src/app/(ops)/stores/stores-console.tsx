@@ -9,12 +9,16 @@ import {
   type GbpAccessState,
 } from "@glocalx/domain/gbp-access"
 
+import type { PendingGbpSetupStore } from "@glocalx/db/support/gbp-access-store"
+
 import {
   applyStoreAction,
   canBlock,
   fetchOrgLocations,
+  fetchPendingSetupStores,
   fetchStores,
   naturalActionsByState,
+  runGbpSetup,
   saveStoreNote,
   stateLabels,
   verificationStateLabels,
@@ -48,14 +52,22 @@ function upsert(
 }
 
 export function StoresConsole({
+  initialPendingSetupStores,
   initialStores,
   initialVerifications,
 }: {
+  readonly initialPendingSetupStores: readonly PendingGbpSetupStore[]
   readonly initialStores: readonly GbpAccessStoreView[]
   readonly initialVerifications: readonly StoreVerificationView[]
 }) {
   const [stores, setStores] =
     useState<readonly GbpAccessStoreView[]>(initialStores)
+  const [pendingSetupStores, setPendingSetupStores] = useState<
+    readonly PendingGbpSetupStore[]
+  >(initialPendingSetupStores)
+  const [runningSetupStoreId, setRunningSetupStoreId] = useState<string | null>(
+    null
+  )
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [orgLocations, setOrgLocations] = useState<
@@ -127,7 +139,22 @@ export function StoresConsole({
     setPendingId(null)
   }
 
-  if (stores.length === 0) {
+  async function handleRunSetup(storeId: string): Promise<void> {
+    setRunningSetupStoreId(storeId)
+    setError(null)
+    const result = await runGbpSetup(storeId)
+    if (result.kind === "error") {
+      setError(result.message)
+    }
+    // RUN_SETUP either created a gbp_access_requests row (success) or left the
+    // store as-is (a recoverable block like BLOCKED_BY_CREDENTIALS) — refetch
+    // both lists rather than guessing which one changed.
+    setPendingSetupStores(await fetchPendingSetupStores())
+    setStores(await fetchStores())
+    setRunningSetupStoreId(null)
+  }
+
+  if (stores.length === 0 && pendingSetupStores.length === 0) {
     return (
       <>
         <h1 className="ops-page-title">매장</h1>
@@ -145,6 +172,42 @@ export function StoresConsole({
   return (
     <>
       <h1 className="ops-page-title">매장</h1>
+      {pendingSetupStores.length === 0 ? null : (
+        <>
+          <h2 className="ops-section-title">
+            제출 대기 ({pendingSetupStores.length})
+          </h2>
+          <ul className="ops-stores" data-testid="ops-pending-setup-stores">
+            {pendingSetupStores.map((store) => (
+              <li
+                key={store.storeId}
+                className="ops-store-card"
+                data-testid={`pending-setup-card-${store.storeId}`}
+              >
+                <div className="ops-store-head">
+                  <span className="ops-store-name">{store.storeName}</span>
+                  <span className="ops-store-state">매장 정보 확인 완료</span>
+                </div>
+                <p className="ops-store-meta">
+                  사장님이 매장 정보를 확인했습니다 — GBP를 등록하기 전 마지막
+                  확인 후 실행하세요.
+                </p>
+                <div className="ops-store-actions">
+                  <button
+                    className="ops-store-btn"
+                    data-testid={`pending-setup-run-${store.storeId}`}
+                    disabled={runningSetupStoreId === store.storeId}
+                    onClick={() => void handleRunSetup(store.storeId)}
+                    type="button"
+                  >
+                    GBP 등록 실행
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {conciergeCount === 0 ? null : (
         <p
           className="ops-stores-concierge"

@@ -254,4 +254,70 @@ describe("gbp access store", () => {
     expect(entry?.state).toBe("not_requested")
     expect(await store.getGbpAccessListEntryById("missing")).toBeUndefined()
   })
+
+  describe("listStoresPendingGbpSetup", () => {
+    function confirmProfile(
+      database: Database.Database,
+      confirmingStoreId: string,
+      createdAt: string
+    ): void {
+      database
+        .prepare("UPDATE stores SET phone = '02-000-0000' WHERE id = ?")
+        .run(confirmingStoreId)
+      database
+        .prepare(
+          `INSERT INTO business_profile_extractions
+             (id, store_id, source, source_input, status, candidate_json, missing_fields_json, created_at)
+           VALUES (?, ?, 'MANUAL', 'input', 'CONFIRMED', '{}', '[]', ?)`
+        )
+        .run(`extraction-${confirmingStoreId}`, confirmingStoreId, createdAt)
+    }
+
+    it("lists a confirmed store with no access request yet, oldest first", async () => {
+      const database = new Database(":memory:")
+      database.pragma("foreign_keys = ON")
+      applyMigrations(database)
+      seed(database)
+      confirmProfile(database, otherStoreId, "2026-07-31T00:00:01.000Z")
+      confirmProfile(database, storeId, "2026-07-31T00:00:00.000Z")
+      const queryableWithConfirmedProfiles = createSqliteQueryable(database)
+      const pendingStore = createDatabaseGbpAccessStore(
+        queryableWithConfirmedProfiles
+      )
+
+      const pending = await pendingStore.listStoresPendingGbpSetup()
+
+      expect(pending.map((entry) => entry.storeId)).toEqual([
+        storeId,
+        otherStoreId,
+      ])
+      expect(pending[0]).toMatchObject({
+        storeId,
+        storeName: "First Store",
+      })
+    })
+
+    it("excludes a store once it has any gbp_access_requests row", async () => {
+      const database = new Database(":memory:")
+      database.pragma("foreign_keys = ON")
+      applyMigrations(database)
+      seed(database)
+      confirmProfile(database, storeId, "2026-07-31T00:00:00.000Z")
+      const queryableWithConfirmedProfile = createSqliteQueryable(database)
+      const pendingStore = createDatabaseGbpAccessStore(
+        queryableWithConfirmedProfile
+      )
+      await pendingStore.ensureGbpAccessRequest({
+        id: randomUUID(),
+        storeId,
+        now: at(0),
+      })
+
+      expect(await pendingStore.listStoresPendingGbpSetup()).toEqual([])
+    })
+
+    it("excludes a store with no confirmed profile", async () => {
+      expect(await store.listStoresPendingGbpSetup()).toEqual([])
+    })
+  })
 })

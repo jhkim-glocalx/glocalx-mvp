@@ -17,21 +17,25 @@ export default async function StoresPage() {
   const databaseContext = await openDatabaseContext()
   let initialStores
   let initialVerifications
+  let initialPendingSetupStores
   try {
-    const entries = await createDatabaseGbpAccessStore(
+    const gbpAccessStore = createDatabaseGbpAccessStore(
       databaseContext.queryable
-    ).listGbpAccessRequests()
+    )
+    const entries = await gbpAccessStore.listGbpAccessRequests()
     initialStores = entries.map(toGbpAccessStoreView)
     const verifications = await createDatabaseGbpVerificationStore(
       databaseContext.queryable
     ).listVerificationStates()
     initialVerifications = verifications.map(toStoreVerificationView)
+    initialPendingSetupStores = await gbpAccessStore.listStoresPendingGbpSetup()
   } finally {
     await databaseContext.close()
   }
 
   return (
     <StoresConsole
+      initialPendingSetupStores={initialPendingSetupStores}
       initialStores={initialStores}
       initialVerifications={initialVerifications}
     />
