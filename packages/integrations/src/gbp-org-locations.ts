@@ -29,9 +29,13 @@ export type ListOrgLocationsOutcome =
     }
   | { readonly kind: "upstream_error"; readonly message: string }
 
-// One page is enough for the operation this exists for — a hand-built org
-// account with tens of listings, not thousands.
 const orgLocationsPageSize = 100
+
+// The org account can outgrow one page (e.g. past 100 listings) as we onboard
+// more stores, so this caps how many pages a single picker load will follow
+// rather than how many locations the org may have — a runaway/looping
+// nextPageToken stops here instead of hanging the request.
+const maxOrgLocationsPages = 50
 
 const orgLocationsResponseSchema = z.object({
   locations: z
@@ -52,14 +56,20 @@ const orgLocationsResponseSchema = z.object({
         .passthrough()
     )
     .optional(),
+  nextPageToken: z.string().optional(),
 })
 
-function toOrgLocations(body: unknown): readonly OrgLocation[] {
+type ParsedOrgLocationsPage = {
+  readonly locations: readonly OrgLocation[]
+  readonly nextPageToken?: string
+}
+
+function toOrgLocations(body: unknown): ParsedOrgLocationsPage {
   const parsed = orgLocationsResponseSchema.safeParse(body)
   if (!parsed.success) {
-    return []
+    return { locations: [] }
   }
-  return (parsed.data.locations ?? []).map((location) => {
+  const locations = (parsed.data.locations ?? []).map((location) => {
     const phone = location.phoneNumbers?.primaryPhone
     return {
       name: location.name,
@@ -68,6 +78,12 @@ function toOrgLocations(body: unknown): readonly OrgLocation[] {
       ...(phone === undefined ? {} : { phone }),
     }
   })
+  return {
+    locations,
+    ...(parsed.data.nextPageToken === undefined
+      ? {}
+      : { nextPageToken: parsed.data.nextPageToken }),
+  }
 }
 
 function isListResult(
@@ -160,32 +176,50 @@ export async function listOrgLocations(options: {
     }
   }
 
-  const listResult =
-    await options.adapters.gbpBusinessInformation.listOrgLocations({
-      accessToken: credentials.accessToken,
-      accountName: credentials.accountName,
-      pageSize: orgLocationsPageSize,
-    })
-  if (listResult.kind === "blocked_by_credentials") {
-    return {
-      kind: "blocked_by_credentials",
-      missingEnvVars: listResult.missingEnvVars,
+  const locations: OrgLocation[] = []
+  let pageToken: string | undefined
+  for (let page = 0; page < maxOrgLocationsPages; page += 1) {
+    const listResult =
+      await options.adapters.gbpBusinessInformation.listOrgLocations({
+        accessToken: credentials.accessToken,
+        accountName: credentials.accountName,
+        pageSize: orgLocationsPageSize,
+        ...(pageToken === undefined ? {} : { pageToken }),
+      })
+    if (listResult.kind === "blocked_by_credentials") {
+      return {
+        kind: "blocked_by_credentials",
+        missingEnvVars: listResult.missingEnvVars,
+      }
+    }
+
+    // Stub mode hands back concrete locations; production hands back a
+    // request spec this boundary executes with the org token.
+    if (isListResult(listResult.value)) {
+      locations.push(...listResult.value.locations)
+      pageToken = listResult.value.nextPageToken
+    } else {
+      const executed = await executeSpec(listResult.value, options.fetchImpl)
+      if (executed === undefined) {
+        return {
+          kind: "upstream_error",
+          message: "Google Business Profile 목록을 불러오지 못했습니다.",
+        }
+      }
+      const parsedPage = toOrgLocations(executed)
+      locations.push(...parsedPage.locations)
+      pageToken = parsedPage.nextPageToken
+    }
+
+    if (pageToken === undefined) {
+      return { kind: "ok", locations }
     }
   }
 
-  // Stub mode hands back concrete locations; production hands back a request
-  // spec this boundary executes with the org token.
-  if (isListResult(listResult.value)) {
-    return { kind: "ok", locations: listResult.value.locations }
-  }
-
-  const executed = await executeSpec(listResult.value, options.fetchImpl)
-  return executed === undefined
-    ? {
-        kind: "upstream_error",
-        message: "Google Business Profile 목록을 불러오지 못했습니다.",
-      }
-    : { kind: "ok", locations: toOrgLocations(executed) }
+  // Hit the page cap without exhausting nextPageToken — return what was
+  // gathered rather than looping forever or dropping the org's tail
+  // silently; a truncated-but-large picker is a better failure than a hang.
+  return { kind: "ok", locations }
 }
 
 async function executeSpec(
