@@ -52,6 +52,13 @@ export type MediaStoreAssetMetadata = {
   readonly sizeBytes: number
 }
 
+export type MediaStoreListedAsset = {
+  readonly pathname: string
+  readonly blobUrl: string
+  readonly sizeBytes: number
+  readonly uploadedAt: string
+}
+
 export interface MediaStore {
   createUploadToken(
     input: CreateUploadTokenInput
@@ -68,6 +75,12 @@ export interface MediaStore {
     blobUrl: string
   ): Promise<AdapterResult<MediaStoreAssetMetadata>>
   deleteAsset(blobUrl: string): Promise<AdapterResult<void>>
+  // Enumerates every object under `prefix` (default the whole `stores/`
+  // tree) — the orphaned-upload sweep diffs this against campaign_assets
+  // rows to find objects nothing in the database ever registered.
+  listAssets(
+    prefix?: string
+  ): Promise<AdapterResult<readonly MediaStoreListedAsset[]>>
 }
 
 // storeId and filename are interpolated into the blob object key
@@ -162,5 +175,11 @@ export class StubMediaStore implements MediaStore {
 
   async deleteAsset(_blobUrl: string): Promise<AdapterResult<void>> {
     return { kind: "ok", value: undefined }
+  }
+
+  // Stateless across calls (see the class comment), so there is nothing to
+  // enumerate — the orphan sweep is a no-op in stub mode by construction.
+  async listAssets(): Promise<AdapterResult<readonly MediaStoreListedAsset[]>> {
+    return { kind: "ok", value: [] }
   }
 }

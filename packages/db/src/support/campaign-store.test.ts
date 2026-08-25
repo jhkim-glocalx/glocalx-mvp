@@ -149,6 +149,52 @@ describe("campaign store", () => {
     expect(remaining).toHaveLength(0)
   })
 
+  it("lists every registered blob url across stores", async () => {
+    const request = await campaigns.createCampaignRequest({
+      id: randomUUID(),
+      storeId,
+      brief: "Promote our new brunch menu",
+      now: at(0),
+    })
+    const otherRequest = await campaigns.createCampaignRequest({
+      id: randomUUID(),
+      storeId: otherStoreId,
+      brief: "Other store's campaign",
+      now: at(1),
+    })
+    await campaigns.registerCampaignAsset({
+      id: randomUUID(),
+      requestId: request.id,
+      storeId,
+      kind: "original",
+      blobUrl: "https://blob.example/stores/store-1/asset-1.jpg",
+      contentType: "image/jpeg",
+      sizeBytes: 1000,
+      uploadedBy: "owner",
+      now: at(2),
+    })
+    await campaigns.registerCampaignAsset({
+      id: randomUUID(),
+      requestId: otherRequest.id,
+      storeId: otherStoreId,
+      kind: "original",
+      blobUrl: "https://blob.example/stores/store-2/asset-1.jpg",
+      contentType: "image/jpeg",
+      sizeBytes: 1000,
+      uploadedBy: "owner",
+      now: at(3),
+    })
+
+    const urls = await campaigns.listAllAssetBlobUrls()
+
+    expect(new Set(urls)).toEqual(
+      new Set([
+        "https://blob.example/stores/store-1/asset-1.jpg",
+        "https://blob.example/stores/store-2/asset-1.jpg",
+      ])
+    )
+  })
+
   it("lists a store's requests newest-first with an asset count", async () => {
     const first = await campaigns.createCampaignRequest({
       id: randomUUID(),

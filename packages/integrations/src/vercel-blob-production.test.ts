@@ -6,14 +6,14 @@ import type * as VercelBlob from "@vercel/blob"
 import { MediaStoreAssetNotFoundError } from "./media-store"
 import { createProductionMediaStore } from "./vercel-blob-production"
 
-const { headMock, delMock, issueSignedTokenMock, presignUrlMock } = vi.hoisted(
-  () => ({
+const { headMock, delMock, issueSignedTokenMock, presignUrlMock, listMock } =
+  vi.hoisted(() => ({
     headMock: vi.fn(),
     delMock: vi.fn(),
     issueSignedTokenMock: vi.fn(),
     presignUrlMock: vi.fn(),
-  })
-)
+    listMock: vi.fn(),
+  }))
 
 vi.mock("@vercel/blob", async (importOriginal) => {
   const actual = await importOriginal<typeof VercelBlob>()
@@ -23,6 +23,7 @@ vi.mock("@vercel/blob", async (importOriginal) => {
     del: delMock,
     issueSignedToken: issueSignedTokenMock,
     presignUrl: presignUrlMock,
+    list: listMock,
   }
 })
 
@@ -43,6 +44,7 @@ describe("createProductionMediaStore", () => {
   beforeEach(() => {
     headMock.mockReset()
     delMock.mockReset()
+    listMock.mockReset()
     issueSignedTokenMock.mockReset()
     presignUrlMock.mockReset()
     generateClientTokenMock.mockReset()
@@ -167,5 +169,105 @@ describe("createProductionMediaStore", () => {
       `https://${configuredEnv.BLOB_PUBLIC_HOST}/stores/store_123/asset.png`,
       { token: configuredEnv.BLOB_READ_WRITE_TOKEN }
     )
+  })
+
+  it("returns blocked_by_credentials for listAssets when env vars are missing", async () => {
+    const store = createProductionMediaStore({})
+    const result = await store.listAssets()
+    expect(result.kind).toBe("blocked_by_credentials")
+  })
+
+  it("lists a single page of blobs", async () => {
+    listMock.mockResolvedValue({
+      blobs: [
+        {
+          url: "https://example.blob.vercel-storage.com/stores/s1/a.png",
+          downloadUrl:
+            "https://example.blob.vercel-storage.com/stores/s1/a.png",
+          pathname: "stores/s1/a.png",
+          size: 1234,
+          uploadedAt: new Date("2026-08-01T00:00:00.000Z"),
+          etag: "etag1",
+        },
+      ],
+      hasMore: false,
+    })
+    const store = createProductionMediaStore(configuredEnv)
+
+    const result = await store.listAssets()
+
+    expect(result.kind).toBe("ok")
+    if (result.kind !== "ok") throw new Error("expected ok result")
+    expect(result.value).toEqual([
+      {
+        pathname: "stores/s1/a.png",
+        blobUrl: "https://example.blob.vercel-storage.com/stores/s1/a.png",
+        sizeBytes: 1234,
+        uploadedAt: "2026-08-01T00:00:00.000Z",
+      },
+    ])
+    expect(listMock).toHaveBeenCalledWith({
+      prefix: "stores/",
+      token: configuredEnv.BLOB_READ_WRITE_TOKEN,
+    })
+  })
+
+  it("follows the cursor across multiple pages", async () => {
+    listMock
+      .mockResolvedValueOnce({
+        blobs: [
+          {
+            url: "https://example.blob.vercel-storage.com/stores/s1/a.png",
+            downloadUrl:
+              "https://example.blob.vercel-storage.com/stores/s1/a.png",
+            pathname: "stores/s1/a.png",
+            size: 100,
+            uploadedAt: new Date("2026-08-01T00:00:00.000Z"),
+            etag: "etag1",
+          },
+        ],
+        hasMore: true,
+        cursor: "next-cursor",
+      })
+      .mockResolvedValueOnce({
+        blobs: [
+          {
+            url: "https://example.blob.vercel-storage.com/stores/s1/b.png",
+            downloadUrl:
+              "https://example.blob.vercel-storage.com/stores/s1/b.png",
+            pathname: "stores/s1/b.png",
+            size: 200,
+            uploadedAt: new Date("2026-08-02T00:00:00.000Z"),
+            etag: "etag2",
+          },
+        ],
+        hasMore: false,
+      })
+    const store = createProductionMediaStore(configuredEnv)
+
+    const result = await store.listAssets()
+
+    expect(result.kind).toBe("ok")
+    if (result.kind !== "ok") throw new Error("expected ok result")
+    expect(result.value).toHaveLength(2)
+    expect(listMock).toHaveBeenNthCalledWith(2, {
+      prefix: "stores/",
+      token: configuredEnv.BLOB_READ_WRITE_TOKEN,
+      cursor: "next-cursor",
+    })
+  })
+
+  it("stops after the page cap even if hasMore keeps returning true", async () => {
+    listMock.mockResolvedValue({
+      blobs: [],
+      hasMore: true,
+      cursor: "looping-cursor",
+    })
+    const store = createProductionMediaStore(configuredEnv)
+
+    const result = await store.listAssets()
+
+    expect(result.kind).toBe("ok")
+    expect(listMock).toHaveBeenCalledTimes(20)
   })
 })

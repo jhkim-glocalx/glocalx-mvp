@@ -150,6 +150,11 @@ export interface CampaignStore {
   markCampaignNudged(
     input: MarkCampaignNudgedInput
   ): Promise<CampaignRequest | undefined>
+  // Every blob URL any store has ever registered — the orphaned-upload sweep
+  // diffs the Blob store's own listing against this set rather than walking
+  // requests one at a time, since the orphan case is precisely an upload with
+  // no campaign_assets row at all.
+  listAllAssetBlobUrls(): Promise<readonly string[]>
 }
 
 export class CampaignRequestNotFoundError extends Error {
@@ -536,6 +541,13 @@ export function createDatabaseCampaignStore(
         [input.requestId]
       )
       return row === undefined ? undefined : toCampaignRequest(row)
+    },
+
+    async listAllAssetBlobUrls() {
+      const rows = await queryable.query(
+        `SELECT blob_url AS "blobUrl" FROM campaign_assets`
+      )
+      return rows.map((row) => z.string().parse(row["blobUrl"]))
     },
   }
 }

@@ -109,6 +109,13 @@ describe("StubMediaStore", () => {
     expect(result.kind).toBe("ok")
   })
 
+  it("lists no assets, being stateless across calls", async () => {
+    const result = await store.listAssets()
+    expect(result.kind).toBe("ok")
+    if (result.kind !== "ok") throw new Error("expected ok result")
+    expect(result.value).toEqual([])
+  })
+
   it("returns the real recorded metadata for a registered asset", async () => {
     const created = await store.createUploadToken({
       storeId: "store_123",

@@ -11,6 +11,7 @@ import {
 } from "@glocalx/domain/support/metrics"
 
 import { OrgCredentialsPanel } from "./org-credentials-panel"
+import { OrphanedUploadsPanel } from "./orphaned-uploads-panel"
 
 // Premise-2 instrumentation surfaced read-only (design-decisions.md §Premises/2).
 // The db store gathers the window's rows; the pure domain function computes —
@@ -83,6 +84,8 @@ export default async function SettingsPage() {
       </section>
 
       <OrgCredentialsPanel initialCredentials={credentials} />
+
+      <OrphanedUploadsPanel />
 
       <div className="ops-empty">
         <strong>추가 설정 예정</strong>
