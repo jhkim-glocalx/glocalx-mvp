@@ -38,6 +38,10 @@ export type AdminAuditAction =
   | "gbp_access_block"
   | "gbp_access_override"
   | "gbp_access_note"
+  // The concierge setup path: an operator ran GBP setup on an owner's
+  // behalf. Same actor_user_id-NULL pattern as the gbp_access_* actions —
+  // the operator identity lives in the redacted payload.
+  | "gbp_setup_run"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction
