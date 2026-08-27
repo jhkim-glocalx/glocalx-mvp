@@ -1289,6 +1289,10 @@ select:focus-visible,
     color: var(--foreground);
   }
 
+  .ops-drawer:not([open]) {
+    display: none;
+  }
+
   .ops-drawer::backdrop {
     background: rgba(0, 0, 0, 0.62);
   }
