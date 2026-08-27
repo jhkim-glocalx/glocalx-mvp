@@ -25,8 +25,41 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: /responsive-admin\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
+      },
+    },
+    {
+      name: "compact-390",
+      testMatch: /responsive-admin\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    {
+      name: "compact-768",
+      testMatch: /responsive-admin\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 768, height: 900 },
+      },
+    },
+    {
+      name: "medium-1024",
+      testMatch: /responsive-admin\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1024, height: 900 },
+      },
+    },
+    {
+      name: "expanded-1280",
+      testMatch: /responsive-admin\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1280, height: 900 },
       },
     },
   ],

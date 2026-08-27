@@ -438,7 +438,7 @@ export function InboxConsole({
   const resolved = conversation?.status === "resolved"
 
   return (
-    <div className="ops-inbox">
+    <div className="ops-inbox" data-selected={selectedId !== null}>
       <aside className="ops-inbox-list" aria-label="대화 목록">
         {conversations.length === 0 ? (
           <p className="ops-inbox-empty">진행 중인 대화가 없습니다.</p>
@@ -488,6 +488,13 @@ export function InboxConsole({
       ) : (
         <section className="ops-inbox-detail" data-testid="inbox-detail">
           <header className="ops-inbox-detail-head">
+            <button
+              type="button"
+              className="ops-inbox-back ops-inbox-action"
+              onClick={() => setSelectedId(null)}
+            >
+              목록으로
+            </button>
             <div>
               <strong>{conversation.storeName}</strong>
               <span className="ops-inbox-status">

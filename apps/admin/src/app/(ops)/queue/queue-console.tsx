@@ -329,56 +329,63 @@ export function QueueConsole({ initialRequests }: QueueConsoleProps) {
 
   return (
     <div className="ops-queue">
-      <div className="ops-queue-board" aria-label="캠페인 요청">
-        {columns.map((column) => {
-          const cards = entries.filter((entry) =>
-            (column.statuses as readonly string[]).includes(entry.status)
-          )
-          return (
-            <section
-              key={column.key}
-              className="ops-queue-column"
-              data-testid={`queue-column-${column.key}`}
-            >
-              <header className="ops-queue-column-head">
-                <span>{column.label}</span>
-                <span className="ops-queue-count">{cards.length}</span>
-              </header>
-              {cards.length === 0 ? (
-                <p className="ops-queue-empty">항목이 없습니다.</p>
-              ) : (
-                cards.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className="ops-queue-card"
-                    aria-current={
-                      entry.id === selected?.id ? "true" : undefined
-                    }
-                    onClick={() => void openRequest(entry)}
-                  >
-                    <span className="ops-queue-store">{entry.storeName}</span>
-                    <span className="ops-queue-brief">{entry.brief}</span>
-                    <span className="ops-queue-meta">
-                      원본 {entry.originalCount}개
-                      {entry.processedCount > 0
-                        ? ` · 처리됨 ${entry.processedCount}개`
-                        : ""}
-                    </span>
-                    {awaitsNudge(entry) ? (
-                      <span
-                        className="ops-queue-nudge-pending"
-                        data-testid={`nudge-pending-${entry.id}`}
-                      >
-                        사장님께 아직 알리지 않음
+      <div
+        className="ops-queue-board-scroll"
+        role="region"
+        aria-label="캠페인 요청 보드"
+        tabIndex={0}
+      >
+        <div className="ops-queue-board">
+          {columns.map((column) => {
+            const cards = entries.filter((entry) =>
+              (column.statuses as readonly string[]).includes(entry.status)
+            )
+            return (
+              <section
+                key={column.key}
+                className="ops-queue-column"
+                data-testid={`queue-column-${column.key}`}
+              >
+                <header className="ops-queue-column-head">
+                  <span>{column.label}</span>
+                  <span className="ops-queue-count">{cards.length}</span>
+                </header>
+                {cards.length === 0 ? (
+                  <p className="ops-queue-empty">항목이 없습니다.</p>
+                ) : (
+                  cards.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className="ops-queue-card"
+                      aria-current={
+                        entry.id === selected?.id ? "true" : undefined
+                      }
+                      onClick={() => void openRequest(entry)}
+                    >
+                      <span className="ops-queue-store">{entry.storeName}</span>
+                      <span className="ops-queue-brief">{entry.brief}</span>
+                      <span className="ops-queue-meta">
+                        원본 {entry.originalCount}개
+                        {entry.processedCount > 0
+                          ? ` · 처리됨 ${entry.processedCount}개`
+                          : ""}
                       </span>
-                    ) : null}
-                  </button>
-                ))
-              )}
-            </section>
-          )
-        })}
+                      {awaitsNudge(entry) ? (
+                        <span
+                          className="ops-queue-nudge-pending"
+                          data-testid={`nudge-pending-${entry.id}`}
+                        >
+                          사장님께 아직 알리지 않음
+                        </span>
+                      ) : null}
+                    </button>
+                  ))
+                )}
+              </section>
+            )
+          })}
+        </div>
       </div>
 
       {selected === null ? (

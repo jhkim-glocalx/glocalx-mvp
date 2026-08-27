@@ -28,7 +28,9 @@ test("admin login round-trips through the seeded operator", async ({
 
   await expect(page).toHaveURL(/\/stores/)
   await expect(page.getByRole("heading", { name: "매장" })).toBeVisible()
-  await expect(page.getByText("E2E Operator")).toBeVisible()
+  await expect(
+    page.getByRole("complementary").getByText("E2E Operator")
+  ).toBeVisible()
 })
 
 test("owner and admin sessions cannot cross apps", async ({
