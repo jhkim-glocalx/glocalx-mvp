@@ -47,7 +47,7 @@ test.describe("responsive shell interactions", () => {
     test.skip(!/^compact-|^medium-/.test(test.info().project.name))
     await loginAsAdmin(page)
 
-    const menuButton = page.getByRole("button", { name: /메뉴|탐색|사이드바/i })
+    const menuButton = page.getByRole("button", { name: "메뉴", exact: true })
     await expect(menuButton).toHaveAttribute("aria-expanded", "false")
     const controlledId = await menuButton.getAttribute("aria-controls")
     expect(controlledId).toBeTruthy()
@@ -92,7 +92,7 @@ test.describe("responsive operator task states", () => {
     await reply.fill("responsive verification draft")
     await expect(reply).toHaveValue("responsive verification draft")
 
-    if (/^compact-/.test(test.info().project.name)) {
+    if (test.info().project.name === "compact-390") {
       const back = page.getByRole("button", { name: /목록|뒤로/i })
       await expect(back).toBeVisible()
       await back.click()

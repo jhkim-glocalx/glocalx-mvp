@@ -41,7 +41,7 @@ export const responsiveRoutes = [
 export const seededStateMatrix = {
   stores: '[data-testid="store-card-demo-store"]',
   inbox: '[aria-label="대화 목록"] .ops-inbox-item',
-  queue: '[aria-label="캠페인 요청"] [data-testid^="queue-column-"]',
+  queue: '[aria-label="캠페인 요청 보드"] [data-testid^="queue-column-"]',
   posts: "main h1",
   users: '[data-testid="ops-users"] [data-testid^="user-card-"]',
   settings: '[data-testid="metric-response"]',
