@@ -6,7 +6,6 @@
 }
 
 html {
-  min-width: 960px;
   background: var(--canvas);
 }
 
@@ -28,10 +27,21 @@ select {
   font: inherit;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .ops-shell {
   display: grid;
   grid-template-columns: 220px 1fr;
   min-height: 100vh;
+  min-width: 0;
 }
 
 .ops-sidebar {
@@ -74,7 +84,13 @@ select {
 }
 
 .ops-main {
+  min-width: 0;
   padding: 28px 32px;
+}
+
+.ops-menu-button,
+.ops-drawer {
+  display: none;
 }
 
 .ops-page-title {
@@ -266,9 +282,10 @@ select {
 /* Inbox: conversation list + conversation detail. */
 .ops-inbox {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
   gap: 16px;
   height: calc(100vh - 120px);
+  min-width: 0;
 }
 
 .ops-inbox-list {
@@ -363,6 +380,10 @@ select {
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--border);
+}
+
+.ops-inbox-back {
+  display: none;
 }
 
 .ops-inbox-detail-head strong {
@@ -667,6 +688,10 @@ select {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   align-items: start;
+}
+
+.ops-queue-board-scroll {
+  min-width: 0;
 }
 
 .ops-queue-column {
@@ -1217,4 +1242,243 @@ select {
 .ops-store-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Responsive admin layout. Breakpoints are intentionally centralized here so
+   route components only describe the workflow, never the viewport model. */
+@media (max-width: 1099px) {
+  .ops-shell {
+    display: block;
+  }
+
+  .ops-sidebar {
+    display: none;
+  }
+
+  .ops-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin: 0 0 16px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--canvas-2);
+    color: var(--foreground);
+    cursor: pointer;
+  }
+
+  .ops-main {
+    padding: 20px 24px 32px;
+  }
+
+  .ops-drawer[open] {
+    display: block;
+  }
+
+  .ops-drawer {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--foreground);
+  }
+
+  .ops-drawer::backdrop {
+    background: rgba(0, 0, 0, 0.62);
+  }
+
+  .ops-drawer-panel {
+    display: flex;
+    flex-direction: column;
+    width: min(280px, calc(100vw - 48px));
+    height: 100%;
+    padding: 20px 12px;
+    background: var(--canvas-2);
+    border-right: 1px solid var(--border);
+  }
+
+  .ops-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px 20px;
+  }
+
+  .ops-drawer-close {
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--canvas);
+    color: var(--foreground);
+    cursor: pointer;
+  }
+
+  .ops-drawer .ops-nav-link {
+    display: block;
+    min-height: 44px;
+    padding: 11px 12px;
+  }
+
+  .ops-drawer .ops-sidebar-footer {
+    margin-top: auto;
+  }
+
+  .ops-inbox {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .ops-inbox-list {
+    max-height: min(52vh, 520px);
+    padding-right: 0;
+  }
+
+  .ops-inbox-detail {
+    min-width: 0;
+  }
+
+  .ops-inbox-detail-head,
+  .ops-inbox-composer,
+  .ops-inbox-modebar,
+  .ops-inbox-actions,
+  .ops-draft-actions,
+  .ops-queue-actions {
+    flex-wrap: wrap;
+  }
+
+  .ops-queue-board-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 8px;
+  }
+
+  .ops-queue-board {
+    width: max-content;
+    min-width: 920px;
+    grid-template-columns: repeat(5, minmax(160px, 1fr));
+  }
+
+  .ops-queue-detail-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .ops-queue-cta-url {
+    min-width: min(220px, 100%);
+    width: 100%;
+  }
+
+  .ops-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ops-store-age {
+    margin-left: 0;
+  }
+
+  .ops-store-adopt select {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .ops-main {
+    padding: 12px 16px 28px;
+  }
+
+  .ops-page-title {
+    margin-bottom: 16px;
+    font-size: 19px;
+  }
+
+  .ops-empty {
+    padding: 28px 20px;
+  }
+
+  .ops-inbox[data-selected="true"] .ops-inbox-list {
+    display: none;
+  }
+
+  .ops-inbox[data-selected="false"] .ops-inbox-detail {
+    display: none;
+  }
+
+  .ops-inbox-back {
+    display: inline-flex;
+    order: -1;
+    min-height: 44px;
+  }
+
+  .ops-inbox-detail-head > div:first-of-type {
+    flex: 1 1 160px;
+  }
+
+  .ops-inbox-actions {
+    width: 100%;
+  }
+
+  .ops-inbox-actions .ops-inbox-action,
+  .ops-inbox-composer .ops-primary-button,
+  .ops-draft-actions > *,
+  .ops-queue-actions > *,
+  .ops-store-actions > * {
+    min-height: 44px;
+  }
+
+  .ops-inbox-composer {
+    flex-direction: column;
+  }
+
+  .ops-inbox-input {
+    width: 100%;
+  }
+
+  .ops-inbox-modebar {
+    align-items: flex-start;
+  }
+
+  .ops-metric-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-credential-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ops-credential-status {
+    justify-self: start;
+  }
+
+  .ops-store-actions,
+  .ops-store-note-edit,
+  .ops-store-adopt,
+  .ops-store-reject,
+  .ops-store-override {
+    align-items: stretch;
+  }
+
+  .ops-store-actions > *,
+  .ops-store-note-edit > *,
+  .ops-store-adopt > *,
+  .ops-store-reject > *,
+  .ops-store-override > * {
+    max-width: 100%;
+  }
+
+  .ops-posts-item-head,
+  .ops-posts-meta {
+    flex-wrap: wrap;
+  }
+
+  .ops-posts-copy {
+    overflow-wrap: anywhere;
+  }
 }
