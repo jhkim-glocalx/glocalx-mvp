@@ -1479,6 +1479,38 @@ select:focus-visible,
     max-width: 100%;
   }
 
+  .ops-store-adopt-label {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .ops-store-adopt,
+  .ops-store-reject,
+  .ops-store-override,
+  .ops-store-note-edit {
+    width: 100%;
+  }
+
+  .ops-store-adopt-label,
+  .ops-store-reject-label,
+  .ops-store-override-label {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .ops-store-adopt-label select,
+  .ops-store-reject-label input,
+  .ops-store-override-label select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .ops-store-note-input {
+    min-width: 0;
+  }
+
   .ops-posts-item-head,
   .ops-posts-meta {
     flex-wrap: wrap;
