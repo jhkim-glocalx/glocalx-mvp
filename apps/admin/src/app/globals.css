@@ -1093,6 +1093,7 @@ select:focus-visible,
 .ops-store-card {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 8px;
   padding: 14px 16px;
   border: 1px solid var(--border);
