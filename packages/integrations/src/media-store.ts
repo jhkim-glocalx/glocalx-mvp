@@ -173,7 +173,8 @@ export class StubMediaStore implements MediaStore {
     return { kind: "ok", value: { contentType, sizeBytes } }
   }
 
-  async deleteAsset(_blobUrl: string): Promise<AdapterResult<void>> {
+  async deleteAsset(blobUrl: string): Promise<AdapterResult<void>> {
+    void blobUrl
     return { kind: "ok", value: undefined }
   }
 

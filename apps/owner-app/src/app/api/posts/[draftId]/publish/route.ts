@@ -10,18 +10,7 @@ import {
   withQueryableRouteDatabase,
 } from "@/server/http"
 
-type PublishRouteContext = {
-  // Next canary provides dynamic route params as a promise in route handlers;
-  // draftId itself is unused now that publishing is admin-only (see below).
-  readonly params: Promise<{
-    readonly draftId: string
-  }>
-}
-
-export async function POST(
-  request: NextRequest,
-  _context: PublishRouteContext
-) {
+export async function POST(request: NextRequest) {
   return withQueryableRouteDatabase(async ({ sessionStore }) => {
     const session = await readDatabaseSession(request, sessionStore)
     if (session === undefined) {
