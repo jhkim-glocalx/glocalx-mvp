@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 const emailSchema = z.string().trim().toLowerCase().email().max(254)
-const passwordSchema = z.string().min(12).max(256)
+const passwordSchema = z.string().min(8).max(256)
 
 const emailLoginFormSchema = z.object({
   email: emailSchema,
