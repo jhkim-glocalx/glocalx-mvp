@@ -16,7 +16,7 @@ const errorMessages: Readonly<
     registration_unavailable:
       "회원가입 요청을 처리할 수 없습니다. 로그인하거나 다른 이메일을 사용해주세요.",
     invalid_input:
-      "이름, 이메일, 비밀번호를 다시 확인해주세요. 비밀번호는 12자 이상이어야 합니다.",
+      "이름, 이메일, 비밀번호를 다시 확인해주세요. 비밀번호는 8자 이상이어야 합니다.",
   },
 }
 
@@ -102,7 +102,7 @@ export function EmailAuthPage({
                   isRegistration ? "new-password" : "current-password"
                 }
                 className="gx-login-input"
-                minLength={12}
+                minLength={8}
                 name="password"
                 required
                 type="password"
