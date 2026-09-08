@@ -36,6 +36,30 @@ function seedStore(
     .run(id, ownerId, name, createdAt)
 }
 
+// A draft that revises another draft of the same store — the self-FK that a
+// naive DELETE trips over under SQLite's row-by-row FK checks.
+function seedDraftWithRevision(
+  database: Database.Database,
+  storeId: string
+): void {
+  const insert = database.prepare(
+    "INSERT INTO post_drafts (id, store_id, owner_intent, target_channel, status, korean_copy, english_copy, revision_of_draft_id, created_at) VALUES (?, ?, 'intent', 'GBP', 'DRAFT', 'ko', 'en', ?, '2026-07-31T00:00:00.000Z')"
+  )
+  insert.run("draft-1", storeId, null)
+  insert.run("draft-2", storeId, "draft-1")
+}
+
+function seedEmailCredential(
+  database: Database.Database,
+  userId: string
+): void {
+  database
+    .prepare(
+      "INSERT INTO email_credentials (user_id, password_hash, created_at, updated_at) VALUES (?, 'hash', '2026-07-31T00:00:00.000Z', '2026-07-31T00:00:00.000Z')"
+    )
+    .run(userId)
+}
+
 function seedSession(
   database: Database.Database,
   id: string,
@@ -128,6 +152,84 @@ describe("user directory store", () => {
     expect(
       await store.deactivateUser("user-1", new Date("2026-08-02T00:00:00.000Z"))
     ).toBeUndefined()
+  })
+
+  it("hard-deletes the account and everything it owns, freeing the email", async () => {
+    seedUser(database, "user-1", "a@example.com", "2026-07-31T00:00:00.000Z")
+    seedUser(database, "user-2", "b@example.com", "2026-07-31T00:00:01.000Z")
+    seedStore(
+      database,
+      "store-1",
+      "user-1",
+      "First Store",
+      "2026-07-31T00:00:00.000Z"
+    )
+    seedStore(
+      database,
+      "store-2",
+      "user-2",
+      "Other Store",
+      "2026-07-31T00:00:00.000Z"
+    )
+    seedSession(database, "session-1", "user-1", "store-1")
+    seedDraftWithRevision(database, "store-1")
+    seedEmailCredential(database, "user-1")
+
+    const deleted = await store.deleteUser("user-1")
+
+    expect(deleted?.email).toBe("a@example.com")
+    expect((await store.listUsers()).map((entry) => entry.id)).toEqual([
+      "user-2",
+    ])
+    for (const table of [
+      "stores",
+      "post_drafts",
+      "user_sessions",
+      "email_credentials",
+    ]) {
+      expect(
+        database.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get()
+      ).toEqual({ count: table === "stores" ? 1 : 0 })
+    }
+
+    // The point of the hard delete: the email is free again.
+    expect(() =>
+      seedUser(database, "user-3", "a@example.com", "2026-08-01T00:00:00.000Z")
+    ).not.toThrow()
+  })
+
+  it("keeps the audit trail, detached from the deleted account", async () => {
+    seedUser(database, "user-1", "a@example.com", "2026-07-31T00:00:00.000Z")
+    seedStore(
+      database,
+      "store-1",
+      "user-1",
+      "First Store",
+      "2026-07-31T00:00:00.000Z"
+    )
+    database
+      .prepare(
+        "INSERT INTO audit_logs (id, store_id, actor_user_id, action, redacted_payload_json, created_at) VALUES ('audit-1', 'store-1', 'user-1', 'gbp_access_grant', '{}', '2026-07-31T00:00:00.000Z')"
+      )
+      .run()
+
+    await store.deleteUser("user-1")
+
+    expect(
+      database
+        .prepare(
+          "SELECT action, store_id, actor_user_id FROM audit_logs WHERE id = 'audit-1'"
+        )
+        .get()
+    ).toEqual({
+      action: "gbp_access_grant",
+      actor_user_id: null,
+      store_id: null,
+    })
+  })
+
+  it("returns undefined when deleting a user id that does not exist", async () => {
+    expect(await store.deleteUser("missing")).toBeUndefined()
   })
 
   it("returns undefined for a user id that does not exist", async () => {

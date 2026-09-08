@@ -32,6 +32,13 @@ export interface UserDirectoryStore {
     userId: string,
     now: Date
   ): Promise<UserDirectoryEntry | undefined>
+  // Hard delete: erases the account and everything it owns, freeing the email
+  // for a fresh sign-up. Deactivation leaves the `users` row in place, and its
+  // UNIQUE(email) then rejects re-registration forever — an account stuck in
+  // that state can neither log in nor be re-created, so an operator needs a way
+  // to erase it outright. Returns the row as it looked before deletion, or
+  // undefined when no such user exists.
+  deleteUser(userId: string): Promise<UserDirectoryEntry | undefined>
 }
 
 const userDirectoryRowSchema = z.object({
@@ -68,6 +75,29 @@ const userDirectoryProjection = `
 function toUserDirectoryEntry(row: unknown): UserDirectoryEntry {
   return userDirectoryRowSchema.parse(row)
 }
+
+// Store-scoped rows whose FK to `stores` has no ON DELETE CASCADE, in the order
+// that satisfies their own inter-table FKs (attempts before drafts, replies
+// before reviews, locations before accounts). Everything omitted here — the
+// conversation, CS, campaign, channel-link, GBP-access and verification tables,
+// plus user_sessions — already cascades from stores or users.
+const storeScopedDeletes = [
+  `DELETE FROM post_publish_attempts
+    WHERE draft_id IN (
+      SELECT id FROM post_drafts WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)
+    )`,
+  "DELETE FROM post_drafts WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)",
+  `DELETE FROM review_replies
+    WHERE review_id IN (
+      SELECT id FROM reviews WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)
+    )`,
+  "DELETE FROM reviews WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)",
+  "DELETE FROM job_runs WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)",
+  "DELETE FROM gbp_locations WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)",
+  "DELETE FROM gbp_accounts WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)",
+  "DELETE FROM oauth_connections WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)",
+  "DELETE FROM business_profile_extractions WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)",
+]
 
 export function createDatabaseUserDirectoryStore(
   queryable: Queryable
@@ -106,6 +136,54 @@ export function createDatabaseUserDirectoryStore(
         [userId]
       )
       return row === undefined ? undefined : toUserDirectoryEntry(row)
+    },
+
+    async deleteUser(userId) {
+      const existing = await queryable.queryOne(
+        `SELECT ${userDirectoryProjection}
+           FROM users
+          WHERE users.id = ?`,
+        [userId]
+      )
+      if (existing === undefined) {
+        return undefined
+      }
+
+      await queryable.transaction(async (transaction) => {
+        // post_drafts.revision_of_draft_id points at another draft of the same
+        // store. SQLite checks FKs row-by-row inside a statement, so a revision
+        // still pointing at an already-deleted original would abort the drafts
+        // delete below; cut the link before anything is removed.
+        await transaction.execute(
+          `UPDATE post_drafts SET revision_of_draft_id = NULL
+            WHERE store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)`,
+          [userId]
+        )
+        for (const statement of storeScopedDeletes) {
+          await transaction.execute(statement, [userId])
+        }
+        // Audit rows are detached, not deleted: for the gbp_access_* actions
+        // the entry is the only record of who authorized attaching an
+        // org-owned listing, so it has to outlive the account it was about.
+        // Nulling both FK columns is what lets the stores and the user row go.
+        await transaction.execute(
+          `UPDATE audit_logs SET actor_user_id = NULL, store_id = NULL
+            WHERE actor_user_id = ?
+               OR store_id IN (SELECT id FROM stores WHERE owner_user_id = ?)`,
+          [userId, userId]
+        )
+        await transaction.execute(
+          "DELETE FROM stores WHERE owner_user_id = ?",
+          [userId]
+        )
+        await transaction.execute(
+          "DELETE FROM auth_identities WHERE user_id = ?",
+          [userId]
+        )
+        await transaction.execute("DELETE FROM users WHERE id = ?", [userId])
+      })
+
+      return toUserDirectoryEntry(existing)
     },
   }
 }

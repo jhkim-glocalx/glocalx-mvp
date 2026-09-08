@@ -6,6 +6,10 @@ export type DeactivateUserResult =
   | { readonly kind: "ok"; readonly user: UserDirectoryEntry }
   | { readonly kind: "error"; readonly message: string }
 
+export type DeleteUserResult =
+  | { readonly kind: "ok" }
+  | { readonly kind: "error"; readonly message: string }
+
 export async function fetchUsers(): Promise<readonly UserDirectoryEntry[]> {
   const response = await fetch(usersUrl)
   if (!response.ok) {
@@ -36,4 +40,18 @@ export async function deactivateUser(
     readonly user: UserDirectoryEntry
   }
   return { kind: "ok", user: payload.user }
+}
+
+export async function deleteUser(userId: string): Promise<DeleteUserResult> {
+  const response = await fetch(`${usersUrl}/${userId}`, { method: "DELETE" })
+  if (!response.ok) {
+    return {
+      kind: "error",
+      message:
+        response.status === 404
+          ? "이미 삭제되었거나 존재하지 않는 사용자입니다."
+          : "사용자를 삭제하지 못했습니다.",
+    }
+  }
+  return { kind: "ok" }
 }
