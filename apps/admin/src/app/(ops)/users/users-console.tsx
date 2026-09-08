@@ -4,13 +4,25 @@ import { useState } from "react"
 
 import type { UserDirectoryEntry } from "@glocalx/db/support/user-directory-store"
 
-import { deactivateUser, type DeactivateUserResult } from "./users-client"
+import {
+  deactivateUser,
+  deleteUser,
+  type DeactivateUserResult,
+  type DeleteUserResult,
+} from "./users-client"
 
 function formatCreatedAt(createdAt: string): string {
   const parsed = new Date(createdAt)
   return Number.isNaN(parsed.getTime())
     ? createdAt
     : parsed.toLocaleDateString("ko-KR")
+}
+
+function remove(
+  users: readonly UserDirectoryEntry[],
+  removedId: string
+): UserDirectoryEntry[] {
+  return users.filter((user) => user.id !== removedId)
 }
 
 function upsert(
@@ -43,6 +55,32 @@ export function UsersConsole({
     const result: DeactivateUserResult = await deactivateUser(user.id)
     if (result.kind === "ok") {
       setUsers((current) => upsert(current, result.user))
+    } else {
+      setError(result.message)
+    }
+    setPendingId(null)
+  }
+
+  async function handleDelete(user: UserDirectoryEntry): Promise<void> {
+    // Two prompts, the second typed: this erases every row the account owns —
+    // stores, posts, campaigns — and nothing restores it.
+    if (
+      !window.confirm(
+        `${user.email} 계정을 완전히 삭제할까요? 매장·게시물·캠페인 등 이 계정의 모든 데이터가 사라지며 되돌릴 수 없습니다. 같은 이메일로 다시 가입할 수 있게 됩니다.`
+      )
+    ) {
+      return
+    }
+    if (
+      window.prompt("삭제하려면 이메일을 그대로 입력하세요.") !== user.email
+    ) {
+      return
+    }
+    setPendingId(user.id)
+    setError(null)
+    const result: DeleteUserResult = await deleteUser(user.id)
+    if (result.kind === "ok") {
+      setUsers((current) => remove(current, user.id))
     } else {
       setError(result.message)
     }
@@ -112,6 +150,15 @@ export function UsersConsole({
                   비활성화
                 </button>
               ) : null}
+              <button
+                className="ops-store-btn"
+                data-testid={`user-delete-${user.id}`}
+                disabled={pendingId === user.id}
+                onClick={() => void handleDelete(user)}
+                type="button"
+              >
+                완전 삭제
+              </button>
             </div>
           </li>
         ))}

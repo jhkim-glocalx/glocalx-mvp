@@ -46,6 +46,10 @@ export type AdminAuditAction =
   // deactivated user is the storeId-less subject here (audit_logs.store_id
   // is nullable), so the target user id lives in detail.
   | "user_deactivate"
+  // Admin dashboard hard delete: the account and everything it owns are erased
+  // so the email can sign up again. The deleted user's own audit rows go with
+  // it, which makes this entry the only trace left.
+  | "user_delete"
 
 export type AdminAuditEntry = {
   readonly action: AdminAuditAction
