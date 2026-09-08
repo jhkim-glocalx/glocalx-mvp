@@ -109,10 +109,18 @@ test("operator drives an AI draft then hands the conversation back to human", as
     ownerPage.locator(".gx-chat-bubble-owner", { hasText: humanTurnMessage })
   ).toBeVisible()
 
-  // Give the owner poll + any (suppressed) compose window time to elapse, then
-  // assert no new AI draft appeared and the owner still has only the one prior
-  // assistant reply — AI was suppressed by the human handoff.
-  await operatorPage.waitForTimeout(7000)
+  // Proving the negative needs a causal cue, not a sleep. Wait until a detail
+  // poll has delivered the owner's message to the operator transcript: that same
+  // response carries `pendingDraft`, so "no draft" is read from the very server
+  // snapshot that already contains the message AI would have answered. The
+  // fixed 7s this replaces only guessed at that window — and spent nearly a
+  // quarter of the test's 30s budget doing it, which is what tipped this spec
+  // over the budget on a slower CI runner.
+  await expect(
+    operatorPage
+      .getByTestId("inbox-detail")
+      .locator(".ops-msg-body", { hasText: humanTurnMessage })
+  ).toBeVisible({ timeout: 15_000 })
   await expect(operatorPage.getByTestId("ai-draft")).toBeHidden()
   await expect(ownerPage.locator(".gx-chat-bubble-assistant")).toHaveCount(1)
 
