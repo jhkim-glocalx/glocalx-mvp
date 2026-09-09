@@ -1,7 +1,3 @@
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-
 ## Guardrails (owner-app specific)
 
 These are invariants that a single-file read won't surface — they were
@@ -47,3 +43,11 @@ route.
   session store independently of `apps/admin/src/auth/session.ts` — do
   not add a code path that accepts one for the other, even as a
   convenience for local testing.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+
+<!-- END:nextjs-agent-rules -->

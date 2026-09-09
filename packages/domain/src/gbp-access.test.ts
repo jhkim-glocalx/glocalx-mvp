@@ -74,6 +74,34 @@ describe("transitionGbpAccess", () => {
     }
   })
 
+  it("attaches an operator-built listing straight to granted", () => {
+    for (const state of [
+      "not_requested",
+      "adoption_review",
+      "blocked",
+    ] as const) {
+      expect(
+        transitionGbpAccess(state, {
+          type: "ATTACH_LOCATION",
+          gbpLocationRef: "locations/hand-built",
+        })
+      ).toBe("granted")
+    }
+  })
+
+  // A store already granted has a listing attached; re-attaching would repoint
+  // a working publish target at whatever the operator picked this time.
+  it("refuses to attach onto a settled or in-flight request", () => {
+    for (const state of ["granted", "invited", "pending", "revoked"] as const) {
+      expect(() =>
+        transitionGbpAccess(state, {
+          type: "ATTACH_LOCATION",
+          gbpLocationRef: "locations/hand-built",
+        })
+      ).toThrow(InvalidGbpAccessTransitionError)
+    }
+  })
+
   it("shows an adoption awaiting an operator as ordinary progress to the owner", () => {
     expect(gbpAccessOwnerPhase("adoption_review")).toBe("in_progress")
   })

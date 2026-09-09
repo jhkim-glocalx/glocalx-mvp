@@ -1,5 +1,7 @@
 import type { CsMessageContextRecord } from "@glocalx/db/support/message-context-store"
 import type { InboxConversationSummary } from "@glocalx/db/support/conversation-store"
+import type { GbpAccessRequest } from "@glocalx/db/support/gbp-access-store"
+import type { GbpAccessState } from "@glocalx/domain/gbp-access"
 import type {
   ActivityTrail,
   AdminFacingMessage,
@@ -49,6 +51,24 @@ export type InboxMessageView = {
   readonly ownerReadAt: string | null
   readonly adminReadAt: string | null
   readonly context: InboxMessageContextView | null
+}
+
+// The store's GBP org-access posture, carried on the conversation DETAIL only
+// (never the list): "GBP가 안 돼요" is the most common thing an owner writes,
+// and answering it without this means matching store names by eye in another
+// tab. Null when the store has no request row yet — itself the answer to
+// "where is this store stuck".
+export type InboxGbpAccessView = {
+  readonly requestId: string
+  readonly state: GbpAccessState
+} | null
+
+export function toInboxGbpAccessView(
+  request: GbpAccessRequest | undefined
+): InboxGbpAccessView {
+  return request === undefined
+    ? null
+    : { requestId: request.id, state: request.state }
 }
 
 export function toInboxConversationView(
