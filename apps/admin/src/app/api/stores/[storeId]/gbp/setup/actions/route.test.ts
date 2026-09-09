@@ -173,6 +173,75 @@ describe("admin GBP setup-actions", () => {
     expect(runRow?.actorUserId).toBeNull()
   })
 
+  it("attaches an operator-built listing, notifies the owner, and audits it", async () => {
+    const response = await runSetupAction(
+      setupActionRequest(
+        storeId,
+        { type: "ATTACH_LOCATION", gbpLocationRef: "locations/hand-built" },
+        { cookie: await adminSessionCookie() }
+      ),
+      params(storeId)
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as {
+      readonly request: { readonly state: string }
+    }
+    expect(body.request.state).toBe("granted")
+
+    // Granted is only real once the listing rows exist — otherwise the owner is
+    // "connected" with nothing to publish to.
+    const attached = await withDatabase(async (queryable) =>
+      queryable.queryOne(
+        `SELECT google_location_id AS "googleLocationId", status FROM gbp_locations WHERE store_id = ?`,
+        [storeId]
+      )
+    )
+    expect(attached?.["googleLocationId"]).toBe("locations/hand-built")
+    expect(attached?.["status"]).toBe("VERIFIED")
+
+    // The owner learns about it in the thread they asked in.
+    const notice = await withDatabase(async (queryable) =>
+      queryable.queryOne(
+        `SELECT body FROM cs_messages WHERE sender = 'assistant' ORDER BY created_at DESC`
+      )
+    )
+    expect(String(notice?.["body"])).toContain("연결을 완료했어요")
+
+    const rows = await auditRows()
+    const attachRow = rows.find(
+      (row) => row.action === "gbp_access_attach_location"
+    )
+    expect(attachRow).toBeDefined()
+    expect(attachRow?.actorUserId).toBeNull()
+  })
+
+  it("refuses to attach onto a store that already has a listing", async () => {
+    const cookie = await adminSessionCookie()
+    await runSetupAction(
+      setupActionRequest(
+        storeId,
+        { type: "ATTACH_LOCATION", gbpLocationRef: "locations/hand-built" },
+        { cookie }
+      ),
+      params(storeId)
+    )
+
+    // A second attach would silently repoint a working publish target.
+    const second = await runSetupAction(
+      setupActionRequest(
+        storeId,
+        { type: "ATTACH_LOCATION", gbpLocationRef: "locations/other" },
+        { cookie }
+      ),
+      params(storeId)
+    )
+    expect(second.status).toBe(409)
+    expect(((await second.json()) as { status: string }).status).toBe(
+      "STORE_ALREADY_HAS_LOCATION"
+    )
+  })
+
   it("is idempotent: a second RUN_SETUP on an already-linked store reports ALREADY_LINKED", async () => {
     const cookie = await adminSessionCookie()
     await runSetupAction(

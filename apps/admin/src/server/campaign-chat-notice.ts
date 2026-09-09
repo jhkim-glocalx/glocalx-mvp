@@ -44,6 +44,13 @@ export async function postCampaignAssistantNotice(
   await input.csConversationStore.touch(conversation.id, input.now)
 }
 
+// An operator attached a listing they built by hand. The owner is told in the
+// thread they asked in, because the alternative is a silently-changed screen
+// they would have to go back and check.
+export function gbpAttachedNoticeBody(): string {
+  return "구글 비즈니스 프로필 연결을 완료했어요. 이제 앱에서 바로 게시할 수 있어요."
+}
+
 // The owner's cue that the go/no-go screen has something on it. The queue's
 // separate nudge step covers the same event out-of-band, because nothing in v2
 // pushes this message to a phone that isn't already looking at the app.

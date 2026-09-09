@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import type {
   InboxConversationView,
+  InboxGbpAccessView,
   InboxMessageView,
 } from "@/server/inbox-view"
 
@@ -13,6 +14,7 @@ type ConversationListResponse = {
 
 type ConversationDetailResponse = {
   readonly conversation: InboxConversationView
+  readonly gbpAccess: InboxGbpAccessView
   readonly messages: readonly InboxMessageView[]
   readonly pendingDraft: InboxMessageView | null
   readonly nextCursor: string | null
@@ -32,6 +34,19 @@ const modeOptions = [
 const conversationStatusLabels: Readonly<Record<string, string>> = {
   open: "진행 중",
   resolved: "해결됨",
+}
+
+// The operator-facing GBP org-access states (packages/domain/src/gbp-access.ts),
+// shown on the conversation an owner is asking from. An untranslated state falls
+// back to its raw tag rather than rendering blank.
+const gbpAccessStateLabels: Readonly<Record<string, string>> = {
+  not_requested: "요청 전",
+  adoption_review: "기존 리스팅 확인 중",
+  invited: "초대됨",
+  pending: "승인 대기",
+  granted: "권한 있음",
+  revoked: "권한 회수됨",
+  blocked: "막힘",
 }
 
 // Activity-telemetry tags (packages/domain/src/support/activity.ts) — closed
@@ -104,6 +119,7 @@ export function InboxConsole({
   const [pendingDraft, setPendingDraft] = useState<InboxMessageView | null>(
     null
   )
+  const [gbpAccess, setGbpAccess] = useState<InboxGbpAccessView>(null)
   const [draftInput, setDraftInput] = useState("")
   const [input, setInput] = useState("")
   const [busy, setBusy] = useState(false)
@@ -206,6 +222,7 @@ export function InboxConsole({
         setDraftInput(data.pendingDraft?.body ?? "")
       }
       setPendingDraft(data.pendingDraft)
+      setGbpAccess(data.gbpAccess)
       if (data.nextCursor !== null) {
         cursorRef.current = data.nextCursor
       }
@@ -253,6 +270,7 @@ export function InboxConsole({
     draftIdRef.current = null
     setMessages([])
     setPendingDraft(null)
+    setGbpAccess(null)
     setDraftInput("")
     setConversation(next)
     setSelectedId(next.id)
@@ -494,6 +512,23 @@ export function InboxConsole({
                 {conversationStatusLabels[conversation.status] ??
                   conversation.status}
               </span>
+              {/* "GBP가 안 돼요" is answerable only with the store's actual
+                  access state in view; no row yet is itself an answer — and
+                  such a store has no card on the Stores page, so that case is
+                  a label rather than a link into nothing. */}
+              {gbpAccess === null ? (
+                <span className="ops-inbox-gbp" data-testid="inbox-gbp-access">
+                  GBP 미시작
+                </span>
+              ) : (
+                <a
+                  className="ops-inbox-gbp"
+                  data-testid="inbox-gbp-access"
+                  href={`/stores#store-${conversation.storeId}`}
+                >
+                  GBP {gbpAccessStateLabels[gbpAccess.state] ?? gbpAccess.state}
+                </a>
+              )}
             </div>
             <div className="ops-inbox-actions">
               <button

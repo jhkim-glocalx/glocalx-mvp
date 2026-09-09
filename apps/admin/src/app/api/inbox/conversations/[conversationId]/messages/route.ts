@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server"
 
 import {
   toInboxConversationView,
+  toInboxGbpAccessView,
   toInboxMessageView,
 } from "@/server/inbox-view"
 import { notFoundResponse, withAdminRoute } from "@/server/route-database"
@@ -46,8 +47,13 @@ export async function GET(
 
     await context.csMessageStore.markAdminRead(conversationId, new Date())
 
+    const gbpAccess = await context.gbpAccessStore.getGbpAccessRequestForStore(
+      conversation.storeId
+    )
+
     return Response.json({
       conversation: toInboxConversationView(conversation),
+      gbpAccess: toInboxGbpAccessView(gbpAccess),
       messages: page.messages.map((message) =>
         toInboxMessageView(message, contexts.get(message.id))
       ),

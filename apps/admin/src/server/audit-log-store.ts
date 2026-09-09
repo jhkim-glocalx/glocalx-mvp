@@ -32,6 +32,10 @@ export type AdminAuditAction =
   // alone — no Google approval stands behind it — so it is the one access action
   // whose audit trail is the only record of who authorized the attachment.
   | "gbp_access_confirm_adoption"
+  // An operator attaching a listing they built by hand. Like confirm_adoption,
+  // nothing outside this log records who authorized the attachment — and here
+  // not even an owner claim preceded it.
+  | "gbp_access_attach_location"
   | "gbp_access_reject_adoption"
   | "gbp_access_grant"
   | "gbp_access_revoke"

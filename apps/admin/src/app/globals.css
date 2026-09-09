@@ -380,6 +380,22 @@ select {
   letter-spacing: 0.03em;
 }
 
+.ops-inbox-gbp {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.ops-inbox-gbp:hover {
+  border-color: var(--accent);
+  color: var(--foreground);
+}
+
 .ops-inbox-actions {
   display: flex;
   gap: 8px;

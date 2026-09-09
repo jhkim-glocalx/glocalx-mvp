@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import type { GbpAccessStoreView } from "@/server/gbp-access-view"
 import type { StoreVerificationView } from "@/server/gbp-verification-view"
 import {
+  attachLocationSourceStates,
   gbpAccessStates,
   type GbpAccessState,
 } from "@glocalx/domain/gbp-access"
@@ -13,6 +14,7 @@ import type { PendingGbpSetupStore } from "@glocalx/db/support/gbp-access-store"
 
 import {
   applyStoreAction,
+  attachGbpLocation,
   canBlock,
   fetchOrgLocations,
   fetchPendingSetupStores,
@@ -25,6 +27,63 @@ import {
   type OrgLocationOption,
   type StoreActionResult,
 } from "./stores-client"
+
+// The org-listing picker for a listing the operator built by hand, shared by
+// the pre-request cards (no access request yet) and the not_requested cards.
+// The adoption block keeps its own copy: there the same picker submits a
+// verdict on the OWNER's claim, and its wording is written for that.
+function AttachLocationRow({
+  busy,
+  onAttach,
+  orgLocations,
+  orgLocationsError,
+  storeId,
+}: {
+  readonly busy: boolean
+  readonly onAttach: (gbpLocationRef: string) => void
+  readonly orgLocations: readonly OrgLocationOption[]
+  readonly orgLocationsError: string | null
+  readonly storeId: string
+}) {
+  const [choice, setChoice] = useState("")
+
+  return (
+    <div className="ops-store-adopt">
+      <label className="ops-store-adopt-label">
+        직접 만든 리스팅 연결
+        <select
+          data-testid={`store-attach-location-${storeId}`}
+          disabled={busy || orgLocations.length === 0}
+          onChange={(event) => setChoice(event.target.value)}
+          value={choice}
+        >
+          <option value="">리스팅 선택…</option>
+          {orgLocations.map((location) => (
+            <option key={location.name} value={location.name}>
+              {location.title} — {location.addressLine}
+            </option>
+          ))}
+        </select>
+      </label>
+      {orgLocationsError !== null ? (
+        <p className="ops-store-meta" role="alert">
+          조직 리스팅을 사용할 수 없음 — {orgLocationsError}
+        </p>
+      ) : orgLocations.length === 0 ? (
+        <p className="ops-store-meta">조직 리스팅을 찾을 수 없습니다.</p>
+      ) : null}
+      <button
+        className="ops-store-btn"
+        data-testid={`store-action-ATTACH_LOCATION-${storeId}`}
+        disabled={busy || choice.trim() === ""}
+        onClick={() => onAttach(choice.trim())}
+        type="button"
+      >
+        직접 연결
+      </button>
+    </div>
+  )
+}
 
 function formatAge(updatedAt: string): string {
   const elapsedMs = Date.now() - Date.parse(updatedAt)
@@ -82,11 +141,17 @@ export function StoresConsole({
 
   // Fetched once for the whole console rather than per card: it is the same org
   // listing set for every store, and it calls Google in production.
-  const needsOrgLocations = stores.some((store) =>
-    naturalActionsByState[store.state].some(
-      (entry) => entry.action.type === "CONFIRM_ADOPTION"
+  const needsOrgLocations =
+    pendingSetupStores.length > 0 ||
+    stores.some(
+      (store) =>
+        naturalActionsByState[store.state].some(
+          (entry) => entry.action.type === "CONFIRM_ADOPTION"
+        ) ||
+        (attachLocationSourceStates as readonly GbpAccessState[]).includes(
+          store.state
+        )
     )
-  )
 
   useEffect(() => {
     if (!needsOrgLocations) {
@@ -154,6 +219,24 @@ export function StoresConsole({
     setRunningSetupStoreId(null)
   }
 
+  // Attaching a hand-built listing writes both the access state and the
+  // gbp_locations rows, and can move a store between the two lists, so it
+  // refetches both rather than patching one in place.
+  async function handleAttachLocation(
+    storeId: string,
+    gbpLocationRef: string
+  ): Promise<void> {
+    setRunningSetupStoreId(storeId)
+    setError(null)
+    const result = await attachGbpLocation(storeId, gbpLocationRef)
+    if (result.kind === "error") {
+      setError(result.message)
+    }
+    setPendingSetupStores(await fetchPendingSetupStores())
+    setStores(await fetchStores())
+    setRunningSetupStoreId(null)
+  }
+
   if (stores.length === 0 && pendingSetupStores.length === 0) {
     return (
       <>
@@ -183,6 +266,7 @@ export function StoresConsole({
                 key={store.storeId}
                 className="ops-store-card"
                 data-testid={`pending-setup-card-${store.storeId}`}
+                id={`store-${store.storeId}`}
               >
                 <div className="ops-store-head">
                   <span className="ops-store-name">{store.storeName}</span>
@@ -202,6 +286,18 @@ export function StoresConsole({
                   >
                     GBP 등록 실행
                   </button>
+                  {/* The other half of concierge: the operator already built
+                      the listing in the Google UI and only needs to connect
+                      it, so running setup would create a second one. */}
+                  <AttachLocationRow
+                    busy={runningSetupStoreId === store.storeId}
+                    onAttach={(ref) =>
+                      void handleAttachLocation(store.storeId, ref)
+                    }
+                    orgLocations={orgLocations}
+                    orgLocationsError={orgLocationsError}
+                    storeId={store.storeId}
+                  />
                 </div>
               </li>
             ))}
@@ -232,6 +328,9 @@ export function StoresConsole({
             store={store}
             verification={verificationByStoreId.get(store.storeId) ?? null}
             onAction={(work) => run(store.requestId, work)}
+            onAttachLocation={(ref) =>
+              void handleAttachLocation(store.storeId, ref)
+            }
           />
         ))}
       </ul>
@@ -246,6 +345,7 @@ function StoreCard({
   store,
   verification,
   onAction,
+  onAttachLocation,
 }: {
   readonly busy: boolean
   readonly orgLocations: readonly OrgLocationOption[]
@@ -253,6 +353,7 @@ function StoreCard({
   readonly store: GbpAccessStoreView
   readonly verification: StoreVerificationView | null
   readonly onAction: (work: () => Promise<StoreActionResult>) => void
+  readonly onAttachLocation: (gbpLocationRef: string) => void
 }) {
   const [overrideTarget, setOverrideTarget] = useState<GbpAccessState | "">("")
   const [noteDraft, setNoteDraft] = useState(store.note ?? "")
@@ -275,9 +376,25 @@ function StoreCard({
   const overrideOptions = gbpAccessStates.filter(
     (state) => state !== store.state
   )
+  // Only where confirm is not already offering the same picker (for
+  // adoption_review/blocked, confirming the owner's claim IS the attach), and
+  // only where no listing is on file — a request that already names one has
+  // been through setup or adoption, and the route would refuse the attach.
+  const canAttachLocation =
+    !canConfirmAdoption &&
+    store.gbpLocationRef === null &&
+    (attachLocationSourceStates as readonly GbpAccessState[]).includes(
+      store.state
+    )
 
   return (
-    <li className="ops-store-card" data-testid={`store-card-${store.storeId}`}>
+    // Anchor id, not just a testid: the inbox links straight here from the
+    // conversation an owner is asking from.
+    <li
+      className="ops-store-card"
+      data-testid={`store-card-${store.storeId}`}
+      id={`store-${store.storeId}`}
+    >
       <div className="ops-store-head">
         <span className="ops-store-name">{store.storeName}</span>
         <span
@@ -366,6 +483,15 @@ function StoreCard({
               연결 확정
             </button>
           </div>
+        ) : null}
+        {canAttachLocation ? (
+          <AttachLocationRow
+            busy={busy}
+            onAttach={onAttachLocation}
+            orgLocations={orgLocations}
+            orgLocationsError={orgLocationsError}
+            storeId={store.storeId}
+          />
         ) : null}
         {store.state === "adoption_review" ? (
           <div className="ops-store-reject">

@@ -19,6 +19,15 @@ export const confirmAdoptionSourceStates = [
   "blocked",
 ] as const
 
+// The states an operator may attach a hand-built listing from. Not `granted`:
+// a store that is already granted has a listing attached, and re-attaching
+// would repoint a working publish target (the route guards that too).
+export const attachLocationSourceStates = [
+  "not_requested",
+  "adoption_review",
+  "blocked",
+] as const
+
 export const gbpAccessStateSchema = z.enum([
   "not_requested",
   "adoption_review",
@@ -82,6 +91,11 @@ export type GbpAccessAction =
   // in their chat thread. A rejection with no reason leaves them staring at
   // "확인이 필요합니다" with nothing to answer, so the console requires one.
   | { readonly type: "REJECT_ADOPTION"; readonly reason: string }
+  // The operator built the listing by hand in the Google UI and is attaching it
+  // themselves — no owner claim, no matcher, no Google approval. Distinct from
+  // CONFIRM_ADOPTION because nobody claimed anything: the operator's word is
+  // the entire authorization, which is why it carries its own audit code.
+  | { readonly type: "ATTACH_LOCATION"; readonly gbpLocationRef: string }
   | { readonly type: "GRANT" }
   | { readonly type: "REVOKE" }
   // reason is `string | undefined` (not just optional) so the value parsed from
@@ -212,6 +226,17 @@ export function transitionGbpAccess(
 
     // Reachable from invited too: an owner can grant access before the operator
     // has marked the request pending, so the natural path collapses that hop.
+    // Straight to granted for the same reason CONFIRM_ADOPTION is: the org
+    // account already manages the listing the operator built, so there is no
+    // invite to send and nothing to wait on.
+    case "ATTACH_LOCATION":
+      return fromStates(
+        currentState,
+        action.type,
+        attachLocationSourceStates,
+        "granted"
+      )
+
     case "GRANT":
       return fromStates(
         currentState,

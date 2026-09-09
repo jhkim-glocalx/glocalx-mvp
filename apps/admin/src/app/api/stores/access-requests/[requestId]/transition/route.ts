@@ -40,6 +40,10 @@ const auditActionByType: Record<GbpAccessAction["type"], AdminAuditAction> = {
   MARK_PENDING: "gbp_access_mark_pending",
   CONFIRM_ADOPTION: "gbp_access_confirm_adoption",
   REJECT_ADOPTION: "gbp_access_reject_adoption",
+  // Not reachable through this request-keyed route — attaching a hand-built
+  // listing is store-keyed (the stores that need it have no request row yet) —
+  // but the map is exhaustive over the action union by design.
+  ATTACH_LOCATION: "gbp_access_attach_location",
   GRANT: "gbp_access_grant",
   REVOKE: "gbp_access_revoke",
   BLOCK: "gbp_access_block",

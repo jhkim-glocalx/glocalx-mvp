@@ -45,6 +45,44 @@ export async function runGbpSetup(storeId: string): Promise<RunSetupResult> {
   return { kind: "ok" }
 }
 
+export type AttachLocationResult =
+  | { readonly kind: "ok" }
+  | { readonly kind: "error"; readonly message: string }
+
+const attachFailureMessages: Readonly<Record<string, string>> = {
+  STORE_ALREADY_HAS_LOCATION: "이 매장에는 이미 리스팅이 연결되어 있습니다.",
+  LOCATION_ALREADY_ADOPTED: "이 리스팅은 다른 매장에 연결되어 있습니다.",
+}
+
+// Attaches a listing the operator built by hand. Store-keyed, not request-keyed:
+// the stores that need this most are the ones with no access request row yet.
+export async function attachGbpLocation(
+  storeId: string,
+  gbpLocationRef: string
+): Promise<AttachLocationResult> {
+  const response = await fetch(`/api/stores/${storeId}/gbp/setup/actions`, {
+    body: JSON.stringify({ type: "ATTACH_LOCATION", gbpLocationRef }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  })
+  if (response.ok) {
+    return { kind: "ok" }
+  }
+  let status: string | undefined
+  try {
+    const payload = (await response.json()) as { readonly status?: string }
+    status = payload.status
+  } catch {
+    status = undefined
+  }
+  return {
+    kind: "error",
+    message:
+      (status === undefined ? undefined : attachFailureMessages[status]) ??
+      "리스팅을 연결하지 못했습니다.",
+  }
+}
+
 export type OrgLocationOption = {
   readonly name: string
   readonly title: string
