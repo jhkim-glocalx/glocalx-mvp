@@ -16,7 +16,18 @@ import type {
   StoreProfileDraft,
 } from "./onboarding-model"
 
-export function OnboardingTopBar() {
+type OnboardingTopBarSupport = {
+  readonly unread: number
+  readonly onOpen: () => void
+}
+
+type OnboardingTopBarProps = {
+  // Absent on the server-rendered terminal screens (the Instagram connect
+  // result), which carry no client chat state — they keep the static menu mark.
+  readonly support?: OnboardingTopBarSupport | undefined
+}
+
+export function OnboardingTopBar({ support }: OnboardingTopBarProps = {}) {
   return (
     <>
       <div className="flex min-w-0 items-center gap-3">
@@ -33,9 +44,31 @@ export function OnboardingTopBar() {
           </p>
         </div>
       </div>
-      <span aria-label="더보기" className="gx-app-menu" role="img">
-        ⋮
-      </span>
+      {support === undefined ? (
+        <span aria-label="더보기" className="gx-app-menu" role="img">
+          ⋮
+        </span>
+      ) : (
+        // Onboarding is itself a chat with the assistant persona, so support
+        // gets a named top-bar entry rather than a second bubble in the corner
+        // the composer's send button already owns.
+        <button
+          className="gx-support-entry"
+          data-testid="onboarding-support-open"
+          onClick={support.onOpen}
+          type="button"
+        >
+          도움 요청
+          {support.unread > 0 ? (
+            <span
+              className="gx-support-entry-badge"
+              data-testid="onboarding-support-unread-badge"
+            >
+              {support.unread > 9 ? "9+" : support.unread}
+            </span>
+          ) : null}
+        </button>
+      )}
     </>
   )
 }

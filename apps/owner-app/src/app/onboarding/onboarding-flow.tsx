@@ -1,7 +1,13 @@
 "use client"
 
-import { MobileShell } from "@/app/_components/mobile-shell"
+import { useState } from "react"
 
+import { ChatPanel } from "@/app/_components/chat-panel"
+import { MobileShell } from "@/app/_components/mobile-shell"
+import { useActivityTrail } from "@/app/_components/use-activity-trail"
+import { useCsChat } from "@/app/_components/use-cs-chat"
+
+import { onboardingActivityStage } from "./onboarding-activity-stage"
 import { OnboardingComposer } from "./onboarding-composer"
 import {
   GbpHandoffPanel,
@@ -19,6 +25,23 @@ import { useOnboardingFlow } from "./use-onboarding-flow"
 export function OnboardingFlow() {
   const onboarding = useOnboardingFlow()
   const { actions, refs, state } = onboarding
+  const activity = useActivityTrail()
+  const [supportOpen, setSupportOpen] = useState(false)
+  const chat = useCsChat({
+    activity,
+    open: supportOpen,
+    section: "onboarding",
+    stage: onboardingActivityStage(state),
+  })
+
+  function toggleSupport(): void {
+    const next = !supportOpen
+    setSupportOpen(next)
+    activity.recordAction("onboarding", next ? "chat_opened" : "chat_closed")
+    if (next) {
+      chat.markRead()
+    }
+  }
 
   return (
     <main className="gx-route-page">
@@ -37,8 +60,25 @@ export function OnboardingFlow() {
             slotState={state.slotState}
           />
         }
+        overlay={
+          supportOpen ? (
+            <div className="gx-chat-overlay" data-testid="onboarding-support">
+              <ChatPanel
+                messages={chat.messages}
+                onClose={toggleSupport}
+                onSend={chat.send}
+                sending={chat.sending}
+                variant="sheet"
+              />
+            </div>
+          ) : undefined
+        }
         screenRef={refs.screenRef}
-        topBar={<OnboardingTopBar />}
+        topBar={
+          <OnboardingTopBar
+            support={{ onOpen: toggleSupport, unread: chat.unread }}
+          />
+        }
       >
         <OnboardingIntro
           onNaverLinkAttach={actions.naverLinkAttach}

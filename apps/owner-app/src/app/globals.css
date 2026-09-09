@@ -2325,6 +2325,59 @@ body {
   }
 }
 
+/* Onboarding's own composer owns the corner the floating panel docks in, so
+   support chat opens there as a sheet over the whole shell instead. */
+.gx-chat-overlay {
+  position: absolute;
+  z-index: 50;
+  display: flex;
+  /* Bottom-docked so the onboarding conversation stays visible behind it —
+     the owner is asking about what is on that screen. */
+  align-items: flex-end;
+  padding: 16px;
+  background: rgba(25, 23, 32, 0.34);
+  inset: 0;
+}
+
+.gx-chat-panel.gx-chat-sheet {
+  width: 100%;
+  height: min(78%, 620px);
+  max-height: none;
+}
+
+.gx-support-entry {
+  position: relative;
+  flex: 0 0 auto;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  padding: 7px 13px;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 900;
+  transition: background 160ms var(--ease-out);
+}
+
+.gx-support-entry:hover {
+  background: #f3eff4;
+}
+
+.gx-support-entry-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 900;
+}
+
 .gx-chat-panel-head {
   display: flex;
   align-items: center;
